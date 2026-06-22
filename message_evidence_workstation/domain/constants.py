@@ -1,0 +1,35 @@
+"""Shared domain constants."""
+
+SCHEMA_VERSION = 2
+
+WORKSPACE_FORMAT_ID = "message_evidence_workstation.evw"
+WORKSPACE_FORMAT_VERSION = 1
+
+UNCATEGORIZED_CATEGORY_NAME = "Uncategorized"
+
+SEVERITY_DEBUG = "debug"
+SEVERITY_INFO = "info"
+SEVERITY_WARNING = "warning"
+SEVERITY_ERROR = "error"
+
+CONVERSATION_STATUS_CANDIDATE = "candidate"
+CONVERSATION_STATUS_ACCEPTED = "accepted"
+CONVERSATION_STATUS_REJECTED = "rejected"
+CONVERSATION_STATUS_EXPORT_READY = "export_ready"
+
+CREATED_BY_MANUAL = "manual"
+CREATED_BY_SIMPLE_SEARCH = "simple_search"
+CREATED_BY_CONVERSATIONAL_SEARCH = "conversational_search"
+CREATED_BY_TRANSCRIPT_EDITOR = "transcript_editor"
+
+BOUNDARY_CONTEXT_START = "context_start"
+BOUNDARY_CONTEXT_END = "context_end"
+BOUNDARY_RELEVANT_START = "relevant_start"
+BOUNDARY_RELEVANT_END = "relevant_end"
+
+RETRIEVAL_MANUAL = "manual"
+
+HIGHLIGHT_NONE = "none"
+HIGHLIGHT_HIT = "hit"
+HIGHLIGHT_RELEVANT = "relevant"
+HIGHLIGHT_CONTEXT = "context"
