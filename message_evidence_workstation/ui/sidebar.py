@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtCore import QMimeData
+from PySide6.QtCore import QMimeData, Qt, Signal
 from PySide6.QtGui import QDrag, QDropEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -73,15 +72,16 @@ class CategoryDropTree(QTreeWidget):
         ):
             super().dropEvent(event)
             return
-        category_id = self._category_id_at_drop(event)
-        if category_id is None:
-            event.ignore()
-            return
         if event.mimeData().hasFormat(MIME_SEARCH_RESULT):
+            category_id = self._category_id_at_drop(event)
             payload = json.loads(bytes(event.mimeData().data(MIME_SEARCH_RESULT)).decode("utf-8"))
             group = GroupedSearchResult.from_drag_payload(payload)
             self._sidebar.handle_search_drop(group, category_id=category_id)
         else:
+            category_id = self._category_id_at_drop(event)
+            if category_id is None:
+                event.ignore()
+                return
             payload = json.loads(bytes(event.mimeData().data(MIME_EVIDENCE_BLOCK)).decode("utf-8"))
             self._sidebar.move_evidence_block_to_category(
                 int(payload["evidence_block_id"]),
@@ -205,6 +205,27 @@ class Sidebar(QWidget):
             category_item.setExpanded(not category.is_collapsed)
         self.category_tree.blockSignals(False)
 
+    def _refresh_categories_and_reveal(
+        self,
+        category_id: int,
+        *,
+        evidence_block_id: int | None = None,
+    ) -> None:
+        repositories.set_category_collapsed(self.conn, self.logger, category_id, False)
+        self._refresh_categories()
+        if evidence_block_id is None:
+            return
+        for top_index in range(self.category_tree.topLevelItemCount()):
+            category_item = self.category_tree.topLevelItem(top_index)
+            if int(category_item.data(0, ROLE_ITEM_ID)) != category_id:
+                continue
+            category_item.setExpanded(True)
+            for child_index in range(category_item.childCount()):
+                child = category_item.child(child_index)
+                if int(child.data(0, ROLE_ITEM_ID)) == evidence_block_id:
+                    self.category_tree.setCurrentItem(child)
+                    return
+
     def _on_thread_changed(self, current: QListWidgetItem | None, _previous: QListWidgetItem | None) -> None:
         if current is None or self.dataset_id is None:
             return
@@ -265,7 +286,7 @@ class Sidebar(QWidget):
         primary = messages[0]
         title = primary.body[:80] if primary.body else f"Evidence {primary.message_id}"
         ordered_ids = [message.message_id for message in messages]
-        evidence_blocks.create_evidence_block_from_search(
+        block = evidence_blocks.create_evidence_block_from_search(
             self.conn,
             self.logger,
             dataset_id=self.dataset_id,
@@ -274,7 +295,10 @@ class Sidebar(QWidget):
             title=title,
             ordered_message_ids=ordered_ids,
         )
-        self._refresh_categories()
+        self._refresh_categories_and_reveal(
+            block.category_id,
+            evidence_block_id=block.evidence_block_id,
+        )
 
     def prompt_category_for_manual_conversation(
         self,
@@ -284,13 +308,16 @@ class Sidebar(QWidget):
         self.create_manual_evidence_block(messages, source_thread_id)
 
     def move_evidence_block_to_category(self, evidence_block_id: int, category_id: int) -> None:
-        evidence_blocks.move_evidence_block_to_category(
+        block = evidence_blocks.move_evidence_block_to_category(
             self.conn,
             self.logger,
             evidence_block_id=evidence_block_id,
             category_id=category_id,
         )
-        self._refresh_categories()
+        self._refresh_categories_and_reveal(
+            block.category_id,
+            evidence_block_id=block.evidence_block_id,
+        )
 
     def handle_search_drop(
         self,
@@ -312,7 +339,7 @@ class Sidebar(QWidget):
             dataset_id=self.dataset_id,
             source_thread_id=group.source_thread_id,
             primary_hit_message_id=group.primary_hit_message_id,
-            title=group.title,
+            title=group.title or group.snippet or group.primary_hit_message_id,
             ordered_message_ids=ordered_ids,
             category_id=category_id,
         )
@@ -327,4 +354,7 @@ class Sidebar(QWidget):
             },
             dataset_id=self.dataset_id,
         )
-        self._refresh_categories()
+        self._refresh_categories_and_reveal(
+            block.category_id,
+            evidence_block_id=block.evidence_block_id,
+        )

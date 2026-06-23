@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 from message_evidence_workstation.db.connection import connect
+from message_evidence_workstation.db.evidence_blocks import create_evidence_block_from_search, ensure_uncategorized_category
 from message_evidence_workstation.db.migrations import initialize_schema
+from message_evidence_workstation.db.repositories import list_messages_for_thread
 from message_evidence_workstation.importers.normalized_loader import (
     DatasetLoadError,
     load_normalized_dataset,
@@ -123,6 +125,28 @@ def test_reload_clears_dataset_with_audit_rows(loaded_db) -> None:
     assert reloaded_id != dataset_id
     assert conn.execute("SELECT COUNT(*) FROM message").fetchone()[0] == 5
     assert conn.execute("SELECT COUNT(*) FROM model_run WHERE dataset_id = ?", (dataset_id,)).fetchone()[0] == 0
+
+
+def test_reload_clears_persisted_evidence_blocks_before_categories(loaded_db) -> None:
+    conn, logger, dataset_id = loaded_db
+    category = ensure_uncategorized_category(conn, logger, dataset_id)
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
+    create_evidence_block_from_search(
+        conn,
+        logger,
+        dataset_id=dataset_id,
+        source_thread_id="thread_001",
+        primary_hit_message_id="msg_001",
+        title="Reload safety",
+        ordered_message_ids=[message.message_id for message in messages],
+        category_id=category.category_id,
+    )
+
+    reloaded_id = load_normalized_dataset(conn, logger, FIXTURE_DIR, reload=True)
+
+    assert reloaded_id != dataset_id
+    assert conn.execute("SELECT COUNT(*) FROM category WHERE dataset_id = ?", (dataset_id,)).fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM evidence_block WHERE dataset_id = ?", (dataset_id,)).fetchone()[0] == 0
 
 
 def test_reload_preserves_embedding_rows(loaded_db) -> None:

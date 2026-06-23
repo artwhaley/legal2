@@ -41,6 +41,8 @@ class GroupedSearchResult:
             "source_thread_id": self.source_thread_id,
             "primary_hit_message_id": self.primary_hit_message_id,
             "query_text": self.hits[0].query_text if self.hits else "",
+            "title": self.title,
+            "snippet": self.snippet,
             "hits": [
                 {
                     "message_id": hit.message_id,
@@ -78,5 +80,7 @@ class GroupedSearchResult:
             source_thread_id=payload["source_thread_id"],
             primary_hit_message_id=payload["primary_hit_message_id"],
             hits=hits,
+            title=payload.get("title", ""),
+            snippet=payload.get("snippet", ""),
             retrieval_methods=methods,
         )

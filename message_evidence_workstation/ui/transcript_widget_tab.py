@@ -18,7 +18,7 @@ from message_evidence_workstation.db import evidence_blocks, repositories
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.ui.transcript_surface import (
     EvidenceTranscriptModel,
-    LazyQmlTranscriptSurface,
+    Gen2TranscriptSurfaceWidget,
     TranscriptSurfaceWidget,
 )
 
@@ -64,13 +64,12 @@ class TranscriptWidgetTab(QWidget):
         self.summary_label.setWordWrap(True)
         layout.addWidget(self.summary_label)
 
-        self.version_tabs = QTabWidget()
+        self.surface_tabs = QTabWidget()
         self.model_view_surface = TranscriptSurfaceWidget(self._model)
-        self.version_tabs.addTab(self.model_view_surface, "Model / View")
-        self.qml_surface = LazyQmlTranscriptSurface(self._model, logger)
-        self.version_tabs.addTab(self.qml_surface, "QML")
-        self.version_tabs.currentChanged.connect(self._on_version_tab_changed)
-        layout.addWidget(self.version_tabs, stretch=1)
+        self.gen2_surface = Gen2TranscriptSurfaceWidget(self._model)
+        self.surface_tabs.addTab(self.model_view_surface, "Existing Model/View")
+        self.surface_tabs.addTab(self.gen2_surface, "Gen2 Paper Transcript")
+        layout.addWidget(self.surface_tabs, stretch=1)
 
         self._model.state_changed.connect(self._update_summary)
 
@@ -187,7 +186,3 @@ class TranscriptWidgetTab(QWidget):
             self.summary_label.setText("No dataset loaded.")
             return
         self.summary_label.setText(self._model.summary_text())
-
-    def _on_version_tab_changed(self, index: int) -> None:
-        if self.version_tabs.tabText(index) == "QML":
-            self.qml_surface.ensure_loaded()

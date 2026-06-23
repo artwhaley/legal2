@@ -223,6 +223,12 @@ def delete_category(conn: sqlite3.Connection, logger: ProcessLogger, category_id
         "DELETE FROM workstation_conversation WHERE category_id = ?",
         (category_id,),
     )
+    conn.execute(
+        "DELETE FROM evidence_block_highlight WHERE evidence_block_id IN "
+        "(SELECT evidence_block_id FROM evidence_block WHERE category_id = ?)",
+        (category_id,),
+    )
+    conn.execute("DELETE FROM evidence_block WHERE category_id = ?", (category_id,))
     conn.execute("DELETE FROM category WHERE category_id = ?", (category_id,))
     conn.commit()
     logger.info(

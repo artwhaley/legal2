@@ -90,6 +90,25 @@ def test_create_evidence_block_from_search_uses_uncategorized(workspace_db) -> N
     assert category["name"] == UNCATEGORIZED_CATEGORY_NAME
 
 
+def test_create_evidence_block_from_search_can_target_category(workspace_db) -> None:
+    conn, logger, dataset_id = workspace_db
+    school = create_category(conn, logger, dataset_id, "school")
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
+    ordered_ids = [message.message_id for message in messages]
+    block = create_evidence_block_from_search(
+        conn,
+        logger,
+        dataset_id=dataset_id,
+        source_thread_id="thread_001",
+        primary_hit_message_id="msg_001",
+        title="Targeted category hit",
+        ordered_message_ids=ordered_ids,
+        category_id=school.category_id,
+    )
+
+    assert block.category_id == school.category_id
+
+
 def test_update_slots_and_move_category(workspace_db) -> None:
     conn, logger, dataset_id = workspace_db
     uncategorized = ensure_uncategorized_category(conn, logger, dataset_id)

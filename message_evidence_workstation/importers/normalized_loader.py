@@ -112,6 +112,12 @@ def clear_dataset(conn: sqlite3.Connection, dataset_id: int) -> None:
         (dataset_id,),
     )
     conn.execute("DELETE FROM workstation_conversation WHERE dataset_id = ?", (dataset_id,))
+    conn.execute(
+        "DELETE FROM evidence_block_highlight WHERE evidence_block_id IN "
+        "(SELECT evidence_block_id FROM evidence_block WHERE dataset_id = ?)",
+        (dataset_id,),
+    )
+    conn.execute("DELETE FROM evidence_block WHERE dataset_id = ?", (dataset_id,))
     conn.execute("DELETE FROM category WHERE dataset_id = ?", (dataset_id,))
     ensure_chunk_metadata_schema(conn)
     clear_chunk_vectors(conn, dataset_id)
