@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-DEFAULT_CONTEXT_WINDOW_TOKENS = 32768
+DEFAULT_CONTEXT_WINDOW_TOKENS = 8192
 DEFAULT_CONTEXT_SAFETY_RATIO = 0.70
 DEFAULT_RESERVED_OUTPUT_TOKENS = 4096
 DEFAULT_PROMPT_OVERHEAD_TOKENS = 1500
@@ -71,6 +71,14 @@ def resolve_model_context(
             context_window_tokens=int(user_override_tokens),
             source="user_override",
         )
+    if provider_metadata and provider_metadata.get("context_source") == "learned_from_api_error":
+        learned_tokens = _positive_int_from_metadata(provider_metadata)
+        if learned_tokens is not None:
+            return ModelContextWindow(
+                model_id=model_id,
+                context_window_tokens=learned_tokens,
+                source="learned_from_api_error",
+            )
     provider_tokens = _positive_int_from_metadata(provider_metadata)
     if provider_tokens is not None:
         return ModelContextWindow(

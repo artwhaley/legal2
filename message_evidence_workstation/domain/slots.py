@@ -36,13 +36,28 @@ def message_ids_for_slot_range(ordered_message_ids: list[str], start_slot: int, 
 
 
 def default_slots_for_hit_index(message_count: int, hit_index: int) -> tuple[int, int, int, int]:
+    return default_slots_for_hit_index_with_context(
+        message_count,
+        hit_index,
+        leading_count=1,
+        trailing_count=1,
+    )
+
+
+def default_slots_for_hit_index_with_context(
+    message_count: int,
+    hit_index: int,
+    *,
+    leading_count: int = 3,
+    trailing_count: int = 3,
+) -> tuple[int, int, int, int]:
     if message_count <= 0:
         return (0, 0, 0, 0)
     hit_index = max(0, min(hit_index, message_count - 1))
     relevant_start = hit_index
     relevant_end = hit_index + 1
-    context_start = max(0, hit_index - 1)
-    context_end = min(message_count, hit_index + 2)
+    context_start = max(0, hit_index - leading_count)
+    context_end = min(message_count, hit_index + 1 + trailing_count)
     return context_start, relevant_start, relevant_end, context_end
 
 

@@ -20,9 +20,14 @@ class NimSettings:
     model: str = ""
     temperature: float = 0.2
     max_output_tokens: int = 4096
-    timeout_seconds: float = 180.0
+    timeout_seconds: float = 600.0
     streaming: bool = False
     manual_model_entry_enabled: bool = False
+
+
+@dataclass
+class TranscriptSettings:
+    speaker_tints: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -46,6 +51,7 @@ class AppSettings:
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chunking: dict = field(default_factory=dict)
     answer: AnswerSettings = field(default_factory=AnswerSettings)
+    transcript: TranscriptSettings = field(default_factory=TranscriptSettings)
     nim_model_metadata: dict[str, dict] = field(default_factory=dict)
 
 
@@ -69,8 +75,8 @@ def load_settings() -> AppSettings:
         nim.api_key = env_key
     bumped_timeout = False
     bumped_output_tokens = False
-    if nim.timeout_seconds <= 60.0:
-        nim.timeout_seconds = 180.0
+    if nim.timeout_seconds <= 180.0:
+        nim.timeout_seconds = 600.0
         bumped_timeout = True
     if nim.max_output_tokens <= 1024:
         nim.max_output_tokens = 4096
@@ -80,6 +86,7 @@ def load_settings() -> AppSettings:
         embedding_model=data.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2"),
         chunking=data.get("chunking", {}),
         answer=AnswerSettings(**{**asdict(AnswerSettings()), **data.get("answer", {})}),
+        transcript=TranscriptSettings(**{**asdict(TranscriptSettings()), **data.get("transcript", {})}),
         nim_model_metadata=dict(data.get("nim_model_metadata", {})),
     )
     if bumped_timeout or bumped_output_tokens:
@@ -95,6 +102,7 @@ def save_settings(settings: AppSettings) -> None:
         "embedding_model": settings.embedding_model,
         "chunking": settings.chunking or {},
         "answer": asdict(settings.answer),
+        "transcript": asdict(settings.transcript),
         "nim_model_metadata": settings.nim_model_metadata or {},
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")

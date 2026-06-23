@@ -77,6 +77,7 @@ class MainWindow(QMainWindow):
             self._on_workstation_conversation_selected
         )
         self.sidebar.evidence_block_selected.connect(self._on_evidence_block_selected)
+        self.transcript_widget_tab.evidence_block_created.connect(self._on_transcript_evidence_block_created)
         self.sidebar.set_dataset(context.dataset_id)
         self.simple_search_tab.set_dataset(context.dataset_id)
         self.conversational_tab.set_dataset(context.dataset_id)
@@ -101,8 +102,11 @@ class MainWindow(QMainWindow):
         )
 
     def _refresh_workspaces(self) -> None:
-        self.sidebar._refresh_categories()
+        self.sidebar.refresh_evidence_blocks()
         self.output_formatting_tab.refresh()
+
+    def _on_transcript_evidence_block_created(self, evidence_block_id: int) -> None:
+        self.sidebar.reveal_evidence_block(evidence_block_id)
 
     def _placeholder_tab(self, title: str) -> QWidget:
         widget = QWidget()

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -34,7 +36,13 @@ from message_evidence_workstation.domain.constants import (
 )
 from message_evidence_workstation.logging_ui.log_bus import LogBus
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, fetch_process_logs
-from message_evidence_workstation.nim.client import NimClient, NimClientError, nim_error_user_message
+from message_evidence_workstation.nim.client import (
+    NimClient,
+    NimClientError,
+    NimTestResult,
+    nim_error_log_details,
+    nim_error_user_message,
+)
 
 
 class SettingsTab(QWidget):
@@ -60,7 +68,18 @@ class SettingsTab(QWidget):
         self._model_runs: list = []
         self.settings = load_settings()
 
-        layout = QVBoxLayout(self)
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content = QWidget()
+        scroll.setWidget(content)
+
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.addWidget(scroll)
+
+        layout = QVBoxLayout(content)
         layout.addWidget(QLabel("Setup / Settings"))
 
         nim_group = QGroupBox("NVIDIA NIM")
@@ -86,7 +105,7 @@ class SettingsTab(QWidget):
         self.nim_max_tokens.setValue(self.settings.nim.max_output_tokens)
         nim_form.addRow("Max output tokens", self.nim_max_tokens)
         self.nim_timeout = QDoubleSpinBox()
-        self.nim_timeout.setRange(1.0, 600.0)
+        self.nim_timeout.setRange(1.0, 3600.0)
         self.nim_timeout.setValue(self.settings.nim.timeout_seconds)
         self.nim_timeout.setToolTip("NIM chat completion wait time. Increase if calls time out.")
         self.nim_timeout.valueChanged.connect(self._persist_nim_timeout)
@@ -98,10 +117,20 @@ class SettingsTab(QWidget):
         self.refresh_models_button = QPushButton("Refresh model list")
         self.refresh_models_button.clicked.connect(self._refresh_models)
         nim_buttons.addWidget(self.refresh_models_button)
+        self.test_model_button = QPushButton("Test model")
+        self.test_model_button.setToolTip(
+            "Send a minimal POST /chat/completions request with the selected model."
+        )
+        self.test_model_button.clicked.connect(self._test_model)
+        nim_buttons.addWidget(self.test_model_button)
         self.save_nim_button = QPushButton("Save NIM settings")
         self.save_nim_button.clicked.connect(self._save_nim_settings)
         nim_buttons.addWidget(self.save_nim_button)
         nim_form.addRow("", nim_buttons)
+        self.nim_test_result = QLabel("Model test: not run yet.")
+        self.nim_test_result.setWordWrap(True)
+        self.nim_test_result.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        nim_form.addRow("Model test", self.nim_test_result)
         layout.addWidget(nim_group)
 
         answer_group = QGroupBox("Conversational answer strategy")
@@ -600,6 +629,7 @@ class SettingsTab(QWidget):
             )
             auto_decision = budget.decision
             usable_input = budget.usable_input_tokens
+            effective_output = budget.effective_reserved_output_tokens
             context_window = budget.context_window_tokens
             context_source = budget.context_source
             if context_source == "default":
@@ -622,12 +652,13 @@ class SettingsTab(QWidget):
                 if model_context.source == "default"
                 else model_context.source
             )
-            safety_ratio = max(0.25, min(0.90, answer_settings.context_safety_ratio))
-            usable_input = max(
-                1000,
-                int(context_window * safety_ratio)
-                - answer_settings.reserved_output_tokens
-                - answer_settings.prompt_overhead_tokens,
+            from message_evidence_workstation.search.token_budget import compute_usable_input_tokens
+
+            usable_input, effective_output = compute_usable_input_tokens(
+                context_window_tokens=context_window,
+                safety_ratio=max(0.25, min(0.90, answer_settings.context_safety_ratio)),
+                reserved_output_tokens=answer_settings.reserved_output_tokens,
+                prompt_overhead_tokens=answer_settings.prompt_overhead_tokens,
             )
         self.context_budget_readout.setText(
             "\n".join(
@@ -637,6 +668,7 @@ class SettingsTab(QWidget):
                     f"Context source: {context_source}",
                     f"Usable input budget: {usable_input}",
                     f"Reserved output tokens: {answer_settings.reserved_output_tokens}",
+                    f"Effective output cap: {effective_output}",
                     f"Prompt overhead tokens: {answer_settings.prompt_overhead_tokens}",
                     f"Transcript token estimate: {transcript_tokens}",
                     f"Auto mode decision: {auto_decision}",
@@ -739,7 +771,8 @@ class SettingsTab(QWidget):
                 self.nim_model.setCurrentText(model_list[0].id)
             self.settings.nim.manual_model_entry_enabled = False
             self.settings.nim_model_metadata = {
-                model.id: dict(model.metadata) for model in model_list
+                model.id: self._merge_model_metadata(model.id, dict(model.metadata))
+                for model in model_list
             }
             save_settings(self.settings)
             self._persist_nim_model_selection()
@@ -774,6 +807,109 @@ class SettingsTab(QWidget):
                     component="ui.settings_tab",
                     operation="nim_model_list_failed",
                     message="Unexpected model list failure",
+                    exc=exc,
+                )
+
+        from message_evidence_workstation.ui.background_tasks import run_background
+
+        run_background(self, work, on_success=on_success, on_error=on_error)
+
+    def _merge_model_metadata(self, model_id: str, provider_metadata: dict) -> dict:
+        merged = dict(provider_metadata)
+        existing = self.settings.nim_model_metadata.get(model_id, {})
+        for key in ("context_length", "context_source", "supports_system_role", "message_role_source"):
+            if key in existing:
+                merged[key] = existing[key]
+        return merged
+
+    def _format_nim_test_result(self, result: NimTestResult) -> str:
+        lines = [
+            f"{'OK' if result.success else 'FAILED'} | {result.method} {result.url}",
+            f"model={result.model}",
+        ]
+        if result.latency_ms is not None:
+            lines.append(f"latency={result.latency_ms}ms")
+        if result.success:
+            lines.append(f"reply={result.response_preview!r}")
+        else:
+            if result.status_code is not None:
+                lines.append(f"status={result.status_code}")
+            if result.error_message:
+                lines.append(result.error_message)
+            elif result.error_type:
+                lines.append(f"error_type={result.error_type}")
+        return "\n".join(lines)
+
+    def _test_model(self) -> None:
+        nim = self._current_nim_settings()
+        if not nim.model:
+            self.nim_test_result.setText("Model test: select or enter a model first.")
+            return
+        self.test_model_button.setEnabled(False)
+        self.nim_test_result.setText(f"Testing POST /chat/completions for {nim.model}…")
+
+        def work() -> NimTestResult:
+            return NimClient(nim).test_model()
+
+        def on_success(result: object) -> None:
+            self.test_model_button.setEnabled(True)
+            test_result = result  # type: ignore[assignment]
+            assert isinstance(test_result, NimTestResult)
+            summary = self._format_nim_test_result(test_result)
+            self.nim_test_result.setText(summary)
+            if test_result.success:
+                self.embedding_status.setText(
+                    f"Model test OK ({test_result.latency_ms}ms): {test_result.response_preview!r}"
+                )
+                self.logger.info(
+                    component="ui.settings_tab",
+                    operation="nim_model_test_success",
+                    message="NIM model test succeeded",
+                    details={
+                        "model": test_result.model,
+                        "url": test_result.url,
+                        "method": test_result.method,
+                        "path": test_result.path,
+                        "latency_ms": test_result.latency_ms,
+                        "response_preview": test_result.response_preview,
+                    },
+                )
+            else:
+                self.embedding_status.setText("NIM model test failed — see Model test readout.")
+                self.logger.error(
+                    component="ui.settings_tab",
+                    operation="nim_model_test_failed",
+                    message=test_result.error_message or "NIM model test failed",
+                    details={
+                        "model": test_result.model,
+                        "url": test_result.url,
+                        "method": test_result.method,
+                        "path": test_result.path,
+                        "latency_ms": test_result.latency_ms,
+                        "status_code": test_result.status_code,
+                        "response_body": test_result.response_body,
+                        "error_type": test_result.error_type,
+                    },
+                )
+
+        def on_error(exc: BaseException) -> None:
+            self.test_model_button.setEnabled(True)
+            if isinstance(exc, NimClientError):
+                message = nim_error_user_message(exc)
+                self.nim_test_result.setText(message)
+                self.logger.error(
+                    component="ui.settings_tab",
+                    operation="nim_model_test_failed",
+                    message=message,
+                    details=nim_error_log_details(exc),
+                    exc=exc,
+                )
+            else:
+                self.nim_test_result.setText(f"Model test failed: {exc}")
+                self.logger.error(
+                    component="ui.settings_tab",
+                    operation="nim_model_test_failed",
+                    message="Unexpected model test failure",
                     exc=exc,
                 )
 

@@ -65,7 +65,7 @@ def test_main_window_with_dataset(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
     context = bootstrap_app()
     window = MainWindow(context)
-    assert window.sidebar.thread_list.count() == 1
+    assert window.sidebar.thread_combo.count() == 1
     assert window.tabs.count() == 6
     assert window.tabs.tabText(4) == "Setup / Settings"
     assert window.tabs.tabText(5) == "Transcript Widget"
@@ -267,7 +267,7 @@ def test_simple_search_shows_transcript_for_selected_group(tmp_path, qapp, monke
     assert "allergy" in tab.thread_view.message_list.item(0).text().lower()
 
 
-def test_transcript_widget_tab_updates_summary_when_state_changes(tmp_path, qapp, monkeypatch) -> None:
+def test_transcript_widget_tab_loads_thread_without_default_block(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
     monkeypatch.setenv(
         "MEW_DATASET_PATH",
@@ -277,15 +277,114 @@ def test_transcript_widget_tab_updates_summary_when_state_changes(tmp_path, qapp
     tab = TranscriptWidgetTab(context.conn, context.logger)
     tab.set_dataset(context.dataset_id)
 
-    assert tab.surface_tabs.count() == 2
-    assert tab.surface_tabs.tabText(0) == "Existing Model/View"
-    assert tab.surface_tabs.tabText(1) == "Gen2 Paper Transcript"
+    assert tab.transcript_surface is not None
+    assert tab.new_block_button.isEnabled()
     assert tab.thread_combo.count() == 1
-    assert "Context:" in tab.summary_label.text()
+    assert tab._model.block_overlays() == []
 
     tab._model.move_boundary("relevant_end", 2)
     tab._model.toggle_highlight_row(1)
     qapp.processEvents()
 
-    assert "Relevant:" in tab.summary_label.text()
-    assert "Highlighted: 1" in tab.summary_label.text()
+    assert tab._model.active_slots()[2] == 2
+    assert "msg_001" in tab._model.highlighted_message_ids()
+
+
+def test_transcript_widget_new_block_uses_viewport_center(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    context = bootstrap_app()
+    tab = TranscriptWidgetTab(context.conn, context.logger)
+    tab.set_dataset(context.dataset_id)
+
+    before = evidence_blocks.list_evidence_blocks(
+        context.conn,
+        context.dataset_id,
+        source_thread_id="thread_001",
+    )
+    tab.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
+    tab._create_evidence_block_from_view()
+    qapp.processEvents()
+
+    after = evidence_blocks.list_evidence_blocks(
+        context.conn,
+        context.dataset_id,
+        source_thread_id="thread_001",
+    )
+    assert len(after) == len(before) + 1
+    created = after[-1]
+    assert created.core_hit_message_id == "msg_006"
+    assert created.context_start_slot == 2
+    assert created.relevant_start_slot == 5
+    assert created.relevant_end_slot == 6
+    assert created.context_end_slot == 9
+
+
+def test_new_evidence_block_preserves_existing_block_slots(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    context = bootstrap_app()
+    tab = TranscriptWidgetTab(context.conn, context.logger)
+    tab.set_dataset(context.dataset_id)
+
+    tab._create_evidence_block_from_view()
+    qapp.processEvents()
+    first_block = evidence_blocks.list_evidence_blocks(
+        context.conn,
+        context.dataset_id,
+        source_thread_id="thread_001",
+    )[-1]
+    tab._model.move_boundary_for_block(first_block.evidence_block_id, "context_end", 8)
+    tab._model.move_boundary_for_block(first_block.evidence_block_id, "relevant_end", 7)
+    tab._model.notify_overlay_edited(first_block.evidence_block_id)
+    qapp.processEvents()
+
+    tab.transcript_surface.viewport_center_message_index = lambda: 2  # type: ignore[method-assign]
+    tab._create_evidence_block_from_view()
+    qapp.processEvents()
+
+    preserved = evidence_blocks.get_evidence_block(context.conn, first_block.evidence_block_id)
+    assert preserved is not None
+    assert preserved.context_end_slot == 8
+    assert preserved.relevant_end_slot == 7
+    assert len(
+        evidence_blocks.list_evidence_blocks(
+            context.conn,
+            context.dataset_id,
+            source_thread_id="thread_001",
+        )
+    ) == 2
+
+
+def test_transcript_new_block_updates_sidebar(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
+    context = bootstrap_app()
+    window = MainWindow(context)
+
+    def _count_evidence_block_items() -> int:
+        total = 0
+        tree = window.sidebar.category_tree
+        for index in range(tree.topLevelItemCount()):
+            total += tree.topLevelItem(index).childCount()
+        return total
+
+    before = _count_evidence_block_items()
+    window.transcript_widget_tab.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
+    window.transcript_widget_tab._create_evidence_block_from_view()
+    qapp.processEvents()
+
+    assert _count_evidence_block_items() == before + 1
+    uncategorized = _find_top_level_item(window.sidebar, UNCATEGORIZED_CATEGORY_NAME)
+    assert uncategorized is not None
+    assert uncategorized.isExpanded()

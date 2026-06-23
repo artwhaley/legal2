@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import sqlite3
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -43,7 +42,7 @@ from message_evidence_workstation.search.transcript import (
     load_dataset_messages,
     serialize_messages,
 )
-from message_evidence_workstation.search.token_budget import estimate_tokens
+from message_evidence_workstation.search.token_budget import compute_usable_input_tokens, estimate_tokens
 from message_evidence_workstation.search.window_planner import (
     TranscriptWindow,
     build_token_bounded_windows,
@@ -111,6 +110,7 @@ class AnswerBudget:
     context_source: str
     safety_ratio: float
     reserved_output_tokens: int
+    effective_reserved_output_tokens: int
     prompt_overhead_tokens: int
     usable_input_tokens: int
     transcript_tokens: int
@@ -136,12 +136,14 @@ def resolve_answer_budget(
         user_override_tokens=user_override,
     )
     safety_ratio = _clamp_safety_ratio(answer_settings.context_safety_ratio)
-    reserved_output = max(1, answer_settings.reserved_output_tokens)
+    requested_output = max(1, answer_settings.reserved_output_tokens)
     prompt_overhead = max(0, answer_settings.prompt_overhead_tokens)
-    usable_input = math.floor(model_context.context_window_tokens * safety_ratio)
-    usable_input -= reserved_output
-    usable_input -= prompt_overhead
-    usable_input = max(1000, usable_input)
+    usable_input, effective_output = compute_usable_input_tokens(
+        context_window_tokens=model_context.context_window_tokens,
+        safety_ratio=safety_ratio,
+        reserved_output_tokens=requested_output,
+        prompt_overhead_tokens=prompt_overhead,
+    )
     token_estimate = estimate_tokens(transcript.text, model_id)
     strategy = answer_settings.answer_strategy
     if strategy == ANSWER_STRATEGY_RETRIEVAL_FALLBACK:
@@ -167,7 +169,8 @@ def resolve_answer_budget(
         context_window_tokens=model_context.context_window_tokens,
         context_source=model_context.source,
         safety_ratio=safety_ratio,
-        reserved_output_tokens=reserved_output,
+        reserved_output_tokens=requested_output,
+        effective_reserved_output_tokens=effective_output,
         prompt_overhead_tokens=prompt_overhead,
         usable_input_tokens=usable_input,
         transcript_tokens=token_estimate.estimated_tokens,
@@ -202,6 +205,7 @@ def log_answer_budget_resolved(
             "target_tokens": target_tokens,
             "overlap_messages": overlap_messages,
             "reserved_output_tokens": budget.reserved_output_tokens,
+            "effective_reserved_output_tokens": budget.effective_reserved_output_tokens,
             "prompt_overhead_tokens": budget.prompt_overhead_tokens,
             "transcript_token_method": budget.transcript_token_method,
         },
@@ -401,9 +405,10 @@ def _parse_answer_payload(
     sessions_inspected: int = 0,
     sessions_skipped: int = 0,
     retrieval_assists: list[dict[str, Any]] | None = None,
+    allow_empty_answer: bool = False,
 ) -> ConversationalAnswerResult:
     answer = str(payload.get("answer", "")).strip()
-    if not answer:
+    if not answer and not allow_empty_answer:
         raise ConversationalAnswerParseError("Model response missing non-empty answer")
 
     cited_raw = payload.get("cited_message_ids") or []
@@ -708,6 +713,191 @@ def build_exhaustive_window_merge_user_content(
     )
 
 
+def _compact_window_result_for_merge(window: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "window_id": window.get("window_id"),
+        "session_id": window.get("session_id"),
+        "source_thread_id": window.get("source_thread_id"),
+        "message_ids": list(window.get("message_ids", [])),
+        "estimated_tokens": window.get("estimated_tokens"),
+        "answer": window.get("answer", ""),
+        "cited_message_ids": list(window.get("cited_message_ids", [])),
+        "candidate_evidence_blocks": list(window.get("candidate_evidence_blocks", [])),
+        "uncertainties": list(window.get("uncertainties", [])),
+    }
+
+
+def _estimate_merge_user_content_tokens(
+    user_query: str,
+    *,
+    sessions: list[TranscriptSession],
+    window_results: list[dict[str, Any]],
+    retrieval_assists: list[dict[str, Any]] | None,
+    token_budget: dict[str, Any] | None,
+    model_id: str,
+) -> int:
+    content = build_exhaustive_window_merge_user_content(
+        user_query,
+        sessions=sessions,
+        window_results=[_compact_window_result_for_merge(window) for window in window_results],
+        retrieval_assists=retrieval_assists,
+        token_budget=token_budget,
+    )
+    return estimate_tokens(content, model_id).estimated_tokens
+
+
+def _interim_window_from_answer(
+    result: ConversationalAnswerResult,
+    *,
+    window_id: str,
+    message_ids: list[str],
+    source_thread_id: str,
+) -> dict[str, Any]:
+    return {
+        "window_id": window_id,
+        "session_id": "merged_batch",
+        "source_thread_id": source_thread_id,
+        "message_ids": message_ids,
+        "estimated_tokens": 0,
+        "answer": result.answer,
+        "cited_message_ids": list(result.cited_message_ids),
+        "candidate_evidence_blocks": [asdict(candidate) for candidate in result.candidate_evidence_blocks],
+        "uncertainties": list(result.uncertainties),
+    }
+
+
+def _run_bounded_exhaustive_window_merge(
+    conn: sqlite3.Connection,
+    logger: ProcessLogger,
+    client: NimClient,
+    *,
+    user_query: str,
+    sessions: list[TranscriptSession],
+    window_results: list[dict[str, Any]],
+    retrieval_assists: list[dict[str, Any]] | None,
+    token_budget: dict[str, Any] | None,
+    budget: AnswerBudget,
+    dataset_id: int,
+    max_tokens: int,
+    model_id: str,
+    valid_ids: set[str],
+    message_thread_by_id: dict[str, str],
+    source_thread_ids: list[str],
+) -> ConversationalAnswerResult:
+    def merge_batch(batch: list[dict[str, Any]], depth: int = 0) -> ConversationalAnswerResult:
+        compact_batch = [_compact_window_result_for_merge(window) for window in batch]
+        estimated_tokens = _estimate_merge_user_content_tokens(
+            user_query,
+            sessions=sessions,
+            window_results=compact_batch,
+            retrieval_assists=retrieval_assists if depth == 0 else [],
+            token_budget=token_budget if depth == 0 else None,
+            model_id=model_id,
+        )
+        if estimated_tokens > budget.usable_input_tokens and len(batch) > 1:
+            mid = max(1, len(batch) // 2)
+            logger.info(
+                component="search.conversational_answer",
+                operation="exhaustive_window_merge_chunked",
+                message="Merge payload exceeded budget; splitting window findings",
+                details={
+                    "estimated_tokens": estimated_tokens,
+                    "usable_input_tokens": budget.usable_input_tokens,
+                    "batch_size": len(batch),
+                    "depth": depth,
+                },
+                dataset_id=dataset_id,
+            )
+            left = merge_batch(batch[:mid], depth + 1)
+            right = merge_batch(batch[mid:], depth + 1)
+            left_ids = sorted(
+                {
+                    message_id
+                    for window in batch[:mid]
+                    for message_id in window.get("message_ids", [])
+                }
+            )
+            right_ids = sorted(
+                {
+                    message_id
+                    for window in batch[mid:]
+                    for message_id in window.get("message_ids", [])
+                }
+            )
+            interim_batch = [
+                _interim_window_from_answer(
+                    left,
+                    window_id=f"merged_left_{depth}",
+                    message_ids=left_ids,
+                    source_thread_id=source_thread_ids[0] if source_thread_ids else "",
+                ),
+                _interim_window_from_answer(
+                    right,
+                    window_id=f"merged_right_{depth}",
+                    message_ids=right_ids,
+                    source_thread_id=source_thread_ids[0] if source_thread_ids else "",
+                ),
+            ]
+            return merge_batch(interim_batch, depth + 1)
+
+        merge = run_nim_chat(
+            conn,
+            logger,
+            client,
+            run_type=RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
+            user_content=build_exhaustive_window_merge_user_content(
+                user_query,
+                sessions=sessions,
+                window_results=compact_batch,
+                retrieval_assists=retrieval_assists if depth == 0 else [],
+                token_budget=token_budget if depth == 0 else None,
+            ),
+            dataset_id=dataset_id,
+            max_tokens=max_tokens,
+        )
+        return parse_exhaustive_window_merge_response(
+            merge.content,
+            valid_message_ids=valid_ids,
+            message_thread_by_id=message_thread_by_id,
+            source_thread_ids=source_thread_ids,
+            messages_considered=len(valid_ids),
+            sessions_considered=len(sessions),
+            sessions_inspected=len({window.get("session_id") for window in window_results}),
+            sessions_skipped=max(
+                0,
+                len(sessions) - len({window.get("session_id") for window in window_results}),
+            ),
+            retrieval_assists=retrieval_assists if depth == 0 else [],
+        )
+
+    if not window_results:
+        raise ConversationalAnswerParseError("No window findings available to merge")
+    if len(window_results) == 1:
+        only = window_results[0]
+        return parse_exhaustive_window_merge_response(
+            json.dumps(
+                {
+                    "answer": only.get("answer", ""),
+                    "cited_message_ids": only.get("cited_message_ids", []),
+                    "candidate_evidence_blocks": only.get("candidate_evidence_blocks", []),
+                    "uncertainties": only.get("uncertainties", []),
+                }
+            ),
+            valid_message_ids=valid_ids,
+            message_thread_by_id=message_thread_by_id,
+            source_thread_ids=source_thread_ids,
+            messages_considered=len(valid_ids),
+            sessions_considered=len(sessions),
+            sessions_inspected=len({window.get("session_id") for window in window_results}),
+            sessions_skipped=max(
+                0,
+                len(sessions) - len({window.get("session_id") for window in window_results}),
+            ),
+            retrieval_assists=retrieval_assists,
+        )
+    return merge_batch(window_results)
+
+
 def parse_exhaustive_window_scan_response(
     content: str,
     *,
@@ -734,6 +924,7 @@ def parse_exhaustive_window_scan_response(
         source_thread_ids=source_thread_ids,
         messages_considered=messages_considered,
         mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+        allow_empty_answer=True,
     )
 
 
@@ -814,7 +1005,7 @@ def run_exhaustive_window_scan_answer(
         conn,
         dataset_id,
         sessions,
-        target_tokens=settings.window_target_tokens,
+        target_tokens=min(settings.window_target_tokens, budget.usable_input_tokens),
         overlap_messages=settings.window_overlap_messages,
         model_id=selected_model,
     )
@@ -862,8 +1053,8 @@ def run_exhaustive_window_scan_answer(
     message_thread_by_id: dict[str, str] = {}
     source_thread_ids = sorted({session.source_thread_id for session in sessions})
     scan_uncertainties: list[str] = []
-    output_tokens = max_tokens if max_tokens is not None else settings.reserved_output_tokens
-    merge_max_tokens = max(output_tokens, 4096)
+    output_tokens = max_tokens if max_tokens is not None else budget.effective_reserved_output_tokens
+    merge_max_tokens = max(output_tokens, min(4096, budget.effective_reserved_output_tokens))
 
     for window in planned_windows:
         session_valid_ids = set(window.message_ids)
@@ -906,31 +1097,22 @@ def run_exhaustive_window_scan_answer(
             }
         )
 
-    merge = run_nim_chat(
+    parsed = _run_bounded_exhaustive_window_merge(
         conn,
         logger,
         client,
-        run_type=RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
-        user_content=build_exhaustive_window_merge_user_content(
-            user_query,
-            sessions=sessions,
-            window_results=window_results,
-            retrieval_assists=retrieval_assists,
-            token_budget=token_budget,
-        ),
+        user_query=user_query,
+        sessions=sessions,
+        window_results=window_results,
+        retrieval_assists=retrieval_assists,
+        token_budget=token_budget,
+        budget=budget,
         dataset_id=dataset_id,
         max_tokens=merge_max_tokens,
-    )
-    parsed = parse_exhaustive_window_merge_response(
-        merge.content,
-        valid_message_ids=valid_ids,
+        model_id=selected_model,
+        valid_ids=valid_ids,
         message_thread_by_id=message_thread_by_id,
         source_thread_ids=source_thread_ids,
-        messages_considered=len(valid_ids),
-        sessions_considered=len(sessions),
-        sessions_inspected=len({window.session_id for window in planned_windows}),
-        sessions_skipped=max(0, len(sessions) - len({window.session_id for window in planned_windows})),
-        retrieval_assists=retrieval_assists,
     )
     parsed.coverage_summary.windows_inspected = len(planned_windows)
     parsed.coverage_summary.token_budget = token_budget

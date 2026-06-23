@@ -14,6 +14,7 @@ from message_evidence_workstation.db.evidence_blocks import (
     list_evidence_blocks,
     move_evidence_block_to_category,
     set_evidence_block_highlights,
+    update_evidence_block_anchor,
     update_evidence_block_slots,
 )
 from message_evidence_workstation.db.migrations import initialize_schema
@@ -23,7 +24,10 @@ from message_evidence_workstation.domain.constants import (
     CREATED_BY_CONVERSATIONAL_ANSWER,
     UNCATEGORIZED_CATEGORY_NAME,
 )
-from message_evidence_workstation.domain.slots import validate_slot_bounds
+from message_evidence_workstation.domain.slots import (
+    default_slots_for_hit_index_with_context,
+    validate_slot_bounds,
+)
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
@@ -45,6 +49,38 @@ def test_uncategorized_category_is_created_on_import(workspace_db) -> None:
     assert category.name == UNCATEGORIZED_CATEGORY_NAME
     again = ensure_uncategorized_category(conn, logger, dataset_id)
     assert again.category_id == category.category_id
+
+
+def test_default_slots_for_hit_index_with_context_uses_three_message_padding() -> None:
+    slots = default_slots_for_hit_index_with_context(20, 10)
+    assert slots == (7, 10, 11, 14)
+
+    edge_slots = default_slots_for_hit_index_with_context(20, 1)
+    assert edge_slots == (0, 1, 2, 5)
+
+
+def test_update_evidence_block_anchor(workspace_db) -> None:
+    conn, logger, dataset_id = workspace_db
+    category = ensure_uncategorized_category(conn, logger, dataset_id)
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
+    ordered_ids = [message.message_id for message in messages]
+    block = create_evidence_block(
+        conn,
+        logger,
+        dataset_id=dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Anchor test",
+        core_hit_message_id="msg_001",
+        ordered_message_ids=ordered_ids,
+    )
+    updated = update_evidence_block_anchor(
+        conn,
+        logger,
+        evidence_block_id=block.evidence_block_id,
+        core_hit_message_id="msg_003",
+    )
+    assert updated.core_hit_message_id == "msg_003"
 
 
 def test_create_evidence_block_enforces_slot_invariant(workspace_db) -> None:

@@ -341,6 +341,37 @@ def create_evidence_block_from_conversational_candidate(
     )
 
 
+def update_evidence_block_anchor(
+    conn: sqlite3.Connection,
+    logger: ProcessLogger,
+    *,
+    evidence_block_id: int,
+    core_hit_message_id: str,
+) -> EvidenceBlock:
+    now = utc_now_iso()
+    conn.execute(
+        """
+        UPDATE evidence_block
+        SET core_hit_message_id = ?, updated_at = ?
+        WHERE evidence_block_id = ?
+        """,
+        (core_hit_message_id, now, evidence_block_id),
+    )
+    conn.commit()
+    logger.info(
+        component="db.evidence_blocks",
+        operation="evidence_block_anchor_update",
+        message="Updated evidence block anchor message",
+        details={
+            "evidence_block_id": evidence_block_id,
+            "core_hit_message_id": core_hit_message_id,
+        },
+    )
+    block = get_evidence_block(conn, evidence_block_id)
+    assert block is not None
+    return block
+
+
 def update_evidence_block_slots(
     conn: sqlite3.Connection,
     logger: ProcessLogger,

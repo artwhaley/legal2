@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime
 
 from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, QPoint, QRect, QSize, Qt, Signal, Slot
-from PySide6.QtGui import QColor, QFont, QMouseEvent, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QMouseEvent, QPainter, QPainterPath, QPen, QWheelEvent
 from PySide6.QtWidgets import (
     QAbstractScrollArea,
     QListView,
@@ -26,6 +25,11 @@ from message_evidence_workstation.domain.constants import (
 )
 from message_evidence_workstation.domain.models import EvidenceBlock, Message
 from message_evidence_workstation.domain.slots import default_slots_for_hit_index
+from message_evidence_workstation.ui.transcript_display import (
+    build_sender_participant_map,
+    format_timestamp_label,
+    normalize_speaker_tints,
+)
 
 ENTRY_SEPARATOR = "separator"
 ENTRY_MESSAGE = "message"
@@ -40,19 +44,25 @@ HIGHLIGHT_ICON_ON = QColor("#d09400")
 HIGHLIGHT_ICON_OFF = QColor("#9a9a9a")
 HIGHLIGHT_WASH = QColor("#fff5bf")
 CORE_HIT_COLOR = QColor("#0b6dd8")
+CONTEXT_REGION_ACTIVE = QColor(11, 109, 216, 28)
+CONTEXT_REGION_INACTIVE = QColor(11, 109, 216, 12)
+RELEVANT_REGION_ACTIVE = QColor(34, 34, 34, 22)
+RELEVANT_REGION_INACTIVE = QColor(34, 34, 34, 10)
+CONTEXT_ROW_FILL = QColor("#ece9e4")
+BLOCK_ZONE_NONE = "none"
+BLOCK_ZONE_CONTEXT = "context"
+BLOCK_ZONE_RELEVANT = "relevant"
 
 BOUNDARY_ACTIVE = "active"
 BOUNDARY_INACTIVE = "inactive"
+BOUNDARY_LANE_CONTEXT = 12
+BOUNDARY_TAB_STOP = 20
+BOUNDARY_LANE_RELEVANT = BOUNDARY_LANE_CONTEXT + BOUNDARY_TAB_STOP
 
 
 def _friendly_date_parts(timestamp: str) -> tuple[str, str]:
-    try:
-        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-    except ValueError:
-        return timestamp, ""
-    friendly_date = f"{dt.strftime('%B')} {dt.day}, {dt.year}"
-    friendly_time = dt.strftime("%H:%M")
-    return friendly_date, friendly_time
+    label = format_timestamp_label(timestamp)
+    return label, label
 
 
 @dataclass(slots=True)
@@ -61,7 +71,10 @@ class TranscriptMessage:
     timestamp: str
     friendly_date: str
     friendly_time: str
+    timestamp_label: str
+    sender_id: str
     sender_display: str
+    participant_index: int
     body: str
     attachment_summary: str
     has_attachment: bool
@@ -83,6 +96,7 @@ class BlockOverlay:
 
 class EvidenceTranscriptModel(QAbstractListModel):
     state_changed = Signal()
+    overlay_edited = Signal(int)
 
     EntryKindRole = int(Qt.ItemDataRole.UserRole) + 1
     SlotIndexRole = EntryKindRole + 1
@@ -90,7 +104,9 @@ class EvidenceTranscriptModel(QAbstractListModel):
     FriendlyDateRole = MessageIdRole + 1
     FriendlyTimeRole = FriendlyDateRole + 1
     SenderRole = FriendlyTimeRole + 1
-    BodyRole = SenderRole + 1
+    TimestampLabelRole = SenderRole + 1
+    ParticipantIndexRole = TimestampLabelRole + 1
+    BodyRole = ParticipantIndexRole + 1
     AttachmentRole = BodyRole + 1
     HighlightedRole = AttachmentRole + 1
     CoreHitRole = HighlightedRole + 1
@@ -146,6 +162,10 @@ class EvidenceTranscriptModel(QAbstractListModel):
             return message.friendly_time
         if role == self.SenderRole:
             return message.sender_display
+        if role == self.TimestampLabelRole:
+            return message.timestamp_label
+        if role == self.ParticipantIndexRole:
+            return message.participant_index
         if role == self.BodyRole:
             return message.body
         if role == self.AttachmentRole:
@@ -164,6 +184,8 @@ class EvidenceTranscriptModel(QAbstractListModel):
             self.FriendlyDateRole: b"friendlyDate",
             self.FriendlyTimeRole: b"friendlyTime",
             self.SenderRole: b"senderDisplay",
+            self.TimestampLabelRole: b"timestampLabel",
+            self.ParticipantIndexRole: b"participantIndex",
             self.BodyRole: b"body",
             self.AttachmentRole: b"attachmentSummary",
             self.HighlightedRole: b"highlighted",
@@ -180,16 +202,21 @@ class EvidenceTranscriptModel(QAbstractListModel):
         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
     def load_messages(self, messages: list[Message]) -> None:
+        participant_map = build_sender_participant_map(messages)
         transcript_messages: list[TranscriptMessage] = []
         for message in messages:
-            friendly_date, friendly_time = _friendly_date_parts(message.timestamp)
+            sender_key = (message.sender_id or message.sender_display or "").strip()
+            timestamp_label = format_timestamp_label(message.timestamp)
             transcript_messages.append(
                 TranscriptMessage(
                     message_id=message.message_id,
                     timestamp=message.timestamp,
-                    friendly_date=friendly_date,
-                    friendly_time=friendly_time,
+                    friendly_date=timestamp_label,
+                    friendly_time=timestamp_label,
+                    timestamp_label=timestamp_label,
+                    sender_id=sender_key,
                     sender_display=message.sender_display,
+                    participant_index=participant_map.get(sender_key, 0),
                     body=message.body,
                     attachment_summary=message.attachment_summary,
                     has_attachment=message.has_attachment,
@@ -213,6 +240,7 @@ class EvidenceTranscriptModel(QAbstractListModel):
         *,
         active_block_id: int | None = None,
     ) -> None:
+        del active_block_id
         self.load_messages(messages)
         if not blocks:
             return
@@ -226,25 +254,37 @@ class EvidenceTranscriptModel(QAbstractListModel):
                 context_end_slot=block.context_end_slot,
                 core_hit_message_id=block.core_hit_message_id,
                 highlighted_message_ids=block.highlighted_message_ids,
-                is_active=block.evidence_block_id == active_block_id,
+                is_active=False,
             )
             for block in blocks
         ]
-        if active_block_id is None and self._overlays:
-            self._overlays[0].is_active = True
-            active_block_id = self._overlays[0].evidence_block_id
-        self._active_block_id = active_block_id
-        self._apply_overlay_state_to_messages()
+        self._active_block_id = None
         self.endResetModel()
+        self.state_changed.emit()
+
+    def append_evidence_block(self, block: EvidenceBlock) -> None:
+        if self.overlay_by_id(block.evidence_block_id) is not None:
+            return
+        self._overlays.append(
+            BlockOverlay(
+                evidence_block_id=block.evidence_block_id,
+                context_start_slot=block.context_start_slot,
+                relevant_start_slot=block.relevant_start_slot,
+                relevant_end_slot=block.relevant_end_slot,
+                context_end_slot=block.context_end_slot,
+                core_hit_message_id=block.core_hit_message_id,
+                highlighted_message_ids=block.highlighted_message_ids,
+                is_active=False,
+            )
+        )
+        self._emit_all_separator_changes()
         self.state_changed.emit()
 
     def set_active_block(self, evidence_block_id: int | None) -> None:
         self._active_block_id = evidence_block_id
         for overlay in self._overlays:
             overlay.is_active = overlay.evidence_block_id == evidence_block_id
-        self._apply_overlay_state_to_messages()
         self._emit_all_separator_changes()
-        self._emit_all_message_changes()
         self.state_changed.emit()
 
     def active_block_id(self) -> int | None:
@@ -266,6 +306,58 @@ class EvidenceTranscriptModel(QAbstractListModel):
         if overlay is None:
             return [message.message_id for message in self._messages if message.highlighted]
         return sorted(overlay.highlighted_message_ids)
+
+    def message_count(self) -> int:
+        return len(self._messages)
+
+    def ordered_message_ids(self) -> list[str]:
+        return [message.message_id for message in self._messages]
+
+    def message_preview_at(self, message_index: int) -> str:
+        if not (0 <= message_index < len(self._messages)):
+            return ""
+        message = self._messages[message_index]
+        return message.body or message.message_id
+
+    def block_overlays(self) -> list[BlockOverlay]:
+        return list(self._overlays)
+
+    def overlay_by_id(self, evidence_block_id: int) -> BlockOverlay | None:
+        for overlay in self._overlays:
+            if overlay.evidence_block_id == evidence_block_id:
+                return overlay
+        return None
+
+    def overlays_for_relevant_message(self, message_index: int) -> list[BlockOverlay]:
+        return [
+            overlay
+            for overlay in self._overlays
+            if overlay.relevant_start_slot <= message_index < overlay.relevant_end_slot
+        ]
+
+    def message_is_highlighted_in_any_block(self, message_id: str) -> bool:
+        return any(message_id in overlay.highlighted_message_ids for overlay in self._overlays)
+
+    def set_anchor_message(self, evidence_block_id: int, message_id: str) -> None:
+        overlay = self.overlay_by_id(evidence_block_id)
+        if overlay is None:
+            return
+        overlay.core_hit_message_id = message_id
+        self.state_changed.emit()
+        self.overlay_edited.emit(evidence_block_id)
+
+    def toggle_highlight_for_block(self, evidence_block_id: int, message_id: str) -> None:
+        overlay = self.overlay_by_id(evidence_block_id)
+        if overlay is None:
+            return
+        highlights = set(overlay.highlighted_message_ids)
+        if message_id in highlights:
+            highlights.discard(message_id)
+        else:
+            highlights.add(message_id)
+        overlay.highlighted_message_ids = frozenset(highlights)
+        self.state_changed.emit()
+        self.overlay_edited.emit(evidence_block_id)
 
     @Slot(int)
     def toggle_highlight_row(self, visual_row: int) -> None:
@@ -304,6 +396,43 @@ class EvidenceTranscriptModel(QAbstractListModel):
         self._emit_all_message_changes()
         self.state_changed.emit()
 
+    @Slot(int, str, int)
+    def move_boundary_for_block(self, evidence_block_id: int, boundary_name: str, slot_index: int) -> None:
+        if not (0 <= slot_index <= len(self._messages)):
+            return
+        overlay = self.overlay_by_id(evidence_block_id)
+        if overlay is None:
+            return
+        resolved = self._resolve_boundary_move(
+            boundary_name,
+            slot_index,
+            context_start=overlay.context_start_slot,
+            relevant_start=overlay.relevant_start_slot,
+            relevant_end=overlay.relevant_end_slot,
+            context_end=overlay.context_end_slot,
+        )
+        if resolved is None:
+            return
+        previous_slots = [
+            overlay.context_start_slot,
+            overlay.relevant_start_slot,
+            overlay.relevant_end_slot,
+            overlay.context_end_slot,
+        ]
+        (
+            overlay.context_start_slot,
+            overlay.relevant_start_slot,
+            overlay.relevant_end_slot,
+            overlay.context_end_slot,
+        ) = resolved
+        for previous_slot in set(previous_slots + list(resolved)):
+            self._emit_separator_change(previous_slot)
+        self.state_changed.emit()
+
+    def notify_overlay_edited(self, evidence_block_id: int) -> None:
+        if self.overlay_by_id(evidence_block_id) is not None:
+            self.overlay_edited.emit(evidence_block_id)
+
     @Slot(str, int)
     def move_boundary(self, boundary_name: str, slot_index: int) -> None:
         if not (0 <= slot_index <= len(self._messages)):
@@ -312,27 +441,7 @@ class EvidenceTranscriptModel(QAbstractListModel):
         if overlay is None:
             self._move_draft_boundary(boundary_name, slot_index)
             return
-        slots = {
-            BOUNDARY_CONTEXT_START: overlay.context_start_slot,
-            BOUNDARY_RELEVANT_START: overlay.relevant_start_slot,
-            BOUNDARY_RELEVANT_END: overlay.relevant_end_slot,
-            BOUNDARY_CONTEXT_END: overlay.context_end_slot,
-        }
-        if boundary_name not in slots:
-            return
-        previous_slots = list(slots.values())
-        slots[boundary_name] = slot_index
-        if not self._slots_are_valid(*slots.values()):
-            return
-        overlay.context_start_slot = slots[BOUNDARY_CONTEXT_START]
-        overlay.relevant_start_slot = slots[BOUNDARY_RELEVANT_START]
-        overlay.relevant_end_slot = slots[BOUNDARY_RELEVANT_END]
-        overlay.context_end_slot = slots[BOUNDARY_CONTEXT_END]
-        for previous_slot in set(previous_slots + [slot_index]):
-            self._emit_separator_change(previous_slot)
-        self._apply_overlay_state_to_messages()
-        self._emit_all_message_changes()
-        self.state_changed.emit()
+        self.move_boundary_for_block(overlay.evidence_block_id, boundary_name, slot_index)
 
     @Slot(str, int)
     def move_boundary_to_visual_row(self, boundary_name: str, visual_row: int) -> None:
@@ -353,27 +462,54 @@ class EvidenceTranscriptModel(QAbstractListModel):
         )
 
     def _move_draft_boundary(self, boundary_name: str, slot_index: int) -> None:
+        resolved = self._resolve_boundary_move(
+            boundary_name,
+            slot_index,
+            context_start=self._draft_slots[0],
+            relevant_start=self._draft_slots[1],
+            relevant_end=self._draft_slots[2],
+            context_end=self._draft_slots[3],
+        )
+        if resolved is None:
+            return
+        previous_slots = list(self._draft_slots)
+        self._draft_slots = resolved
+        for previous_slot in set(previous_slots + list(resolved)):
+            self._emit_separator_change(previous_slot)
+        self.state_changed.emit()
+
+    def _resolve_boundary_move(
+        self,
+        boundary_name: str,
+        slot_index: int,
+        *,
+        context_start: int,
+        relevant_start: int,
+        relevant_end: int,
+        context_end: int,
+    ) -> tuple[int, int, int, int] | None:
         slots = {
-            BOUNDARY_CONTEXT_START: self._draft_slots[0],
-            BOUNDARY_RELEVANT_START: self._draft_slots[1],
-            BOUNDARY_RELEVANT_END: self._draft_slots[2],
-            BOUNDARY_CONTEXT_END: self._draft_slots[3],
+            BOUNDARY_CONTEXT_START: context_start,
+            BOUNDARY_RELEVANT_START: relevant_start,
+            BOUNDARY_RELEVANT_END: relevant_end,
+            BOUNDARY_CONTEXT_END: context_end,
         }
         if boundary_name not in slots:
-            return
-        previous_slots = list(slots.values())
+            return None
         slots[boundary_name] = slot_index
-        if not self._slots_are_valid(*slots.values()):
-            return
-        self._draft_slots = (
+        if boundary_name == BOUNDARY_RELEVANT_START and slot_index < slots[BOUNDARY_CONTEXT_START]:
+            slots[BOUNDARY_CONTEXT_START] = max(0, slot_index - 1)
+        elif boundary_name == BOUNDARY_RELEVANT_END and slot_index > slots[BOUNDARY_CONTEXT_END]:
+            slots[BOUNDARY_CONTEXT_END] = min(len(self._messages), slot_index + 1)
+        resolved = (
             slots[BOUNDARY_CONTEXT_START],
             slots[BOUNDARY_RELEVANT_START],
             slots[BOUNDARY_RELEVANT_END],
             slots[BOUNDARY_CONTEXT_END],
         )
-        for previous_slot in set(previous_slots + [slot_index]):
-            self._emit_separator_change(previous_slot)
-        self.state_changed.emit()
+        if not self._slots_are_valid(*resolved):
+            return None
+        return resolved
 
     def _slots_are_valid(
         self,
@@ -407,8 +543,6 @@ class EvidenceTranscriptModel(QAbstractListModel):
                 message.is_core_hit = True
 
     def _boundary_strength(self, boundary_name: str, slot_index: int) -> str:
-        active_match = False
-        inactive_match = False
         for overlay in self._overlays:
             slot_value = {
                 BOUNDARY_CONTEXT_START: overlay.context_start_slot,
@@ -416,24 +550,7 @@ class EvidenceTranscriptModel(QAbstractListModel):
                 BOUNDARY_RELEVANT_START: overlay.relevant_start_slot,
                 BOUNDARY_RELEVANT_END: overlay.relevant_end_slot,
             }[boundary_name]
-            if slot_value != slot_index:
-                continue
-            if overlay.is_active:
-                active_match = True
-            else:
-                inactive_match = True
-        if active_match:
-            return BOUNDARY_ACTIVE
-        if inactive_match:
-            return BOUNDARY_INACTIVE
-        if not self._overlays:
-            draft_slots = {
-                BOUNDARY_CONTEXT_START: self._draft_slots[0],
-                BOUNDARY_CONTEXT_END: self._draft_slots[3],
-                BOUNDARY_RELEVANT_START: self._draft_slots[1],
-                BOUNDARY_RELEVANT_END: self._draft_slots[2],
-            }
-            if draft_slots[boundary_name] == slot_index:
+            if slot_value == slot_index:
                 return BOUNDARY_ACTIVE
         return ""
 
@@ -534,13 +651,10 @@ class TranscriptItemDelegate(QStyledItemDelegate):
         return QSize(width, max(84, total_height))
 
     def separator_handle_rect(self, rect: QRect, boundary_name: str) -> QRect:
-        offsets = {
-            BOUNDARY_CONTEXT_START: 0,
-            BOUNDARY_RELEVANT_START: 18,
-            BOUNDARY_RELEVANT_END: 36,
-            BOUNDARY_CONTEXT_END: 54,
-        }
-        x = rect.left() + self.page_margin + offsets.get(boundary_name, 0)
+        lane = BOUNDARY_LANE_CONTEXT
+        if boundary_name in (BOUNDARY_RELEVANT_START, BOUNDARY_RELEVANT_END):
+            lane = BOUNDARY_LANE_RELEVANT
+        x = rect.left() + self.page_margin + lane
         y = rect.center().y() - (self.handle_size // 2)
         return QRect(x, y, self.handle_size, self.handle_size)
 
@@ -796,31 +910,53 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
     """Custom-painted paper transcript with draggable evidence boundary gutters."""
 
     paper_margin = 18
-    top_margin = 28
+    top_margin = 12
     bottom_margin = 42
-    gutter_width = 92
-    page_padding = 24
+    header_height = 28
+    boundary_gutter_width = 32
+    page_padding = 16
     sender_width = 150
-    icon_width = 54
+    datetime_width = 210
+    control_icon_size = 17
+    control_spacing = 22
     handle_size = 16
-    min_message_height = 78
+    min_message_height = 38
+    row_padding_y = 10
+    message_font_size_delta = 2
 
-    def __init__(self, model: EvidenceTranscriptModel, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        model: EvidenceTranscriptModel,
+        *,
+        speaker_tints: list[str] | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._model = model
+        self._speaker_tints = normalize_speaker_tints(speaker_tints)
         self._separator_y: list[int] = []
-        self._drag_boundary: str | None = None
+        self._drag_target: tuple[str, int] | None = None
         self.setMouseTracking(True)
         self.setStyleSheet("QAbstractScrollArea { border: none; background: #d8d0c2; }")
         self.verticalScrollBar().valueChanged.connect(lambda _value: self.viewport().update())
         self._model.modelReset.connect(self._reflow)
         self._model.dataChanged.connect(self._on_model_changed)
-        self._model.state_changed.connect(self.viewport().update)
+        self._model.state_changed.connect(self._reflow_and_repaint)
         self._reflow()
+
+    def set_speaker_tints(self, tints: list[str]) -> None:
+        self._speaker_tints = normalize_speaker_tints(tints)
+        self._reflow_and_repaint()
 
     def resizeEvent(self, event) -> None:  # noqa: ANN001
         super().resizeEvent(event)
         self._reflow()
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(240, 160)
+
+    def sizeHint(self) -> QSize:
+        return QSize(640, 480)
 
     def paintEvent(self, event) -> None:  # noqa: ANN001
         painter = QPainter(self.viewport())
@@ -828,9 +964,15 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         viewport_rect = self.viewport().rect()
         scroll_y = self.verticalScrollBar().value()
         painter.fillRect(viewport_rect, QColor("#d8d0c2"))
+
+        self._paint_column_headers(painter, viewport_rect)
+        painter.save()
+        painter.setClipRect(0, self.header_height, viewport_rect.width(), viewport_rect.height() - self.header_height)
+
+        page_top = self._doc_to_screen(self.top_margin, scroll_y)
         page_rect = QRect(
             self.paper_margin,
-            self.top_margin - scroll_y,
+            page_top,
             max(0, viewport_rect.width() - (self.paper_margin * 2)),
             max(viewport_rect.height(), self._document_height()),
         )
@@ -841,41 +983,76 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         self._paint_messages(painter, scroll_y, viewport_rect)
         self._paint_separator_rules(painter, scroll_y, viewport_rect)
         self._paint_boundaries(painter, scroll_y, viewport_rect)
+        painter.restore()
+
+    def viewport_center_message_index(self) -> int | None:
+        if self._message_count() <= 0 or not self._separator_y:
+            return None
+        scroll_y = self.verticalScrollBar().value()
+        center_screen = self.header_height + (self.viewport().height() - self.header_height) // 2
+        return self._nearest_message_index_for_y(self._screen_to_doc_y(center_screen, scroll_y))
+
+    def scroll_to_message_index(self, message_index: int) -> None:
+        if not self._separator_y or not (0 <= message_index < self._message_count()):
+            return
+        top = self._separator_y[message_index]
+        bottom = self._separator_y[message_index + 1]
+        center = (top + bottom) // 2
+        content_height = max(1, self.viewport().height() - self.header_height)
+        self.verticalScrollBar().setValue(max(0, center - content_height // 2))
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        boundary = self._boundary_at_point(event.position().toPoint())
-        if boundary is not None:
-            self._drag_boundary = boundary
+        if event.position().y() < self.header_height:
+            return
+        drag_target = self._boundary_at_point(event.position().toPoint())
+        if drag_target is not None:
+            self._drag_target = drag_target
             self._move_drag_boundary(event.position().toPoint())
             event.accept()
             return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._drag_boundary is not None:
+        if self._drag_target is not None:
             self._move_drag_boundary(event.position().toPoint())
             event.accept()
             return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if self._drag_boundary is not None:
+        if self._drag_target is not None:
             self._move_drag_boundary(event.position().toPoint())
-            self._drag_boundary = None
+            _boundary_name, evidence_block_id = self._drag_target
+            self._drag_target = None
+            self._model.notify_overlay_edited(evidence_block_id)
             event.accept()
+            return
+        if event.position().y() < self.header_height:
             return
         point = event.position().toPoint()
         message_index = self._message_index_at_point(point)
-        if message_index is not None:
-            if self._highlight_icon_rect(message_index).translated(0, -self.verticalScrollBar().value()).contains(point):
-                self._model.toggle_highlight_row((message_index * 2) + 1)
+        if message_index is None:
+            super().mouseReleaseEvent(event)
+            return
+        message_id = str(self._message_model_index(message_index).data(EvidenceTranscriptModel.MessageIdRole) or "")
+        scroll_y = self.verticalScrollBar().value()
+        for overlay_index, overlay in enumerate(self._model.overlays_for_relevant_message(message_index)):
+            if self._control_icon_screen_rect(
+                message_index, overlay_index, self._anchor_left(), scroll_y
+            ).contains(point):
+                self._model.set_anchor_message(overlay.evidence_block_id, message_id)
                 event.accept()
                 return
-            if self._core_icon_rect(message_index).translated(0, -self.verticalScrollBar().value()).contains(point):
-                self._model.set_core_hit_row((message_index * 2) + 1)
+            if self._control_icon_screen_rect(
+                message_index, overlay_index, self._highlight_left(), scroll_y
+            ).contains(point):
+                self._model.toggle_highlight_for_block(overlay.evidence_block_id, message_id)
                 event.accept()
                 return
         super().mouseReleaseEvent(event)
+
+    def _reflow_and_repaint(self) -> None:
+        self._reflow()
 
     def _on_model_changed(self, _top_left: QModelIndex, _bottom_right: QModelIndex, _roles: list[int]) -> None:
         self.viewport().update()
@@ -888,125 +1065,336 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
             self._separator_y.append(y)
         total_height = y + self.bottom_margin
         scrollbar = self.verticalScrollBar()
-        scrollbar.setPageStep(self.viewport().height())
-        scrollbar.setRange(0, max(0, total_height - self.viewport().height()))
+        scrollbar.setSingleStep(max(24, self.min_message_height // 2))
+        scrollbar.setPageStep(max(1, self.viewport().height() - self.header_height))
+        scrollbar.setRange(0, max(0, total_height - (self.viewport().height() - self.header_height)))
         self.viewport().update()
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        scrollbar = self.verticalScrollBar()
+        pixel_delta = event.pixelDelta().y()
+        if pixel_delta != 0:
+            scrollbar.setValue(scrollbar.value() - pixel_delta)
+            event.accept()
+            return
+        angle_delta = event.angleDelta().y()
+        if angle_delta == 0:
+            super().wheelEvent(event)
+            return
+        notch_lines = 3
+        scroll_amount = (angle_delta // 120) * notch_lines * scrollbar.singleStep()
+        if scroll_amount == 0:
+            scroll_amount = 1 if angle_delta > 0 else -1
+        scrollbar.setValue(scrollbar.value() - scroll_amount)
+        event.accept()
+
+    def _doc_to_screen(self, doc_y: int, scroll_y: int) -> int:
+        return self.header_height + doc_y - scroll_y
+
+    def _screen_to_doc_y(self, screen_y: int, scroll_y: int) -> int:
+        return screen_y - self.header_height + scroll_y
+
+    def _control_column_width(self) -> int:
+        overlay_count = max(1, len(self._model.block_overlays()))
+        return max(56, overlay_count * self.control_spacing + 8)
+
+    def _table_left(self) -> int:
+        return self.paper_margin + self.boundary_gutter_width
+
+    def _anchor_left(self) -> int:
+        return self._table_left()
+
+    def _sender_left(self) -> int:
+        return self._anchor_left() + self._control_column_width()
+
+    def _highlight_left(self) -> int:
+        return self.viewport().width() - self.paper_margin - self.page_padding - self._control_column_width()
+
+    def _datetime_left(self) -> int:
+        return self._highlight_left() - 8 - self.datetime_width
+
+    def _message_left(self) -> int:
+        return self._sender_left() + self.sender_width + 12
+
+    def _message_body_width(self) -> int:
+        return max(80, self._datetime_left() - self._message_left() - 8)
+
+    def _message_width(self) -> int:
+        return self._message_body_width()
+
+    def _paint_column_headers(self, painter: QPainter, viewport_rect: QRect) -> None:
+        header_rect = QRect(0, 0, viewport_rect.width(), self.header_height)
+        painter.fillRect(header_rect, QColor("#efe8d8"))
+        painter.setPen(QPen(QColor("#c6bca9"), 1))
+        painter.drawLine(0, self.header_height - 1, viewport_rect.width(), self.header_height - 1)
+
+        header_font = QFont(self.font())
+        header_font.setBold(True)
+        painter.setFont(header_font)
+        painter.setPen(PAGE_META)
+        for label, left, width in (
+            ("Anchor", self._anchor_left(), self._control_column_width()),
+            ("Sender", self._sender_left(), self.sender_width),
+            ("Message", self._message_left(), self._message_width()),
+            ("Highlight", self._highlight_left(), self._control_column_width()),
+        ):
+            painter.drawText(
+                QRect(left, 0, width, self.header_height),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                label,
+            )
+
+    def _paint_block_regions(self, painter: QPainter, scroll_y: int, viewport_rect: QRect) -> None:
+        for overlay in self._model.block_overlays():
+            self._paint_slot_region(
+                painter,
+                scroll_y,
+                viewport_rect,
+                overlay.context_start_slot,
+                overlay.relevant_start_slot,
+                CONTEXT_REGION_ACTIVE,
+            )
+            self._paint_slot_region(
+                painter,
+                scroll_y,
+                viewport_rect,
+                overlay.relevant_start_slot,
+                overlay.relevant_end_slot,
+                RELEVANT_REGION_ACTIVE,
+            )
+            self._paint_slot_region(
+                painter,
+                scroll_y,
+                viewport_rect,
+                overlay.relevant_end_slot,
+                overlay.context_end_slot,
+                CONTEXT_REGION_ACTIVE,
+            )
+
+    def _paint_slot_region(
+        self,
+        painter: QPainter,
+        scroll_y: int,
+        viewport_rect: QRect,
+        start_slot: int,
+        end_slot: int,
+        color: QColor,
+    ) -> None:
+        if end_slot <= start_slot or not self._separator_y:
+            return
+        top = self._doc_to_screen(self._separator_y[start_slot], scroll_y)
+        bottom = self._doc_to_screen(self._separator_y[end_slot], scroll_y)
+        region_rect = QRect(
+            self._sender_left(),
+            top,
+            max(0, viewport_rect.width() - self._sender_left() - self.paper_margin - self.page_padding),
+            bottom - top,
+        )
+        if region_rect.intersects(viewport_rect.adjusted(0, self.header_height, 0, 0)):
+            painter.fillRect(region_rect, color)
+
+    def _row_content_right(self, viewport_rect: QRect) -> int:
+        return viewport_rect.width() - self.paper_margin - self.page_padding
+
+    def _message_block_zone(self, message_index: int) -> str:
+        in_relevant = any(
+            overlay.relevant_start_slot <= message_index < overlay.relevant_end_slot
+            for overlay in self._model.block_overlays()
+        )
+        if in_relevant:
+            return BLOCK_ZONE_RELEVANT
+        in_context = any(
+            (overlay.context_start_slot <= message_index < overlay.relevant_start_slot)
+            or (overlay.relevant_end_slot <= message_index < overlay.context_end_slot)
+            for overlay in self._model.block_overlays()
+        )
+        if in_context:
+            return BLOCK_ZONE_CONTEXT
+        return BLOCK_ZONE_NONE
 
     def _paint_messages(self, painter: QPainter, scroll_y: int, viewport_rect: QRect) -> None:
         for message_index in range(self._message_count()):
-            top = self._separator_y[message_index]
-            bottom = self._separator_y[message_index + 1]
-            screen_rect = QRect(0, top - scroll_y, viewport_rect.width(), bottom - top)
-            if not screen_rect.intersects(viewport_rect.adjusted(0, -60, 0, 60)):
+            top = self._doc_to_screen(self._separator_y[message_index], scroll_y)
+            bottom = self._doc_to_screen(self._separator_y[message_index + 1], scroll_y)
+            screen_rect = QRect(0, top, viewport_rect.width(), bottom - top)
+            if not screen_rect.intersects(viewport_rect.adjusted(0, self.header_height - 60, 0, 60)):
                 continue
-            if self._message_bool(message_index, EvidenceTranscriptModel.HighlightedRole):
+            message_id = str(
+                self._message_model_index(message_index).data(EvidenceTranscriptModel.MessageIdRole) or ""
+            )
+            participant_index = int(
+                self._message_model_index(message_index).data(EvidenceTranscriptModel.ParticipantIndexRole) or 0
+            )
+            tint_color = QColor(self._speaker_tints[participant_index % 8])
+            zone = self._message_block_zone(message_index)
+            row_fill = QRect(
+                self._anchor_left(),
+                top + 1,
+                self._row_content_right(viewport_rect) - self._anchor_left(),
+                bottom - top - 1,
+            )
+            if zone == BLOCK_ZONE_CONTEXT:
+                painter.fillRect(row_fill, CONTEXT_ROW_FILL)
+            elif zone == BLOCK_ZONE_RELEVANT:
                 painter.fillRect(
-                    self._message_content_rect(message_index).translated(0, -scroll_y),
+                    QRect(self._sender_left(), top + 1, self.sender_width, bottom - top - 1),
+                    tint_color,
+                )
+            else:
+                painter.fillRect(row_fill, tint_color)
+            if self._model.message_is_highlighted_in_any_block(message_id):
+                painter.fillRect(
+                    QRect(self._message_left(), top + 1, self._message_width(), bottom - top - 1),
                     HIGHLIGHT_WASH,
                 )
-            self._paint_message_text(painter, message_index, scroll_y)
-            self._paint_message_icons(painter, message_index, scroll_y)
+            self._paint_message_text(painter, message_index, scroll_y, zone)
+            self._paint_message_controls(painter, message_index, scroll_y, message_id)
 
     def _paint_separator_rules(self, painter: QPainter, scroll_y: int, viewport_rect: QRect) -> None:
-        left = self.paper_margin + self.gutter_width
+        left = self._table_left()
         right = viewport_rect.width() - self.paper_margin - self.page_padding
         painter.setPen(QPen(QColor("#ddd3c3"), 1))
         for y in self._separator_y:
-            screen_y = y - scroll_y
-            if -4 <= screen_y <= viewport_rect.height() + 4:
+            screen_y = self._doc_to_screen(y, scroll_y)
+            if self.header_height - 4 <= screen_y <= viewport_rect.height() + 4:
                 painter.drawLine(left, screen_y, right, screen_y)
 
     def _paint_boundaries(self, painter: QPainter, scroll_y: int, viewport_rect: QRect) -> None:
         boundaries = (
-            (BOUNDARY_CONTEXT_START, EvidenceTranscriptModel.ContextStartBoundaryRole, CONTEXT_LINE_COLOR),
-            (BOUNDARY_RELEVANT_START, EvidenceTranscriptModel.RelevantStartBoundaryRole, RELEVANT_LINE_COLOR),
-            (BOUNDARY_RELEVANT_END, EvidenceTranscriptModel.RelevantEndBoundaryRole, RELEVANT_LINE_COLOR),
-            (BOUNDARY_CONTEXT_END, EvidenceTranscriptModel.ContextEndBoundaryRole, CONTEXT_LINE_COLOR),
+            (BOUNDARY_CONTEXT_START, CONTEXT_LINE_COLOR),
+            (BOUNDARY_RELEVANT_START, RELEVANT_LINE_COLOR),
+            (BOUNDARY_RELEVANT_END, RELEVANT_LINE_COLOR),
+            (BOUNDARY_CONTEXT_END, CONTEXT_LINE_COLOR),
         )
-        for slot_index, y in enumerate(self._separator_y):
-            screen_y = y - scroll_y
-            if not (-12 <= screen_y <= viewport_rect.height() + 12):
-                continue
-            separator_index = self._model.index(slot_index * 2, 0)
-            for boundary_name, role, base_color in boundaries:
-                strength = str(separator_index.data(role) or "")
-                if not strength:
+        slot_values = {
+            BOUNDARY_CONTEXT_START: lambda overlay: overlay.context_start_slot,
+            BOUNDARY_RELEVANT_START: lambda overlay: overlay.relevant_start_slot,
+            BOUNDARY_RELEVANT_END: lambda overlay: overlay.relevant_end_slot,
+            BOUNDARY_CONTEXT_END: lambda overlay: overlay.context_end_slot,
+        }
+        for overlay in self._model.block_overlays():
+            for boundary_name, base_color in boundaries:
+                slot_index = slot_values[boundary_name](overlay)
+                if not (0 <= slot_index < len(self._separator_y)):
+                    continue
+                screen_y = self._doc_to_screen(self._separator_y[slot_index], scroll_y)
+                if not (self.header_height - 12 <= screen_y <= viewport_rect.height() + 12):
                     continue
                 color = QColor(base_color)
-                if strength == BOUNDARY_INACTIVE:
-                    color.setAlpha(BOUNDARY_FAINT_ALPHA)
-                painter.setPen(QPen(color, 3 if strength == BOUNDARY_ACTIVE else 1))
-                handle_rect = self._boundary_handle_rect(slot_index, boundary_name).translated(0, -scroll_y)
+                painter.setPen(QPen(color, 2))
+                handle_rect = self._boundary_handle_rect(slot_index, boundary_name)
+                screen_handle = handle_rect.translated(0, -scroll_y + self.header_height)
                 painter.drawLine(
-                    handle_rect.right() + 8,
+                    screen_handle.right() + 8,
                     screen_y,
                     viewport_rect.width() - self.paper_margin - self.page_padding,
                     screen_y,
                 )
-                self._paint_caret(painter, handle_rect, color)
+                self._paint_caret(painter, screen_handle, color)
 
-    def _paint_message_text(self, painter: QPainter, message_index: int, scroll_y: int) -> None:
+    def _message_font(self, *, bold: bool = True) -> QFont:
+        font = QFont(self.font())
+        font.setPointSize(max(1, font.pointSize() + self.message_font_size_delta))
+        font.setBold(bold)
+        return font
+
+    def _sender_font(self, *, bold: bool = True) -> QFont:
+        return self._message_font(bold=bold)
+
+    def _timestamp_font(self) -> QFont:
+        font = QFont(self.font())
+        font.setPointSize(max(1, font.pointSize()))
+        return font
+
+    def _paint_message_text(self, painter: QPainter, message_index: int, scroll_y: int, zone: str) -> None:
         index = self._message_model_index(message_index)
-        rect = self._message_content_rect(message_index).translated(0, -scroll_y)
+        top = self._doc_to_screen(self._separator_y[message_index], scroll_y)
+        bottom = self._doc_to_screen(self._separator_y[message_index + 1], scroll_y)
+        row_height = bottom - top
         sender = str(index.data(EvidenceTranscriptModel.SenderRole) or "")
         body = str(index.data(EvidenceTranscriptModel.BodyRole) or "")
-        friendly_date = str(index.data(EvidenceTranscriptModel.FriendlyDateRole) or "")
-        friendly_time = str(index.data(EvidenceTranscriptModel.FriendlyTimeRole) or "")
+        timestamp_label = str(index.data(EvidenceTranscriptModel.TimestampLabelRole) or "")
         attachment = str(index.data(EvidenceTranscriptModel.AttachmentRole) or "")
+        use_bold = zone == BLOCK_ZONE_RELEVANT
 
-        baseline_top = rect.top() + 12
-        sender_rect = QRect(rect.left(), baseline_top, self.sender_width, 24)
-        body_left = sender_rect.right() + 12
-        icon_left = self.viewport().width() - self.paper_margin - self.page_padding - self.icon_width
-        body_rect = QRect(body_left, baseline_top, icon_left - body_left - 16, rect.height() - 34)
+        content_top = top + self.row_padding_y
+        content_height = max(1, row_height - (self.row_padding_y * 2))
+        sender_rect = QRect(self._sender_left(), content_top, self.sender_width, content_height)
+        body_rect = QRect(self._message_left(), content_top, self._message_body_width(), content_height)
+        datetime_rect = QRect(self._datetime_left(), content_top, self.datetime_width, content_height)
 
-        sender_font = QFont(self.font())
-        sender_font.setBold(True)
-        painter.setFont(sender_font)
+        painter.setFont(self._sender_font(bold=use_bold))
         painter.setPen(PAGE_TEXT)
-        painter.drawText(sender_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop, f"{sender}:")
-
-        painter.setFont(self.font())
-        painter.drawText(body_rect, Qt.TextFlag.TextWordWrap, body)
-        body_height = self.fontMetrics().boundingRect(
-            QRect(0, 0, body_rect.width(), 4000),
-            Qt.TextFlag.TextWordWrap,
-            body,
-        ).height()
-
-        painter.setPen(PAGE_META)
-        meta_top = baseline_top + max(22, body_height) + 8
         painter.drawText(
-            QRect(body_left, meta_top, body_rect.width(), 20),
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            f"{friendly_date}       -   {friendly_time}",
+            sender_rect,
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+            sender,
         )
+
+        message_font = self._message_font(bold=use_bold)
+        painter.setFont(message_font)
+        painter.setPen(PAGE_TEXT)
+        painter.drawText(
+            body_rect,
+            Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignTop,
+            body,
+        )
+
+        painter.setFont(self._timestamp_font())
+        painter.setPen(PAGE_META)
+        painter.drawText(
+            datetime_rect,
+            Qt.TextFlag.TextWordWrap | Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
+            timestamp_label,
+        )
+
         if attachment:
+            message_metrics = QFontMetrics(message_font)
+            body_height = message_metrics.boundingRect(
+                QRect(0, 0, body_rect.width(), 4000),
+                Qt.TextFlag.TextWordWrap,
+                body,
+            ).height()
+            attach_top = content_top + body_height + 4
+            painter.setFont(self._timestamp_font())
+            painter.setPen(PAGE_META)
             painter.drawText(
-                QRect(body_left, meta_top + 20, body_rect.width(), 20),
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                QRect(self._message_left(), attach_top, body_rect.width(), 18),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
                 f"Attachment: {attachment}",
             )
 
-    def _paint_message_icons(self, painter: QPainter, message_index: int, scroll_y: int) -> None:
-        highlight_rect = self._highlight_icon_rect(message_index).translated(0, -scroll_y)
-        core_rect = self._core_icon_rect(message_index).translated(0, -scroll_y)
-        highlight_on = self._message_bool(message_index, EvidenceTranscriptModel.HighlightedRole)
-        core_on = self._message_bool(message_index, EvidenceTranscriptModel.CoreHitRole)
+    def _paint_message_controls(self, painter: QPainter, message_index: int, scroll_y: int, message_id: str) -> None:
+        overlays = self._model.overlays_for_relevant_message(message_index)
+        for overlay_index, overlay in enumerate(overlays):
+            anchor_rect = self._anchor_icon_rect(message_index, overlay_index)
+            highlight_rect = self._highlight_icon_rect(message_index, overlay_index)
+            screen_anchor = anchor_rect.translated(0, self.header_height - scroll_y)
+            screen_highlight = highlight_rect.translated(0, self.header_height - scroll_y)
+            anchor_on = overlay.core_hit_message_id == message_id
+            highlight_on = message_id in overlay.highlighted_message_ids
+            self._paint_radio_icon(painter, screen_anchor, anchor_on)
+            self._paint_checkbox_icon(painter, screen_highlight, highlight_on)
 
-        painter.setPen(QPen(HIGHLIGHT_ICON_ON if highlight_on else HIGHLIGHT_ICON_OFF, 2))
-        painter.setBrush(HIGHLIGHT_ICON_ON if highlight_on else Qt.BrushStyle.NoBrush)
-        painter.drawEllipse(highlight_rect)
+    def _paint_checkbox_icon(self, painter: QPainter, rect: QRect, checked: bool) -> None:
+        painter.setPen(QPen(HIGHLIGHT_ICON_ON if checked else HIGHLIGHT_ICON_OFF, 2))
+        painter.setBrush(HIGHLIGHT_ICON_ON if checked else Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(rect, 3, 3)
+        if checked:
+            painter.setPen(QPen(Qt.GlobalColor.white, 2))
+            inset = rect.adjusted(4, 4, -4, -4)
+            painter.drawLine(inset.left(), inset.center().y(), inset.center().x() - 1, inset.bottom() - 1)
+            painter.drawLine(inset.center().x() - 1, inset.bottom() - 1, inset.right(), inset.top() + 1)
 
-        painter.setPen(QPen(CORE_HIT_COLOR if core_on else QColor("#9a9a9a"), 2))
-        painter.setBrush(CORE_HIT_COLOR if core_on else Qt.BrushStyle.NoBrush)
-        diamond = QPainterPath()
-        diamond.moveTo(core_rect.center().x(), core_rect.top())
-        diamond.lineTo(core_rect.right(), core_rect.center().y())
-        diamond.lineTo(core_rect.center().x(), core_rect.bottom())
-        diamond.lineTo(core_rect.left(), core_rect.center().y())
-        diamond.closeSubpath()
-        painter.drawPath(diamond)
+    def _paint_radio_icon(self, painter: QPainter, rect: QRect, selected: bool) -> None:
+        color = CORE_HIT_COLOR if selected else QColor("#9a9a9a")
+        painter.setPen(QPen(color, 2))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(rect)
+        if selected:
+            inset = rect.adjusted(4, 4, -4, -4)
+            painter.setBrush(color)
+            painter.drawEllipse(inset)
 
     def _paint_caret(self, painter: QPainter, rect: QRect, color: QColor) -> None:
         path = QPainterPath()
@@ -1017,39 +1405,41 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         painter.fillPath(path, color)
 
     def _move_drag_boundary(self, point: QPoint) -> None:
-        if self._drag_boundary is None:
+        if self._drag_target is None:
             return
-        slot_index = self._nearest_slot_for_y(point.y() + self.verticalScrollBar().value())
-        self._model.move_boundary(self._drag_boundary, slot_index)
+        boundary_name, evidence_block_id = self._drag_target
+        slot_index = self._nearest_slot_for_y(self._screen_to_doc_y(point.y(), self.verticalScrollBar().value()))
+        self._model.move_boundary_for_block(evidence_block_id, boundary_name, slot_index)
 
-    def _boundary_at_point(self, point: QPoint) -> str | None:
-        doc_point = QPoint(point.x(), point.y() + self.verticalScrollBar().value())
+    def _boundary_at_point(self, point: QPoint) -> tuple[str, int] | None:
+        doc_y = self._screen_to_doc_y(point.y(), self.verticalScrollBar().value())
+        doc_point = QPoint(point.x(), doc_y)
         boundary_order = (
             BOUNDARY_RELEVANT_START,
             BOUNDARY_RELEVANT_END,
             BOUNDARY_CONTEXT_START,
             BOUNDARY_CONTEXT_END,
         )
-        for slot_index in range(len(self._separator_y)):
-            separator_index = self._model.index(slot_index * 2, 0)
+        slot_values = {
+            BOUNDARY_CONTEXT_START: lambda overlay: overlay.context_start_slot,
+            BOUNDARY_CONTEXT_END: lambda overlay: overlay.context_end_slot,
+            BOUNDARY_RELEVANT_START: lambda overlay: overlay.relevant_start_slot,
+            BOUNDARY_RELEVANT_END: lambda overlay: overlay.relevant_end_slot,
+        }
+        for overlay in reversed(self._model.block_overlays()):
             for boundary_name in boundary_order:
-                role = {
-                    BOUNDARY_CONTEXT_START: EvidenceTranscriptModel.ContextStartBoundaryRole,
-                    BOUNDARY_CONTEXT_END: EvidenceTranscriptModel.ContextEndBoundaryRole,
-                    BOUNDARY_RELEVANT_START: EvidenceTranscriptModel.RelevantStartBoundaryRole,
-                    BOUNDARY_RELEVANT_END: EvidenceTranscriptModel.RelevantEndBoundaryRole,
-                }[boundary_name]
-                if not str(separator_index.data(role) or ""):
+                slot_index = slot_values[boundary_name](overlay)
+                if not (0 <= slot_index < len(self._separator_y)):
                     continue
                 handle_rect = self._boundary_handle_rect(slot_index, boundary_name)
                 if handle_rect.adjusted(-4, -6, 4, 6).contains(doc_point):
-                    return boundary_name
+                    return boundary_name, overlay.evidence_block_id
                 if abs(doc_point.y() - self._separator_y[slot_index]) <= 5 and doc_point.x() >= handle_rect.right():
-                    return boundary_name
+                    return boundary_name, overlay.evidence_block_id
         return None
 
     def _message_index_at_point(self, point: QPoint) -> int | None:
-        doc_y = point.y() + self.verticalScrollBar().value()
+        doc_y = self._screen_to_doc_y(point.y(), self.verticalScrollBar().value())
         for message_index in range(self._message_count()):
             if self._separator_y[message_index] <= doc_y <= self._separator_y[message_index + 1]:
                 return message_index
@@ -1060,56 +1450,77 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
             return 0
         return min(range(len(self._separator_y)), key=lambda slot_index: abs(self._separator_y[slot_index] - y))
 
+    def _nearest_message_index_for_y(self, y: int) -> int:
+        if self._message_count() <= 0:
+            return 0
+        best_index = 0
+        best_distance = float("inf")
+        for message_index in range(self._message_count()):
+            top = self._separator_y[message_index]
+            bottom = self._separator_y[message_index + 1]
+            center = (top + bottom) / 2
+            distance = abs(center - y)
+            if distance < best_distance:
+                best_distance = distance
+                best_index = message_index
+        return best_index
+
     def _boundary_handle_rect(self, slot_index: int, boundary_name: str) -> QRect:
-        lane_offsets = {
-            BOUNDARY_CONTEXT_START: 12,
-            BOUNDARY_RELEVANT_START: 32,
-            BOUNDARY_RELEVANT_END: 52,
-            BOUNDARY_CONTEXT_END: 72,
-        }
+        lane = BOUNDARY_LANE_CONTEXT
+        if boundary_name in (BOUNDARY_RELEVANT_START, BOUNDARY_RELEVANT_END):
+            lane = BOUNDARY_LANE_RELEVANT
         y = self._separator_y[slot_index] - (self.handle_size // 2)
-        x = self.paper_margin + lane_offsets[boundary_name]
+        x = self.paper_margin + lane
         return QRect(x, y, self.handle_size, self.handle_size)
 
-    def _message_content_rect(self, message_index: int) -> QRect:
-        left = self.paper_margin + self.gutter_width + self.page_padding
-        right = self.viewport().width() - self.paper_margin - self.page_padding
-        top = self._separator_y[message_index]
-        bottom = self._separator_y[message_index + 1]
-        return QRect(left, top + 1, max(0, right - left), max(0, bottom - top - 1))
+    def _control_icon_rect(self, message_index: int, overlay_index: int, column_left: int) -> QRect:
+        overlays = self._model.overlays_for_relevant_message(message_index)
+        slot_width = self._control_column_width() / max(1, len(overlays))
+        row_top = self._separator_y[message_index]
+        row_bottom = self._separator_y[message_index + 1]
+        row_height = row_bottom - row_top
+        top = row_top + max(0, (row_height - self.control_icon_size) // 2)
+        x = int(column_left + (overlay_index * slot_width) + ((slot_width - self.control_icon_size) / 2))
+        return QRect(x, top, self.control_icon_size, self.control_icon_size)
 
-    def _highlight_icon_rect(self, message_index: int) -> QRect:
-        content_rect = self._message_content_rect(message_index)
-        x = self.viewport().width() - self.paper_margin - self.page_padding - 44
-        return QRect(x, content_rect.top() + 15, 17, 17)
+    def _control_icon_screen_rect(
+        self,
+        message_index: int,
+        overlay_index: int,
+        column_left: int,
+        scroll_y: int,
+    ) -> QRect:
+        doc_rect = self._control_icon_rect(message_index, overlay_index, column_left)
+        return QRect(
+            doc_rect.left(),
+            self._doc_to_screen(doc_rect.top(), scroll_y),
+            doc_rect.width(),
+            doc_rect.height(),
+        )
 
-    def _core_icon_rect(self, message_index: int) -> QRect:
-        content_rect = self._message_content_rect(message_index)
-        x = self.viewport().width() - self.paper_margin - self.page_padding - 20
-        return QRect(x, content_rect.top() + 15, 17, 17)
+    def _anchor_icon_rect(self, message_index: int, overlay_index: int) -> QRect:
+        return self._control_icon_rect(message_index, overlay_index, self._anchor_left())
+
+    def _highlight_icon_rect(self, message_index: int, overlay_index: int) -> QRect:
+        return self._control_icon_rect(message_index, overlay_index, self._highlight_left())
 
     def _message_height(self, message_index: int) -> int:
         index = self._message_model_index(message_index)
-        width = max(160, self.viewport().width())
-        body_width = max(
-            180,
-            width
-            - (self.paper_margin * 2)
-            - self.gutter_width
-            - (self.page_padding * 2)
-            - self.sender_width
-            - self.icon_width
-            - 40,
-        )
+        body_width = self._message_body_width()
         body = str(index.data(EvidenceTranscriptModel.BodyRole) or "")
         attachment = str(index.data(EvidenceTranscriptModel.AttachmentRole) or "")
-        body_height = self.fontMetrics().boundingRect(
+        use_bold = self._message_block_zone(message_index) == BLOCK_ZONE_RELEVANT
+        message_font = self._message_font(bold=use_bold)
+        body_height = QFontMetrics(message_font).boundingRect(
             QRect(0, 0, body_width, 4000),
             Qt.TextFlag.TextWordWrap,
             body,
         ).height()
-        attachment_height = 20 if attachment else 0
-        return max(self.min_message_height, body_height + attachment_height + 54)
+        attachment_height = 22 if attachment else 0
+        return max(
+            self.min_message_height,
+            (self.row_padding_y * 2) + body_height + attachment_height,
+        )
 
     def _document_height(self) -> int:
         if not self._separator_y:
@@ -1124,9 +1535,6 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
 
     def _message_model_index(self, message_index: int) -> QModelIndex:
         return self._model.index((message_index * 2) + 1, 0)
-
-    def _message_bool(self, message_index: int, role: int) -> bool:
-        return bool(self._message_model_index(message_index).data(role))
 
 
 def build_transcript_model_for_thread(

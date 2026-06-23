@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from message_evidence_workstation.config.settings import NimSettings
-from message_evidence_workstation.nim.client import NimClient, NimClientError
+from message_evidence_workstation.nim.client import NimClient, NimClientError, nim_error_user_message
 
 
 def test_chat_completion_success() -> None:
@@ -132,3 +132,96 @@ def test_list_models_supports_name_or_id() -> None:
         models = client.list_models()
     assert models[0].id == "legacy/name-model"
     assert models[0].metadata["max_model_len"] == 4096
+
+
+def test_http_error_includes_request_metadata() -> None:
+    import urllib.error
+
+    settings = NimSettings(api_key="test-key", model="google/gemma-2-2b-it")
+    client = NimClient(settings)
+
+    def raise_http(*_args, **_kwargs):
+        raise urllib.error.HTTPError(
+            url="https://integrate.api.nvidia.com/v1/chat/completions",
+            code=404,
+            msg="Not Found",
+            hdrs=None,
+            fp=type("Body", (), {"read": lambda self: b"404 page not found\n"})(),
+        )
+
+    with patch("urllib.request.urlopen", side_effect=raise_http):
+        with pytest.raises(NimClientError) as exc_info:
+            client.chat_completion([{"role": "user", "content": "hi"}])
+    exc = exc_info.value
+    assert exc.error_type == "http_error"
+    assert exc.details["status_code"] == 404
+    assert exc.details["method"] == "POST"
+    assert exc.details["path"] == "/chat/completions"
+    assert exc.details["model"] == "google/gemma-2-2b-it"
+    assert "integrate.api.nvidia.com" in exc.details["url"]
+
+
+def test_nim_error_user_message_http_404() -> None:
+    exc = NimClientError(
+        "NIM HTTP error 404",
+        error_type="http_error",
+        details={
+            "status_code": 404,
+            "method": "POST",
+            "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+            "model": "google/gemma-2-2b-it",
+            "body": "404 page not found\n",
+        },
+    )
+    message = nim_error_user_message(exc)
+    assert "POST" in message
+    assert "chat/completions" in message
+    assert "google/gemma-2-2b-it" in message
+    assert "404 page not found" in message
+
+
+def test_test_model_success() -> None:
+    settings = NimSettings(api_key="test-key", model="google/gemma-2-2b-it")
+    client = NimClient(settings)
+    payload = {"choices": [{"message": {"content": "ok"}}]}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(payload).encode("utf-8")
+
+    with patch("urllib.request.urlopen", return_value=FakeResponse()):
+        result = client.test_model()
+    assert result.success is True
+    assert result.model == "google/gemma-2-2b-it"
+    assert result.method == "POST"
+    assert result.path == "/chat/completions"
+    assert result.response_preview == "ok"
+
+
+def test_test_model_failure_returns_details() -> None:
+    import urllib.error
+
+    settings = NimSettings(api_key="test-key", model="google/gemma-2-2b-it")
+    client = NimClient(settings)
+
+    def raise_http(*_args, **_kwargs):
+        raise urllib.error.HTTPError(
+            url="https://integrate.api.nvidia.com/v1/chat/completions",
+            code=404,
+            msg="Not Found",
+            hdrs=None,
+            fp=type("Body", (), {"read": lambda self: b'{"detail":"Function not found"}'})(),
+        )
+
+    with patch("urllib.request.urlopen", side_effect=raise_http):
+        result = client.test_model()
+    assert result.success is False
+    assert result.status_code == 404
+    assert result.error_type == "http_error"
+    assert "chat/completions" in (result.error_message or "")

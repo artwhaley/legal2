@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from message_evidence_workstation.config.settings import NimSettings
+from message_evidence_workstation.config.settings import AnswerSettings, NimSettings
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
@@ -46,7 +46,8 @@ def eval_db(tmp_path):
 def test_whole_transcript_mode_selected_for_sample_fixture(eval_db) -> None:
     conn, _, dataset_id = eval_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    mode = resolve_answer_mode(strategy="auto", transcript=transcript, max_chars=500_000)
+    settings = AnswerSettings(context_window_override_tokens=500_000)
+    mode = resolve_answer_mode(strategy="auto", transcript=transcript, answer_settings=settings)
     assert mode == "whole_transcript"
 
 

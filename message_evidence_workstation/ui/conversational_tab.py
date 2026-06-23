@@ -32,7 +32,12 @@ from message_evidence_workstation.db.evidence_blocks import (
 from message_evidence_workstation.domain.constants import CREATED_BY_CONVERSATIONAL_SEARCH
 from message_evidence_workstation.embeddings.model_registry import get_model_spec
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimClient, NimClientError, nim_error_user_message
+from message_evidence_workstation.nim.client import NimClient, NimClientError, nim_error_log_details, nim_error_user_message
+from message_evidence_workstation.nim.context_limits import (
+    is_context_limit_error,
+    parse_context_window_from_error,
+    record_learned_model_context,
+)
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
     ANSWER_MODE_RETRIEVAL_FALLBACK,
@@ -40,6 +45,7 @@ from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_WHOLE_TRANSCRIPT,
     ANSWER_STRATEGY_RETRIEVAL_FALLBACK,
     ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
+    AnswerBudget,
     CandidateEvidenceBlockDraft,
     ConversationalAnswerParseError,
     ConversationalAnswerResult,
@@ -484,6 +490,7 @@ class ConversationalTab(QWidget):
             component="ui.conversational_tab",
             operation="synthesis_failed",
             message=message,
+            details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else None,
             exc=exc,
             dataset_id=self.dataset_id,
         )
@@ -583,6 +590,7 @@ class ConversationalTab(QWidget):
                 db_path,
                 transcript,
                 answer_settings,
+                budget,
             )
             return
         if answer_mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN:
@@ -724,7 +732,6 @@ class ConversationalTab(QWidget):
                     answer_settings=answer_settings,
                     model_id=nim.model,
                     provider_metadata=app_settings.nim_model_metadata.get(nim.model, {}),
-                    max_tokens=answer_settings.reserved_output_tokens,
                 )
             finally:
                 worker_conn.close()
@@ -766,6 +773,7 @@ class ConversationalTab(QWidget):
                 component="ui.conversational_tab",
                 operation="exhaustive_window_scan_answer_failed",
                 message=message,
+                details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else None,
                 exc=exc,
                 dataset_id=self.dataset_id,
             )
@@ -838,12 +846,60 @@ class ConversationalTab(QWidget):
                 component="ui.conversational_tab",
                 operation="session_coverage_answer_failed",
                 message=message,
+                details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else None,
                 exc=exc,
                 dataset_id=self.dataset_id,
             )
             self.send_button.setEnabled(True)
 
         run_background(self, answer_work, on_success=on_success, on_error=on_error)
+
+    def _recover_from_context_limit_error(
+        self,
+        exc: NimClientError,
+        *,
+        generation: int,
+        query: str,
+        dataset_id: int,
+        db_path: Path,
+        answer_settings,
+    ) -> bool:
+        if not is_context_limit_error(exc):
+            return False
+        learned = parse_context_window_from_error(str(exc.details.get("body", "")))
+        nim = nim_settings_for_client()
+        model_id = nim.model or "unknown-model"
+        if learned is not None:
+            record_learned_model_context(model_id, learned)
+        self.logger.warning(
+            component="ui.conversational_tab",
+            operation="context_limit_auto_recovery",
+            message="Model context limit exceeded; retrying with exhaustive window scan",
+            details={
+                **nim_error_log_details(exc),
+                "learned_context_tokens": learned,
+                "model_id": model_id,
+            },
+            dataset_id=dataset_id,
+        )
+        self.status_label.setText("Model context limit reached — switching to windowed scan…")
+        self._append_chat(
+            "System",
+            "Model context limit reached; automatically retrying with exhaustive window scan.",
+        )
+        self._ensure_message_embeddings_then(
+            generation,
+            dataset_id,
+            db_path,
+            lambda: self._run_exhaustive_window_scan_answer(
+                generation,
+                query,
+                dataset_id,
+                db_path,
+                answer_settings,
+            ),
+        )
+        return True
 
     def _run_whole_transcript_answer(
         self,
@@ -853,6 +909,7 @@ class ConversationalTab(QWidget):
         db_path: Path,
         transcript,
         answer_settings,
+        budget: AnswerBudget,
     ) -> None:
         nim = nim_settings_for_client()
 
@@ -868,7 +925,7 @@ class ConversationalTab(QWidget):
                     user_query=query,
                     dataset_id=dataset_id,
                     transcript=transcript,
-                    max_tokens=answer_settings.reserved_output_tokens,
+                    max_tokens=budget.effective_reserved_output_tokens,
                 )
             finally:
                 worker_conn.close()
@@ -893,6 +950,15 @@ class ConversationalTab(QWidget):
         def on_error(exc: BaseException) -> None:
             if generation != self._request_generation:
                 return
+            if isinstance(exc, NimClientError) and self._recover_from_context_limit_error(
+                exc,
+                generation=generation,
+                query=query,
+                dataset_id=dataset_id,
+                db_path=db_path,
+                answer_settings=answer_settings,
+            ):
+                return
             if isinstance(exc, ConversationalAnswerParseError):
                 message = f"Answer output invalid: {exc}"
             elif isinstance(exc, NimClientError):
@@ -906,6 +972,7 @@ class ConversationalTab(QWidget):
                 component="ui.conversational_tab",
                 operation="whole_transcript_answer_failed",
                 message=message,
+                details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else None,
                 exc=exc,
                 dataset_id=self.dataset_id,
             )
@@ -1029,6 +1096,7 @@ class ConversationalTab(QWidget):
             component="ui.conversational_tab",
             operation="planner_failed",
             message=message,
+            details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else None,
             exc=exc,
             dataset_id=self.dataset_id,
         )

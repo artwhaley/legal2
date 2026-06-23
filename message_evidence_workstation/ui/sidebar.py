@@ -6,13 +6,12 @@ import json
 import sqlite3
 
 from PySide6.QtCore import QMimeData, Qt, Signal
-from PySide6.QtGui import QDrag, QDropEvent
+from PySide6.QtGui import QDrag, QDropEvent, QWheelEvent
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
@@ -21,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from message_evidence_workstation.db import evidence_blocks, repositories
+from message_evidence_workstation.domain.constants import UNCATEGORIZED_CATEGORY_NAME
 from message_evidence_workstation.domain.models import Message
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search.result_models import GroupedSearchResult
@@ -118,11 +118,10 @@ class Sidebar(QWidget):
         self._threads: list = []
 
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Source Threads"))
-
-        self.thread_list = QListWidget()
-        self.thread_list.currentItemChanged.connect(self._on_thread_changed)
-        layout.addWidget(self.thread_list)
+        layout.addWidget(QLabel("Source thread"))
+        self.thread_combo = QComboBox()
+        self.thread_combo.currentIndexChanged.connect(self._on_thread_changed)
+        layout.addWidget(self.thread_combo)
 
         category_header = QHBoxLayout()
         category_header.addWidget(QLabel("Evidence Blocks"))
@@ -138,27 +137,36 @@ class Sidebar(QWidget):
         self.category_tree.itemExpanded.connect(self._on_category_item_expanded)
         self.category_tree.currentItemChanged.connect(self._on_category_tree_current_item_changed)
         self.category_tree.itemDoubleClicked.connect(self._rename_category)
-        layout.addWidget(self.category_tree)
+        layout.addWidget(self.category_tree, stretch=9)
 
         self.empty_label = QLabel("No dataset loaded.")
         self.empty_label.setWordWrap(True)
-        layout.addWidget(self.empty_label)
+        layout.addWidget(self.empty_label, stretch=1)
 
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
-        self.thread_list.clear()
+        self.thread_combo.blockSignals(True)
+        self.thread_combo.clear()
+        self.thread_combo.blockSignals(False)
         self.category_tree.clear()
         if dataset_id is None:
             self.empty_label.setText("No dataset loaded. Place a normalized dataset and restart.")
             self.empty_label.show()
             return
         self.empty_label.hide()
+        evidence_blocks.ensure_uncategorized_category(self.conn, self.logger, dataset_id)
         self._threads = repositories.list_source_threads(self.conn, dataset_id)
+        self.thread_combo.blockSignals(True)
         for thread in self._threads:
-            item = QListWidgetItem(f"{thread.display_title} ({thread.message_count})")
-            item.setData(0, thread.source_thread_id)
-            self.thread_list.addItem(item)
-        self._refresh_categories()
+            self.thread_combo.addItem(
+                f"{thread.display_title} ({thread.message_count})",
+                thread.source_thread_id,
+            )
+        self.thread_combo.blockSignals(False)
+        if self.thread_combo.count() > 0:
+            self.thread_combo.setCurrentIndex(0)
+            self._on_thread_changed(0)
+        self.refresh_evidence_blocks()
         self.logger.info(
             component="ui.sidebar",
             operation="dataset_bound",
@@ -167,14 +175,50 @@ class Sidebar(QWidget):
             dataset_id=dataset_id,
         )
 
+    def refresh_evidence_blocks(self) -> None:
+        self._refresh_categories()
+
+    def reveal_evidence_block(self, evidence_block_id: int) -> None:
+        block = evidence_blocks.get_evidence_block(self.conn, evidence_block_id)
+        if block is None:
+            self.refresh_evidence_blocks()
+            return
+        self._refresh_categories_and_reveal(
+            block.category_id,
+            evidence_block_id=evidence_block_id,
+        )
+
     def _refresh_categories(self) -> None:
         self.category_tree.blockSignals(True)
         self.category_tree.clear()
         if self.dataset_id is None:
             self.category_tree.blockSignals(False)
             return
+        uncategorized = evidence_blocks.ensure_uncategorized_category(
+            self.conn,
+            self.logger,
+            self.dataset_id,
+        )
         categories = repositories.list_categories(self.conn, self.dataset_id)
-        for category in categories:
+        category_by_id = {category.category_id: category for category in categories}
+        if uncategorized.category_id not in category_by_id:
+            categories.append(uncategorized)
+            category_by_id[uncategorized.category_id] = uncategorized
+
+        all_blocks = evidence_blocks.list_evidence_blocks(self.conn, self.dataset_id)
+        blocks_by_category: dict[int, list] = {category.category_id: [] for category in categories}
+        for block in all_blocks:
+            category_id = block.category_id
+            if category_id not in blocks_by_category:
+                category_id = uncategorized.category_id
+            blocks_by_category.setdefault(category_id, []).append(block)
+
+        def _category_sort_key(category) -> tuple[int, str]:
+            if category.name == UNCATEGORIZED_CATEGORY_NAME:
+                return (0, category.name.lower())
+            return (1, category.name.lower())
+
+        for category in sorted(categories, key=_category_sort_key):
             category_item = QTreeWidgetItem([category.name])
             category_item.setData(0, ROLE_ITEM_ID, category.category_id)
             category_item.setData(0, ROLE_ITEM_KIND, "category")
@@ -186,12 +230,7 @@ class Sidebar(QWidget):
                 )
                 & ~Qt.ItemFlag.ItemIsUserCheckable
             )
-            blocks = evidence_blocks.list_evidence_blocks(
-                self.conn,
-                self.dataset_id,
-                category_id=category.category_id,
-            )
-            for block in blocks:
+            for block in blocks_by_category.get(category.category_id, []):
                 child = QTreeWidgetItem([block.title])
                 child.setData(0, ROLE_ITEM_ID, block.evidence_block_id)
                 child.setData(0, ROLE_ITEM_KIND, "evidence_block")
@@ -226,11 +265,13 @@ class Sidebar(QWidget):
                     self.category_tree.setCurrentItem(child)
                     return
 
-    def _on_thread_changed(self, current: QListWidgetItem | None, _previous: QListWidgetItem | None) -> None:
-        if current is None or self.dataset_id is None:
+    def _on_thread_changed(self, index: int) -> None:
+        if index < 0 or self.dataset_id is None:
             return
-        source_thread_id = current.data(0)
-        display_title = current.text().split(" (", 1)[0]
+        source_thread_id = self.thread_combo.currentData(Qt.ItemDataRole.UserRole)
+        if not isinstance(source_thread_id, str):
+            return
+        display_title = self.thread_combo.currentText().split(" (", 1)[0]
         self.source_thread_selected.emit(source_thread_id, display_title)
 
     def _add_category(self) -> None:

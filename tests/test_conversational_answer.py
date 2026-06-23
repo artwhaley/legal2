@@ -33,6 +33,7 @@ from message_evidence_workstation.search.conversational_answer import (
     build_dataset_transcript,
     build_whole_transcript_user_content,
     build_exhaustive_window_merge_user_content,
+    parse_exhaustive_window_scan_response,
     parse_whole_transcript_answer_response,
     resolve_answer_budget,
     resolve_answer_mode,
@@ -51,6 +52,31 @@ def answer_db(tmp_path):
     initialize_schema(conn, logger)
     dataset_id = load_normalized_dataset(conn, logger, FIXTURE_DIR)
     return conn, logger, dataset_id
+
+
+def test_resolve_answer_budget_provider_context_routes_to_windowed(answer_db) -> None:
+    conn, _, dataset_id = answer_db
+    transcript = build_dataset_transcript(conn, dataset_id)
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO)
+    budget = resolve_answer_budget(
+        transcript,
+        settings,
+        "nvidia/nemotron-mini-4b-instruct",
+        provider_metadata={"context_length": 4096},
+    )
+    assert budget.context_source == "provider"
+    assert budget.effective_reserved_output_tokens <= 1024
+    if budget.transcript_tokens > budget.usable_input_tokens:
+        assert budget.decision == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
+
+
+def test_resolve_answer_budget_unknown_default_uses_conservative_window(answer_db) -> None:
+    conn, _, dataset_id = answer_db
+    transcript = build_dataset_transcript(conn, dataset_id)
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO)
+    budget = resolve_answer_budget(transcript, settings, "vendor/unknown-model")
+    assert budget.context_source == "default"
+    assert budget.context_window_tokens == 8192
 
 
 def test_resolve_answer_budget_auto_selects_whole_transcript_when_tokens_fit(answer_db) -> None:
@@ -466,7 +492,11 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
         RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     )
 
-    answer_settings = AnswerSettings(window_target_tokens=12_000, window_overlap_messages=2)
+    answer_settings = AnswerSettings(
+        window_target_tokens=12_000,
+        window_overlap_messages=2,
+        context_window_override_tokens=1_000_000,
+    )
     calls: list[tuple[str, dict, dict]] = []
     scan_count = 0
 
@@ -537,6 +567,32 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
     assert result.mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
     assert result.coverage_summary.windows_inspected == scan_count
     assert result.coverage_summary.token_budget is not None
+
+
+def test_exhaustive_window_scan_allows_empty_answer_for_no_evidence() -> None:
+    result = parse_exhaustive_window_scan_response(
+        json.dumps(
+            {
+                "answer": "",
+                "cited_message_ids": [],
+                "candidate_evidence_blocks": [],
+                "uncertainties": ["No relevant evidence found in the provided window"],
+                "coverage_summary": {
+                    "mode": "exhaustive_window_scan",
+                    "messages_considered": 1,
+                    "source_thread_ids": ["thread_001"],
+                },
+            }
+        ),
+        valid_message_ids={"msg_001"},
+        message_thread_by_id={"msg_001": "thread_001"},
+        source_thread_ids=["thread_001"],
+        messages_considered=1,
+    )
+
+    assert result.answer == ""
+    assert result.candidate_evidence_blocks == []
+    assert result.uncertainties == ["No relevant evidence found in the provided window"]
 
 
 def test_whole_transcript_answer_passes_reserved_output_tokens(answer_db) -> None:

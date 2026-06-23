@@ -27,9 +27,10 @@ def test_registry_used_for_known_model() -> None:
     assert resolved.context_window_tokens == 1_000_000
 
 
-def test_unknown_model_uses_safe_default() -> None:
+def test_unknown_model_uses_conservative_default() -> None:
     resolved = resolve_model_context("vendor/unknown-model")
     assert resolved.context_window_tokens == DEFAULT_CONTEXT_WINDOW_TOKENS
+    assert resolved.context_window_tokens == 8192
     assert resolved.source == "default"
 
 
