@@ -1,4 +1,4 @@
 {
-  "name": "Donor Dataset 001",
-  "notes": "normalized test dataset"
+  "name": "Family Messenger 100",
+  "notes": "Single-thread synthetic husband and wife messenger log with 100 unique messages across 15 days."
 }

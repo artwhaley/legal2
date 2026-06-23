@@ -7,6 +7,7 @@ import pytest
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.evidence_blocks import (
     create_evidence_block,
+    create_evidence_block_from_conversational_candidate,
     create_evidence_block_from_search,
     ensure_uncategorized_category,
     get_evidence_block,
@@ -18,7 +19,10 @@ from message_evidence_workstation.db.evidence_blocks import (
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.db.repositories import create_category, list_messages_for_thread
 from message_evidence_workstation.db.workspace import import_into_workspace
-from message_evidence_workstation.domain.constants import UNCATEGORIZED_CATEGORY_NAME
+from message_evidence_workstation.domain.constants import (
+    CREATED_BY_CONVERSATIONAL_ANSWER,
+    UNCATEGORIZED_CATEGORY_NAME,
+)
 from message_evidence_workstation.domain.slots import validate_slot_bounds
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 
@@ -72,13 +76,13 @@ def test_create_evidence_block_enforces_slot_invariant(workspace_db) -> None:
 
 def test_create_evidence_block_from_search_uses_uncategorized(workspace_db) -> None:
     conn, logger, dataset_id = workspace_db
-    messages = list_messages_for_thread(conn, dataset_id, "thread_002")
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
     ordered_ids = [message.message_id for message in messages]
     block = create_evidence_block_from_search(
         conn,
         logger,
         dataset_id=dataset_id,
-        source_thread_id="thread_002",
+        source_thread_id="thread_001",
         primary_hit_message_id="msg_004",
         title="Pickup thread hit",
         ordered_message_ids=ordered_ids,
@@ -113,13 +117,13 @@ def test_update_slots_and_move_category(workspace_db) -> None:
     conn, logger, dataset_id = workspace_db
     uncategorized = ensure_uncategorized_category(conn, logger, dataset_id)
     work = create_category(conn, logger, dataset_id, "work")
-    messages = list_messages_for_thread(conn, dataset_id, "thread_002")
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
     ordered_ids = [message.message_id for message in messages]
     block = create_evidence_block_from_search(
         conn,
         logger,
         dataset_id=dataset_id,
-        source_thread_id="thread_002",
+        source_thread_id="thread_001",
         primary_hit_message_id="msg_005",
         title="Pickup",
         ordered_message_ids=ordered_ids,
@@ -134,7 +138,7 @@ def test_update_slots_and_move_category(workspace_db) -> None:
         relevant_end_slot=2,
         context_end_slot=2,
     )
-    assert updated.relevant_message_ids(ordered_ids) == ordered_ids
+    assert updated.relevant_message_ids(ordered_ids) == ordered_ids[:2]
     moved = move_evidence_block_to_category(
         conn,
         logger,
@@ -175,3 +179,31 @@ def test_highlight_updates_persist(workspace_db) -> None:
 def test_validate_slot_bounds_rejects_invalid_ranges() -> None:
     with pytest.raises(ValueError):
         validate_slot_bounds(3, 0, 2, 1, 3)
+
+
+def test_create_evidence_block_from_conversational_candidate_uses_uncategorized(workspace_db) -> None:
+    conn, logger, dataset_id = workspace_db
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
+    ordered_ids = [message.message_id for message in messages]
+    block = create_evidence_block_from_conversational_candidate(
+        conn,
+        logger,
+        dataset_id=dataset_id,
+        source_thread_id="thread_001",
+        ordered_message_ids=ordered_ids,
+        title="Allergy paperwork",
+        summary="Discussion of allergy forms",
+        core_message_id="msg_002",
+        leading_context_start_message_id="msg_001",
+        relevant_start_message_id="msg_002",
+        relevant_end_message_id="msg_003",
+        trailing_context_end_message_id="msg_004",
+        highlighted_message_ids=["msg_002"],
+    )
+    category = conn.execute(
+        "SELECT name FROM category WHERE category_id = ?",
+        (block.category_id,),
+    ).fetchone()
+    assert category["name"] == UNCATEGORIZED_CATEGORY_NAME
+    assert block.created_by == CREATED_BY_CONVERSATIONAL_ANSWER
+    assert block.relevant_message_ids(ordered_ids) == ["msg_002", "msg_003"]

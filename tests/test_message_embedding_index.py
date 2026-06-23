@@ -35,7 +35,7 @@ def test_message_index_build_with_fake_adapter(index_db) -> None:
         adapter_info=info,
     )
     assert result.success, result.error
-    assert result.count == 5
+    assert result.count == 100
     row = get_ready_index(conn, dataset_id, "message", "fake-msg")
     assert row is not None
     assert row["status"] == "ready"
@@ -43,4 +43,4 @@ def test_message_index_build_with_fake_adapter(index_db) -> None:
         "SELECT COUNT(*) FROM message_embedding_vec WHERE dataset_id = ?",
         (dataset_id,),
     ).fetchone()[0]
-    assert stored == 5
+    assert stored == 100

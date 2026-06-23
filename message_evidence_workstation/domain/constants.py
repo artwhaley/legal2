@@ -1,6 +1,6 @@
 """Shared domain constants."""
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 WORKSPACE_FORMAT_ID = "message_evidence_workstation.evw"
 WORKSPACE_FORMAT_VERSION = 1
@@ -20,6 +20,7 @@ CONVERSATION_STATUS_EXPORT_READY = "export_ready"
 CREATED_BY_MANUAL = "manual"
 CREATED_BY_SIMPLE_SEARCH = "simple_search"
 CREATED_BY_CONVERSATIONAL_SEARCH = "conversational_search"
+CREATED_BY_CONVERSATIONAL_ANSWER = "conversational_answer"
 CREATED_BY_TRANSCRIPT_EDITOR = "transcript_editor"
 
 BOUNDARY_CONTEXT_START = "context_start"

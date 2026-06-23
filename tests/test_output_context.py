@@ -42,7 +42,7 @@ def test_load_output_conversation_context(tmp_path) -> None:
     context = load_output_conversation_context(conn, conversation.workstation_conversation_id)
     assert context is not None
     assert context.category_name == "school"
-    assert context.thread_display_title == "Jane Doe"
+    assert context.thread_display_title == "Art and Jane"
     assert "msg_001" in context.hit_message_ids
-    assert len(context.messages) == 3
+    assert len(context.messages) == 100
     assert context.conversation.title == "Allergy paperwork"

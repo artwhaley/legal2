@@ -81,3 +81,54 @@ def test_url_error_timeout_maps_to_timeout_type() -> None:
         with pytest.raises(NimClientError) as exc_info:
             client.chat_completion([{"role": "user", "content": "hi"}])
     assert exc_info.value.error_type == "timeout"
+
+
+def test_list_models_preserves_metadata() -> None:
+    settings = NimSettings(api_key="test-key", model="")
+    client = NimClient(settings)
+    payload = {
+        "data": [
+            {
+                "id": "vendor/model-a",
+                "context_length": 128000,
+                "object": "model",
+            }
+        ]
+    }
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(payload).encode("utf-8")
+
+    with patch("urllib.request.urlopen", return_value=FakeResponse()):
+        models = client.list_models()
+    assert len(models) == 1
+    assert models[0].id == "vendor/model-a"
+    assert models[0].metadata["context_length"] == 128000
+
+
+def test_list_models_supports_name_or_id() -> None:
+    settings = NimSettings(api_key="test-key", model="")
+    client = NimClient(settings)
+    payload = {"models": [{"name": "legacy/name-model", "max_model_len": 4096}]}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps(payload).encode("utf-8")
+
+    with patch("urllib.request.urlopen", return_value=FakeResponse()):
+        models = client.list_models()
+    assert models[0].id == "legacy/name-model"
+    assert models[0].metadata["max_model_len"] == 4096

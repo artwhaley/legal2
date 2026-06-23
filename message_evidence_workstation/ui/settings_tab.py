@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -104,6 +104,93 @@ class SettingsTab(QWidget):
         nim_form.addRow("", nim_buttons)
         layout.addWidget(nim_group)
 
+        answer_group = QGroupBox("Conversational answer strategy")
+        answer_form = QFormLayout(answer_group)
+        self.answer_strategy = QComboBox()
+        for label, value in (
+            ("Auto (whole transcript if it fits, else exhaustive window scan)", "auto"),
+            ("Whole transcript", "whole_transcript"),
+            ("Exhaustive window scan (inspect every session)", "exhaustive_window_scan"),
+            ("Session summary triage (faster, lower recall)", "session_coverage"),
+            ("Retrieval fallback / debug (lower recall)", "retrieval_fallback"),
+        ):
+            self.answer_strategy.addItem(label, value)
+        strategy_index = self.answer_strategy.findData(self.settings.answer.answer_strategy)
+        if strategy_index >= 0:
+            self.answer_strategy.setCurrentIndex(strategy_index)
+        answer_form.addRow("Answer strategy", self.answer_strategy)
+        self.whole_transcript_max_chars = QSpinBox()
+        self.whole_transcript_max_chars.setRange(10_000, 2_000_000)
+        self.whole_transcript_max_chars.setSingleStep(10_000)
+        self.whole_transcript_max_chars.setValue(self.settings.answer.whole_transcript_max_chars)
+        answer_form.addRow("Whole transcript max chars", self.whole_transcript_max_chars)
+        self.answer_session_gap_minutes = QSpinBox()
+        self.answer_session_gap_minutes.setRange(15, 24 * 60)
+        self.answer_session_gap_minutes.setValue(self.settings.answer.session_gap_minutes)
+        answer_form.addRow("Session gap (minutes)", self.answer_session_gap_minutes)
+        self.max_inspected_sessions = QSpinBox()
+        self.max_inspected_sessions.setRange(1, 100)
+        self.max_inspected_sessions.setValue(self.settings.answer.max_inspected_sessions)
+        answer_form.addRow("Max inspected sessions", self.max_inspected_sessions)
+        self.transcript_window_padding = QSpinBox()
+        self.transcript_window_padding.setRange(0, 20)
+        self.transcript_window_padding.setValue(self.settings.answer.transcript_window_padding)
+        answer_form.addRow("Transcript window padding", self.transcript_window_padding)
+        self.context_window_override_tokens = QSpinBox()
+        self.context_window_override_tokens.setRange(0, 2_000_000)
+        self.context_window_override_tokens.setSingleStep(1024)
+        self.context_window_override_tokens.setValue(self.settings.answer.context_window_override_tokens)
+        answer_form.addRow("Context window override tokens", self.context_window_override_tokens)
+        self.context_safety_ratio = QDoubleSpinBox()
+        self.context_safety_ratio.setRange(0.25, 0.90)
+        self.context_safety_ratio.setSingleStep(0.05)
+        self.context_safety_ratio.setValue(self.settings.answer.context_safety_ratio)
+        answer_form.addRow("Context safety ratio", self.context_safety_ratio)
+        self.reserved_output_tokens = QSpinBox()
+        self.reserved_output_tokens.setRange(256, 32768)
+        self.reserved_output_tokens.setValue(self.settings.answer.reserved_output_tokens)
+        answer_form.addRow("Reserved output tokens", self.reserved_output_tokens)
+        self.prompt_overhead_tokens = QSpinBox()
+        self.prompt_overhead_tokens.setRange(0, 20000)
+        self.prompt_overhead_tokens.setValue(self.settings.answer.prompt_overhead_tokens)
+        answer_form.addRow("Prompt overhead tokens", self.prompt_overhead_tokens)
+        self.window_target_tokens = QSpinBox()
+        self.window_target_tokens.setRange(500, 200000)
+        self.window_target_tokens.setSingleStep(500)
+        self.window_target_tokens.setValue(self.settings.answer.window_target_tokens)
+        answer_form.addRow("Exhaustive window target tokens", self.window_target_tokens)
+        self.window_overlap_messages = QSpinBox()
+        self.window_overlap_messages.setRange(0, 20)
+        self.window_overlap_messages.setValue(self.settings.answer.window_overlap_messages)
+        answer_form.addRow("Exhaustive window overlap messages", self.window_overlap_messages)
+        self.context_budget_readout = QLabel()
+        self.context_budget_readout.setWordWrap(True)
+        answer_form.addRow("Context budget readout", self.context_budget_readout)
+        for widget in (
+            self.answer_strategy,
+            self.context_window_override_tokens,
+            self.context_safety_ratio,
+            self.reserved_output_tokens,
+            self.prompt_overhead_tokens,
+            self.window_target_tokens,
+            self.window_overlap_messages,
+            self.nim_model,
+        ):
+            if isinstance(widget, QComboBox):
+                widget.currentIndexChanged.connect(self.refresh_context_budget_readout)
+            else:
+                widget.valueChanged.connect(self.refresh_context_budget_readout)
+        answer_buttons = QHBoxLayout()
+        self.save_answer_settings_button = QPushButton("Save answer settings")
+        self.save_answer_settings_button.clicked.connect(self._save_answer_settings)
+        answer_buttons.addWidget(self.save_answer_settings_button)
+        self.rebuild_sessions_button = QPushButton("Rebuild transcript sessions")
+        self.rebuild_sessions_button.clicked.connect(self._rebuild_transcript_sessions)
+        answer_buttons.addWidget(self.rebuild_sessions_button)
+        answer_form.addRow("", answer_buttons)
+        layout.addWidget(answer_group)
+        self.refresh_context_budget_readout()
+
         prompt_group = QGroupBox("Prompt templates")
         prompt_layout = QVBoxLayout(prompt_group)
         prompt_row = QHBoxLayout()
@@ -113,6 +200,13 @@ class SettingsTab(QWidget):
             "conversational_search_planner",
             "conversational_search_synthesis",
             "evidence_range_suggestion",
+            "whole_transcript_answer",
+            "coverage_session_answer",
+            "coverage_audit",
+            "session_summary",
+            "session_classification",
+            "exhaustive_window_scan",
+            "exhaustive_window_merge",
         ):
             self.prompt_type.addItem(run_type, run_type)
         self.prompt_type.currentIndexChanged.connect(self._load_selected_prompt)
@@ -144,6 +238,55 @@ class SettingsTab(QWidget):
         embedding_form.addRow("Model", self.embedding_model)
         self.embedding_status = QLabel("Starting up…")
         embedding_form.addRow("Status", self.embedding_status)
+        chunking_group = QGroupBox("Semantic chunking")
+        chunking_form = QFormLayout(chunking_group)
+        from message_evidence_workstation.embeddings.chunking import (
+            DEFAULT_MAX_CHARS,
+            DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD,
+            DEFAULT_SESSION_GAP_HOURS,
+        )
+
+        chunking_settings = self.settings.chunking or {}
+        self.chunk_similarity_threshold = QDoubleSpinBox()
+        self.chunk_similarity_threshold.setRange(0.0, 1.0)
+        self.chunk_similarity_threshold.setDecimals(2)
+        self.chunk_similarity_threshold.setSingleStep(0.05)
+        self.chunk_similarity_threshold.setValue(
+            float(chunking_settings.get("semantic_similarity_threshold", DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD))
+        )
+        self.chunk_similarity_threshold.setToolTip(
+            "Start a new chronological chunk when the next message is below this cosine similarity."
+        )
+        self.chunk_similarity_threshold.valueChanged.connect(self._on_chunking_controls_changed)
+        chunking_form.addRow("Semantic similarity threshold", self.chunk_similarity_threshold)
+
+        self.chunk_session_gap_hours = QDoubleSpinBox()
+        self.chunk_session_gap_hours.setRange(0.25, 168.0)
+        self.chunk_session_gap_hours.setDecimals(2)
+        self.chunk_session_gap_hours.setSingleStep(0.5)
+        self.chunk_session_gap_hours.setSuffix(" h")
+        self.chunk_session_gap_hours.setValue(
+            float(chunking_settings.get("session_gap_hours", DEFAULT_SESSION_GAP_HOURS))
+        )
+        self.chunk_session_gap_hours.setToolTip(
+            "Start a new chunk after this much silence; day changes also start a new chunk."
+        )
+        self.chunk_session_gap_hours.valueChanged.connect(self._on_chunking_controls_changed)
+        chunking_form.addRow("Day/session gap", self.chunk_session_gap_hours)
+
+        self.chunk_max_chars = QSpinBox()
+        self.chunk_max_chars.setRange(100, 5000)
+        self.chunk_max_chars.setSingleStep(50)
+        self.chunk_max_chars.setValue(int(chunking_settings.get("max_chars", DEFAULT_MAX_CHARS)))
+        self.chunk_max_chars.setToolTip("Maximum normalized text characters per chunk.")
+        self.chunk_max_chars.valueChanged.connect(self._on_chunking_controls_changed)
+        chunking_form.addRow("Maximum chunk size", self.chunk_max_chars)
+
+        self.chunk_preview_label = QLabel("Chunk preview unavailable until a dataset is loaded.")
+        self.chunk_preview_label.setWordWrap(True)
+        chunking_form.addRow("Live preview", self.chunk_preview_label)
+        layout.addWidget(chunking_group)
+
         embedding_buttons = QHBoxLayout()
         self.load_embedding_button = QPushButton("Reload embedding model")
         self.load_embedding_button.clicked.connect(self._load_embedding_model)
@@ -231,7 +374,11 @@ class SettingsTab(QWidget):
         self._load_selected_prompt()
         self.refresh_persisted_logs()
         self.refresh_model_runs()
+        self._chunk_preview_timer = QTimer(self)
+        self._chunk_preview_timer.setSingleShot(True)
+        self._chunk_preview_timer.timeout.connect(self._update_chunk_preview)
         self.start_embedding_model_preload()
+        self._update_chunk_preview()
 
     _MAX_LIVE_LOG_ENTRIES = 500
     _LIVE_LOG_STATUS_ONLY = frozenset(
@@ -276,6 +423,7 @@ class SettingsTab(QWidget):
         self.embedding_status.setText(
             f"Ready: {load.model_name} ({load.dimensions} dims, {load.normalization_mode})"
         )
+        self._update_chunk_preview()
 
     def _on_embedding_model_preload_failed(self, exc: BaseException) -> None:
         self._embedding_model_ready = False
@@ -411,6 +559,135 @@ class SettingsTab(QWidget):
             details={"api_base_url": nim.api_base_url, "model": nim.model},
         )
 
+    def set_dataset(self, dataset_id: int | None) -> None:
+        self.dataset_id = dataset_id
+        self.refresh_context_budget_readout()
+
+    def refresh_context_budget_readout(self) -> None:
+        from message_evidence_workstation.config.settings import AnswerSettings
+        from message_evidence_workstation.search.conversational_answer import (
+            build_dataset_transcript,
+            resolve_answer_budget,
+        )
+
+        model_id = self.nim_model.currentText().strip() or self.settings.nim.model or "unknown-model"
+        provider_metadata = self.settings.nim_model_metadata.get(model_id, {})
+        answer_settings = AnswerSettings(
+            answer_strategy=str(self.answer_strategy.currentData() or "auto"),
+            whole_transcript_max_chars=int(self.whole_transcript_max_chars.value()),
+            session_gap_minutes=int(self.answer_session_gap_minutes.value()),
+            max_inspected_sessions=int(self.max_inspected_sessions.value()),
+            transcript_window_padding=int(self.transcript_window_padding.value()),
+            context_window_override_tokens=int(self.context_window_override_tokens.value()),
+            context_safety_ratio=float(self.context_safety_ratio.value()),
+            reserved_output_tokens=int(self.reserved_output_tokens.value()),
+            prompt_overhead_tokens=int(self.prompt_overhead_tokens.value()),
+            window_target_tokens=int(self.window_target_tokens.value()),
+            window_overlap_messages=int(self.window_overlap_messages.value()),
+        )
+        transcript_tokens = "n/a"
+        auto_decision = "n/a"
+        if self.dataset_id is not None:
+            transcript = build_dataset_transcript(self.conn, self.dataset_id)
+            budget = resolve_answer_budget(
+                transcript,
+                answer_settings,
+                model_id,
+                provider_metadata=provider_metadata,
+            )
+            transcript_tokens = (
+                f"{budget.transcript_tokens} ({budget.transcript_token_method})"
+            )
+            auto_decision = budget.decision
+            usable_input = budget.usable_input_tokens
+            context_window = budget.context_window_tokens
+            context_source = budget.context_source
+            if context_source == "default":
+                context_source = "safe default (override in settings if needed)"
+        else:
+            from message_evidence_workstation.nim.model_context import resolve_model_context
+
+            model_context = resolve_model_context(
+                model_id,
+                provider_metadata=provider_metadata,
+                user_override_tokens=(
+                    answer_settings.context_window_override_tokens
+                    if answer_settings.context_window_override_tokens > 0
+                    else None
+                ),
+            )
+            context_window = model_context.context_window_tokens
+            context_source = (
+                "safe default (override in settings if needed)"
+                if model_context.source == "default"
+                else model_context.source
+            )
+            safety_ratio = max(0.25, min(0.90, answer_settings.context_safety_ratio))
+            usable_input = max(
+                1000,
+                int(context_window * safety_ratio)
+                - answer_settings.reserved_output_tokens
+                - answer_settings.prompt_overhead_tokens,
+            )
+        self.context_budget_readout.setText(
+            "\n".join(
+                [
+                    f"Selected answer model: {model_id or '(not set)'}",
+                    f"Context window tokens: {context_window}",
+                    f"Context source: {context_source}",
+                    f"Usable input budget: {usable_input}",
+                    f"Reserved output tokens: {answer_settings.reserved_output_tokens}",
+                    f"Prompt overhead tokens: {answer_settings.prompt_overhead_tokens}",
+                    f"Transcript token estimate: {transcript_tokens}",
+                    f"Auto mode decision: {auto_decision}",
+                ]
+            )
+        )
+
+    def _save_answer_settings(self) -> None:
+        self.settings.answer.answer_strategy = str(
+            self.answer_strategy.currentData() or "auto"
+        )
+        self.settings.answer.whole_transcript_max_chars = int(self.whole_transcript_max_chars.value())
+        self.settings.answer.session_gap_minutes = int(self.answer_session_gap_minutes.value())
+        self.settings.answer.max_inspected_sessions = int(self.max_inspected_sessions.value())
+        self.settings.answer.transcript_window_padding = int(self.transcript_window_padding.value())
+        self.settings.answer.context_window_override_tokens = int(
+            self.context_window_override_tokens.value()
+        )
+        self.settings.answer.context_safety_ratio = float(self.context_safety_ratio.value())
+        self.settings.answer.reserved_output_tokens = int(self.reserved_output_tokens.value())
+        self.settings.answer.prompt_overhead_tokens = int(self.prompt_overhead_tokens.value())
+        self.settings.answer.window_target_tokens = int(self.window_target_tokens.value())
+        self.settings.answer.window_overlap_messages = int(self.window_overlap_messages.value())
+        save_settings(self.settings)
+        self.refresh_context_budget_readout()
+        self.logger.info(
+            component="ui.settings_tab",
+            operation="answer_settings_saved",
+            message="Conversational answer settings saved",
+            details={
+                "answer_strategy": self.settings.answer.answer_strategy,
+                "whole_transcript_max_chars": self.settings.answer.whole_transcript_max_chars,
+            },
+        )
+
+    def _rebuild_transcript_sessions(self) -> None:
+        if self.dataset_id is None:
+            self.embedding_status.setText("Load a dataset before rebuilding transcript sessions.")
+            return
+        from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
+
+        sessions = rebuild_dataset_sessions(
+            self.conn,
+            self.logger,
+            self.dataset_id,
+            gap_minutes=int(self.answer_session_gap_minutes.value()),
+        )
+        self.embedding_status.setText(
+            f"Rebuilt {len(sessions)} transcript session(s) for dataset {self.dataset_id}."
+        )
+
     def _persist_nim_model_selection(self) -> None:
         model = self.nim_model.currentText().strip()
         if not model:
@@ -461,7 +738,12 @@ class SettingsTab(QWidget):
             if model_list and not selected:
                 self.nim_model.setCurrentText(model_list[0].id)
             self.settings.nim.manual_model_entry_enabled = False
+            self.settings.nim_model_metadata = {
+                model.id: dict(model.metadata) for model in model_list
+            }
+            save_settings(self.settings)
             self._persist_nim_model_selection()
+            self.refresh_context_budget_readout()
             self.embedding_status.setText(f"NIM model list refreshed ({len(model_list)} models)")
             self.logger.info(
                 component="ui.settings_tab",
@@ -585,6 +867,61 @@ class SettingsTab(QWidget):
             from message_evidence_workstation.embeddings.index_jobs import mark_indexes_stale_for_model_change
 
             mark_indexes_stale_for_model_change(self.conn, self.logger, self.dataset_id, model_id)
+        self._update_chunk_preview()
+
+    def _current_chunking_config(self):
+        from message_evidence_workstation.embeddings.chunking import ChunkingConfig
+
+        return ChunkingConfig(
+            max_chars=int(self.chunk_max_chars.value()),
+            semantic_similarity_threshold=float(self.chunk_similarity_threshold.value()),
+            session_gap_hours=float(self.chunk_session_gap_hours.value()),
+            use_semantic_boundaries=True,
+            split_on_date_change=True,
+        )
+
+    def _on_chunking_controls_changed(self, *_args: object) -> None:
+        config = self._current_chunking_config()
+        self.settings.chunking = {
+            "max_chars": config.max_chars,
+            "semantic_similarity_threshold": config.semantic_similarity_threshold,
+            "session_gap_hours": config.session_gap_hours,
+            "use_semantic_boundaries": config.use_semantic_boundaries,
+            "split_on_date_change": config.split_on_date_change,
+        }
+        save_settings(self.settings)
+        if hasattr(self, "_chunk_preview_timer"):
+            self._chunk_preview_timer.start(150)
+
+    def _update_chunk_preview(self) -> None:
+        if self.dataset_id is None:
+            self.chunk_preview_label.setText("Load a dataset to preview chunk counts.")
+            return
+        try:
+            from message_evidence_workstation.embeddings.chunking import count_dataset_chunks, message_vector_count
+
+            message_count = int(
+                self.conn.execute(
+                    "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
+                    (self.dataset_id,),
+                ).fetchone()[0]
+            )
+            vector_count = message_vector_count(self.conn, self.dataset_id)
+            if vector_count < message_count:
+                self.chunk_preview_label.setText(
+                    f"Build message embeddings first for semantic chunking "
+                    f"({vector_count}/{message_count} message vectors ready)."
+                )
+                return
+            config = self._current_chunking_config()
+            chunk_count = count_dataset_chunks(self.conn, self.dataset_id, config=config)
+            self.chunk_preview_label.setText(
+                f"{chunk_count} chunks from {message_count} messages | "
+                f"threshold={config.semantic_similarity_threshold:.2f}, "
+                f"gap={config.session_gap_hours:g}h, max={config.max_chars} chars"
+            )
+        except Exception as exc:
+            self.chunk_preview_label.setText(f"Chunk preview failed: {exc}")
 
     def _start_index_job(self, granularity: str, *, force_restart: bool = False) -> None:
         if self.dataset_id is None:
@@ -605,6 +942,24 @@ class SettingsTab(QWidget):
         if spec is None:
             self.embedding_status.setText("Unknown embedding model selection.")
             return
+        chunking_config = None
+        if granularity == "chunk":
+            from message_evidence_workstation.embeddings.chunking import message_vector_count
+
+            message_count = int(
+                self.conn.execute(
+                    "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
+                    (self.dataset_id,),
+                ).fetchone()[0]
+            )
+            vector_count = message_vector_count(self.conn, self.dataset_id)
+            if vector_count < message_count:
+                self.embedding_status.setText(
+                    f"Build message embeddings first ({vector_count}/{message_count} message vectors ready)."
+                )
+                self._update_chunk_preview()
+                return
+            chunking_config = self._current_chunking_config().to_metadata()
         self.build_message_index_button.setEnabled(False)
         self.restart_message_index_button.setEnabled(False)
         self.build_chunk_index_button.setEnabled(False)
@@ -617,7 +972,11 @@ class SettingsTab(QWidget):
             component="ui.settings_tab",
             operation="embedding_index_build_requested",
             message=f"{action} {granularity} embedding index for model {model_id}",
-            details={"granularity": granularity, "force_restart": force_restart},
+            details={
+                "granularity": granularity,
+                "force_restart": force_restart,
+                "chunking_config": chunking_config,
+            },
             dataset_id=self.dataset_id,
         )
 
@@ -628,6 +987,7 @@ class SettingsTab(QWidget):
             adapter_key=spec.adapter_key,
             model_id=spec.model_id,
             force_restart=force_restart,
+            chunking_config=chunking_config or {},
         )
 
         def on_success(result: object) -> None:
@@ -659,6 +1019,7 @@ class SettingsTab(QWidget):
                 )
             else:
                 self.embedding_status.setText(f"{granularity} index failed: {build.error}")
+            self._update_chunk_preview()
             trace("settings_tab", "index_build_on_success_exit", granularity=granularity)
 
         def on_error(exc: BaseException) -> None:

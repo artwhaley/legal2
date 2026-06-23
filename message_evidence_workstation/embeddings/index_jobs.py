@@ -10,9 +10,12 @@ from typing import Any, Iterator
 
 from message_evidence_workstation.embeddings.adapters import EmbeddingAdapter, EmbeddingAdapterInfo
 from message_evidence_workstation.embeddings.chunking import (
+    ChunkingConfig,
     MessageChunkSpec,
+    config_from_mapping,
     count_dataset_chunks,
     iter_dataset_chunks,
+    message_vector_count,
 )
 from message_evidence_workstation.embeddings.sqlite_vec_backend import (
     CHUNK_VEC_TABLE,
@@ -92,6 +95,21 @@ def _get_latest_metadata(
         """,
         (dataset_id, granularity, model_name),
     ).fetchone()
+
+
+def _metadata_chunking_config_matches(row: sqlite3.Row | None, chunking_config: dict[str, Any] | None) -> bool:
+    if chunking_config is None or row is None:
+        return True
+    try:
+        stored = json.loads(row["chunking_config_json"] or "{}")
+    except json.JSONDecodeError:
+        stored = {}
+    if not isinstance(stored, dict):
+        stored = {}
+    stored.pop("build_progress", None)
+    expected = dict(chunking_config)
+    expected.pop("build_progress", None)
+    return stored == expected
 
 
 def _message_count(conn: sqlite3.Connection, dataset_id: int) -> int:
@@ -176,11 +194,14 @@ def _should_resume_build(
     granularity: str,
     model_name: str,
     adapter_info: EmbeddingAdapterInfo,
+    chunking_config: dict[str, Any] | None = None,
 ) -> tuple[bool, int]:
     row = _get_latest_metadata(conn, dataset_id, granularity, model_name)
     if row is None:
         return False, 0
     if row["status"] == "stale":
+        return False, 0
+    if granularity == "chunk" and not _metadata_chunking_config_matches(row, chunking_config):
         return False, 0
     if row["dimensions"] != adapter_info.dimensions:
         return False, 0
@@ -205,17 +226,21 @@ def _index_build_already_complete(
     model_name: str,
     adapter_info: EmbeddingAdapterInfo,
     force_restart: bool,
+    chunking_config: ChunkingConfig | None = None,
 ) -> IndexBuildResult | None:
     if force_restart:
         return None
     row = get_ready_index(conn, dataset_id, granularity, model_name)
     if row is None or row["dimensions"] != adapter_info.dimensions:
         return None
+    chunking_metadata = chunking_config.to_metadata() if chunking_config is not None else None
+    if granularity == "chunk" and not _metadata_chunking_config_matches(row, chunking_metadata):
+        return None
     if granularity == "message":
         total = _message_count(conn, dataset_id)
         embedded = len(_embedded_message_ids(conn, dataset_id))
     else:
-        total = count_dataset_chunks(conn, dataset_id, max_chars=CHUNK_MAX_CHARS)
+        total = count_dataset_chunks(conn, dataset_id, config=chunking_config)
         embedded = len(_embedded_chunk_checksums(conn, dataset_id))
     if total <= 0 or embedded < total:
         return None
@@ -430,7 +455,8 @@ def get_ready_index(
 ) -> sqlite3.Row | None:
     return conn.execute(
         """
-        SELECT embedding_index_id, dimensions, status, model_name, message_count, chunk_count, last_error
+        SELECT embedding_index_id, dimensions, status, model_name, message_count, chunk_count,
+               chunking_config_json, last_error
         FROM embedding_index_metadata
         WHERE dataset_id = ? AND granularity = ? AND model_name = ? AND status = 'ready'
         ORDER BY embedding_index_id DESC
@@ -713,10 +739,16 @@ def build_chunk_embedding_index(
     adapter: EmbeddingAdapter,
     adapter_info: EmbeddingAdapterInfo,
     force_restart: bool = False,
+    chunking_config: ChunkingConfig | dict[str, Any] | None = None,
 ) -> IndexBuildResult:
     started = time.perf_counter()
     model_name = adapter_info.model_name
-    chunking_config = {"max_chars": CHUNK_MAX_CHARS, "overlap_policy": "none"}
+    resolved_chunking_config = (
+        chunking_config
+        if isinstance(chunking_config, ChunkingConfig)
+        else config_from_mapping(chunking_config, max_chars=CHUNK_MAX_CHARS)
+    )
+    chunking_metadata = resolved_chunking_config.to_metadata()
     try:
         load_sqlite_vec(conn)
         ensure_chunk_metadata_schema(conn)
@@ -731,6 +763,34 @@ def build_chunk_embedding_index(
             dimensions=adapter_info.dimensions,
             error=f"sqlite-vec init failed: {exc}",
         )
+    if resolved_chunking_config.use_semantic_boundaries:
+        total_messages = _message_count(conn, dataset_id)
+        ready_message_vectors = message_vector_count(conn, dataset_id)
+        if ready_message_vectors < total_messages:
+            elapsed_ms = int((time.perf_counter() - started) * 1000)
+            error = (
+                "Build message embeddings before semantic chunk embeddings "
+                f"({ready_message_vectors}/{total_messages} message vectors ready)."
+            )
+            logger.warning(
+                component="embeddings.index_jobs",
+                operation="chunk_index_requires_message_vectors",
+                message=error,
+                details={
+                    "message_count": total_messages,
+                    "message_vector_count": ready_message_vectors,
+                    "chunking_config": chunking_metadata,
+                },
+                dataset_id=dataset_id,
+            )
+            return IndexBuildResult(
+                success=False,
+                count=0,
+                elapsed_ms=elapsed_ms,
+                model_name=model_name,
+                dimensions=adapter_info.dimensions,
+                error=error,
+            )
     if force_restart:
         resume = False
         already_embedded = 0
@@ -742,6 +802,7 @@ def build_chunk_embedding_index(
             model_name=model_name,
             adapter_info=adapter_info,
             force_restart=force_restart,
+            chunking_config=resolved_chunking_config,
         )
         if complete is not None:
             logger.info(
@@ -760,17 +821,22 @@ def build_chunk_embedding_index(
             )
             return complete
         resume, already_embedded = _should_resume_build(
-            conn, dataset_id, "chunk", model_name, adapter_info
+            conn,
+            dataset_id,
+            "chunk",
+            model_name,
+            adapter_info,
+            chunking_metadata,
         )
 
     logger.info(
         component="embeddings.index_jobs",
         operation="chunk_index_count_start",
         message="Counting chunks (per-thread streaming)…",
-        details={"dataset_id": dataset_id, "max_chars": CHUNK_MAX_CHARS},
+        details={"dataset_id": dataset_id, **chunking_metadata},
         dataset_id=dataset_id,
     )
-    total_chunks = count_dataset_chunks(conn, dataset_id, max_chars=CHUNK_MAX_CHARS)
+    total_chunks = count_dataset_chunks(conn, dataset_id, config=resolved_chunking_config)
 
     logger.info(
         component="embeddings.index_jobs",
@@ -782,7 +848,7 @@ def build_chunk_embedding_index(
         details={
             "dataset_id": dataset_id,
             "model_name": model_name,
-            "chunking_config": chunking_config,
+            "chunking_config": chunking_metadata,
             "total_chunks": total_chunks,
             "batch_size": BATCH_SIZE,
             "resume": resume,
@@ -798,7 +864,7 @@ def build_chunk_embedding_index(
         adapter_info=adapter_info,
         resume=resume,
         already_embedded=already_embedded,
-        chunking_config=chunking_config,
+        chunking_config=chunking_metadata,
     )
     try:
         if not resume:
@@ -809,7 +875,7 @@ def build_chunk_embedding_index(
         if embedded_checksums:
             pending_total = sum(
                 1
-                for chunk in iter_dataset_chunks(conn, dataset_id, max_chars=CHUNK_MAX_CHARS)
+                for chunk in iter_dataset_chunks(conn, dataset_id, config=resolved_chunking_config)
                 if chunk.text_checksum not in embedded_checksums
             )
         else:
@@ -836,7 +902,7 @@ def build_chunk_embedding_index(
         batch_index = 0
         failures = 0
         pending_batch: list[MessageChunkSpec] = []
-        for chunk in iter_dataset_chunks(conn, dataset_id, max_chars=CHUNK_MAX_CHARS):
+        for chunk in iter_dataset_chunks(conn, dataset_id, config=resolved_chunking_config):
             if chunk.text_checksum in embedded_checksums:
                 continue
             pending_batch.append(chunk)
@@ -909,7 +975,7 @@ def build_chunk_embedding_index(
                 message_count=0,
                 chunk_count=embedded,
                 progress=progress,
-                chunking_config=chunking_config,
+                chunking_config=chunking_metadata,
             )
             logger.info(
                 component="embeddings.index_jobs",
@@ -994,7 +1060,7 @@ def build_chunk_embedding_index(
                     message_count=0,
                     chunk_count=embedded,
                     progress=progress,
-                    chunking_config=chunking_config,
+                    chunking_config=chunking_metadata,
                 )
 
         stored = conn.execute(
@@ -1012,7 +1078,7 @@ def build_chunk_embedding_index(
             adapter_info=adapter_info,
             status="ready",
             chunk_count=embedded,
-            chunking_config=chunking_config,
+            chunking_config=chunking_metadata,
         )
         logger.info(
             component="embeddings.index_jobs",

@@ -63,7 +63,7 @@ def test_html_contains_messages_and_styles(tmp_path) -> None:
     assert context is not None
     html_text = render_conversation_html(context, include_audit=False)
     assert "Allergy paperwork" in html_text
-    assert "Jane Doe" in html_text
+    assert "Art and Jane" in html_text
     assert "msg_001" in html_text
     assert "class='message hit'" in html_text or 'class="message hit"' in html_text
     out = tmp_path / "preview.html"

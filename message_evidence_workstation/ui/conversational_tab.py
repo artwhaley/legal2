@@ -1,4 +1,4 @@
-"""Conversational search tab — planner, harness, and synthesis (T17–T18)."""
+"""Conversational search tab — coverage-aware answering and retrieval fallback."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -25,10 +26,31 @@ from PySide6.QtWidgets import (
 from message_evidence_workstation.config.settings import load_settings, nim_settings_for_client
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db import repositories
+from message_evidence_workstation.db.evidence_blocks import (
+    create_evidence_block_from_conversational_candidate,
+)
 from message_evidence_workstation.domain.constants import CREATED_BY_CONVERSATIONAL_SEARCH
 from message_evidence_workstation.embeddings.model_registry import get_model_spec
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.nim.client import NimClient, NimClientError, nim_error_user_message
+from message_evidence_workstation.search.conversational_answer import (
+    ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+    ANSWER_MODE_RETRIEVAL_FALLBACK,
+    ANSWER_MODE_SESSION_COVERAGE,
+    ANSWER_MODE_WHOLE_TRANSCRIPT,
+    ANSWER_STRATEGY_RETRIEVAL_FALLBACK,
+    ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
+    CandidateEvidenceBlockDraft,
+    ConversationalAnswerParseError,
+    ConversationalAnswerResult,
+    build_dataset_transcript,
+    log_answer_budget_resolved,
+    resolve_answer_budget,
+    resolve_answer_mode,
+    run_exhaustive_window_scan_answer,
+    run_whole_transcript_answer,
+    run_session_coverage_answer,
+)
 from message_evidence_workstation.search.synthesis import (
     ConversationalSynthesisResult,
     SynthesisCandidate,
@@ -46,6 +68,8 @@ from message_evidence_workstation.ui.embedding_worker import EmbeddingJobSpec, r
 
 
 class ConversationalTab(QWidget):
+    message_citation_selected = Signal(str, str)
+
     def __init__(
         self,
         conn: sqlite3.Connection,
@@ -62,6 +86,7 @@ class ConversationalTab(QWidget):
         self._sort_index_by_message: dict[str, int] = {}
         self._request_generation = 0
         self._synthesis_candidates: list[SynthesisCandidate] = []
+        self._answer_candidates: list[CandidateEvidenceBlockDraft] = []
         self._category_refresh_handler: Callable[[], None] | None = None
 
         layout = QVBoxLayout(self)
@@ -83,16 +108,20 @@ class ConversationalTab(QWidget):
         self.answer_view.setReadOnly(True)
         self.answer_view.setPlaceholderText("Synthesized answer appears here.")
         right_layout.addWidget(self.answer_view)
-        right_layout.addWidget(QLabel("Search harness"))
+        right_layout.addWidget(QLabel("Cited message IDs"))
+        self.citations_list = QListWidget()
+        self.citations_list.itemDoubleClicked.connect(self._on_citation_activated)
+        right_layout.addWidget(self.citations_list)
+        right_layout.addWidget(QLabel("Search harness / coverage"))
         self.plan_view = QPlainTextEdit()
         self.plan_view.setReadOnly(True)
         right_layout.addWidget(self.plan_view)
-        right_layout.addWidget(QLabel("Candidate conversations"))
+        right_layout.addWidget(QLabel("Candidate evidence blocks"))
         self.results_list = QListWidget()
         self.results_list.currentRowChanged.connect(self._on_candidate_row_changed)
         right_layout.addWidget(self.results_list)
         candidate_actions = QHBoxLayout()
-        self.add_candidate_button = QPushButton("Add selected to category…")
+        self.add_candidate_button = QPushButton("Save selected evidence block")
         self.add_candidate_button.setEnabled(False)
         self.add_candidate_button.clicked.connect(self._add_selected_candidate)
         candidate_actions.addWidget(self.add_candidate_button)
@@ -163,8 +192,71 @@ class ConversationalTab(QWidget):
         lines.append(f"Grouped results: {len(execution.grouped_results)}")
         return "\n".join(lines)
 
-    def _show_synthesis(self, synthesis: ConversationalSynthesisResult) -> None:
-        self.answer_view.setPlainText(synthesis.answer)
+    def _format_answer_result(self, result: ConversationalAnswerResult) -> str:
+        lines = [
+            f"Mode: {result.mode}",
+            f"Messages considered: {result.coverage_summary.messages_considered}",
+        ]
+        if result.coverage_summary.sessions_considered:
+            lines.append(f"Sessions considered: {result.coverage_summary.sessions_considered}")
+            lines.append(f"Sessions inspected: {result.coverage_summary.sessions_inspected}")
+            lines.append(f"Sessions skipped: {result.coverage_summary.sessions_skipped}")
+        if result.coverage_summary.retrieval_assists:
+            lines.append("Retrieval assists:")
+            for assist in result.coverage_summary.retrieval_assists[:10]:
+                lines.append(
+                    f"- {assist.get('session_id')} | {assist.get('message_id')} | "
+                    f"{assist.get('retrieval_method')}"
+                )
+        if result.cited_message_ids:
+            lines.append(f"Cited message IDs: {', '.join(result.cited_message_ids)}")
+        if result.uncertainties:
+            lines.append("Uncertainties:")
+            lines.extend(f"- {item}" for item in result.uncertainties)
+        lines.append("")
+        lines.append(result.answer)
+        return "\n".join(lines)
+
+    def _show_answer_result(self, result: ConversationalAnswerResult) -> None:
+        self.answer_view.setPlainText(self._format_answer_result(result))
+        self.citations_list.clear()
+        for message_id in result.cited_message_ids:
+            row = self.conn.execute(
+                """
+                SELECT source_thread_id
+                FROM message
+                WHERE dataset_id = ? AND message_id = ?
+                """,
+                (self.dataset_id, message_id),
+            ).fetchone()
+            thread_id = str(row["source_thread_id"]) if row else ""
+            item = QListWidgetItem(f"{message_id} | {thread_id}")
+            item.setData(Qt.ItemDataRole.UserRole, message_id)
+            item.setData(Qt.ItemDataRole.UserRole + 1, thread_id)
+            self.citations_list.addItem(item)
+        self._answer_candidates = list(result.candidate_evidence_blocks)
+        self._synthesis_candidates = []
+        self.results_list.clear()
+        self.add_candidate_button.setEnabled(False)
+        for candidate in self._answer_candidates:
+            label = f"{candidate.title} | {candidate.source_thread_id} | {candidate.core_message_id}"
+            item = QListWidgetItem(label)
+            item.setToolTip(candidate.summary)
+            self.results_list.addItem(item)
+        if self._answer_candidates:
+            self.results_list.setCurrentRow(0)
+
+    def _on_citation_activated(self, item: QListWidgetItem) -> None:
+        message_id = item.data(Qt.ItemDataRole.UserRole)
+        thread_id = item.data(Qt.ItemDataRole.UserRole + 1)
+        if isinstance(message_id, str) and isinstance(thread_id, str) and thread_id:
+            self.message_citation_selected.emit(message_id, thread_id)
+
+    def _show_synthesis(self, synthesis: ConversationalSynthesisResult, *, mode: str) -> None:
+        header = f"Mode: {mode} (lower-recall retrieval fallback)\n\n"
+        self.answer_view.setPlainText(header + synthesis.answer)
+        self.citations_list.clear()
+        self._answer_candidates = []
         self._synthesis_candidates = [
             candidate for candidate in synthesis.candidates if candidate.group is not None
         ]
@@ -185,17 +277,55 @@ class ConversationalTab(QWidget):
             self.results_list.setCurrentRow(0)
 
     def _on_candidate_row_changed(self, row: int) -> None:
-        self.add_candidate_button.setEnabled(
+        has_answer_candidate = 0 <= row < len(self._answer_candidates)
+        has_synthesis_candidate = (
             row >= 0
             and row < len(self._synthesis_candidates)
             and self._synthesis_candidates[row].group is not None
         )
+        self.add_candidate_button.setEnabled(has_answer_candidate or has_synthesis_candidate)
 
     def _add_selected_candidate(self) -> None:
         row = self.results_list.currentRow()
-        if row < 0 or row >= len(self._synthesis_candidates):
+        if row < 0 or self.dataset_id is None:
             return
-        candidate = self._synthesis_candidates[row]
+        if 0 <= row < len(self._answer_candidates):
+            self._save_answer_candidate(self._answer_candidates[row])
+            return
+        if row < len(self._synthesis_candidates):
+            self._add_synthesis_candidate(self._synthesis_candidates[row])
+
+    def _save_answer_candidate(self, candidate: CandidateEvidenceBlockDraft) -> None:
+        if self.dataset_id is None:
+            return
+        messages = repositories.list_messages_for_thread(
+            self.conn,
+            self.dataset_id,
+            candidate.source_thread_id,
+        )
+        ordered_ids = [message.message_id for message in messages]
+        create_evidence_block_from_conversational_candidate(
+            self.conn,
+            self.logger,
+            dataset_id=self.dataset_id,
+            source_thread_id=candidate.source_thread_id,
+            ordered_message_ids=ordered_ids,
+            title=candidate.title,
+            summary=candidate.summary,
+            core_message_id=candidate.core_message_id,
+            leading_context_start_message_id=candidate.leading_context_start_message_id,
+            relevant_start_message_id=candidate.relevant_start_message_id,
+            relevant_end_message_id=candidate.relevant_end_message_id,
+            trailing_context_end_message_id=candidate.trailing_context_end_message_id,
+            highlighted_message_ids=list(candidate.highlighted_message_ids),
+        )
+        self.status_label.setText(
+            f"Saved evidence block '{candidate.title}' to Uncategorized."
+        )
+        if self._category_refresh_handler is not None:
+            self._category_refresh_handler()
+
+    def _add_synthesis_candidate(self, candidate: SynthesisCandidate) -> None:
         group = candidate.group
         if group is None or self.dataset_id is None:
             return
@@ -324,7 +454,7 @@ class ConversationalTab(QWidget):
             if generation != self._request_generation:
                 return
             synthesis = result  # type: ignore[assignment]
-            self._show_synthesis(synthesis)
+            self._show_synthesis(synthesis, mode=ANSWER_MODE_RETRIEVAL_FALLBACK)
             self._append_chat("Assistant", synthesis.answer)
             self._append_chat("Planner", synthesis.strategy_summary)
             self.status_label.setText(
@@ -378,15 +508,423 @@ class ConversationalTab(QWidget):
         self.send_button.setEnabled(False)
         self.status_label.setText("Planning search strategy…")
         self.answer_view.clear()
+        self.citations_list.clear()
         self._synthesis_candidates = []
+        self._answer_candidates = []
 
         self._request_generation += 1
         generation = self._request_generation
         dataset_id = self.dataset_id
         db_path = self.db_path
+        settings = load_settings()
+        answer_settings = settings.answer
+        nim = nim_settings_for_client(settings)
+        provider_metadata = settings.nim_model_metadata.get(nim.model, {})
+
+        transcript = build_dataset_transcript(self.conn, dataset_id)
+        budget = resolve_answer_budget(
+            transcript,
+            answer_settings,
+            nim.model or "unknown-model",
+            provider_metadata=provider_metadata,
+        )
+        log_answer_budget_resolved(
+            self.logger,
+            budget=budget,
+            dataset_id=dataset_id,
+            strategy=answer_settings.answer_strategy,
+            target_tokens=answer_settings.window_target_tokens,
+            overlap_messages=answer_settings.window_overlap_messages,
+        )
+        if budget.decision == ANSWER_MODE_WHOLE_TRANSCRIPT:
+            if (
+                answer_settings.answer_strategy == ANSWER_STRATEGY_WHOLE_TRANSCRIPT
+                and budget.transcript_tokens > budget.usable_input_tokens
+            ):
+                self.logger.warning(
+                    component="ui.conversational_tab",
+                    operation="whole_transcript_selected",
+                    message="Whole transcript requested but token budget exceeded; routing to exhaustive scan",
+                    details={
+                        "transcript_tokens": budget.transcript_tokens,
+                        "usable_input_tokens": budget.usable_input_tokens,
+                    },
+                    dataset_id=dataset_id,
+                )
+            else:
+                self.logger.info(
+                    component="ui.conversational_tab",
+                    operation="whole_transcript_selected",
+                    message="Selected whole transcript answering mode",
+                    details={
+                        "transcript_tokens": budget.transcript_tokens,
+                        "usable_input_tokens": budget.usable_input_tokens,
+                    },
+                    dataset_id=dataset_id,
+                )
+        elif budget.decision == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN:
+            self.logger.info(
+                component="ui.conversational_tab",
+                operation="exhaustive_window_scan_selected",
+                message="Selected exhaustive window scan answering mode",
+                details={
+                    "transcript_tokens": budget.transcript_tokens,
+                    "usable_input_tokens": budget.usable_input_tokens,
+                },
+                dataset_id=dataset_id,
+            )
+        answer_mode = budget.decision
+        if answer_mode == ANSWER_MODE_WHOLE_TRANSCRIPT:
+            self.status_label.setText("Answering from full transcript…")
+            self._run_whole_transcript_answer(
+                generation,
+                query,
+                dataset_id,
+                db_path,
+                transcript,
+                answer_settings,
+            )
+            return
+        if answer_mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN:
+            self.status_label.setText("Answering with exhaustive transcript window scan...")
+            self._ensure_message_embeddings_then(
+                generation,
+                dataset_id,
+                db_path,
+                lambda: self._run_exhaustive_window_scan_answer(
+                    generation,
+                    query,
+                    dataset_id,
+                    db_path,
+                    answer_settings,
+                ),
+            )
+            return
+        if answer_mode == ANSWER_MODE_SESSION_COVERAGE:
+            self.status_label.setText("Answering with session summary triage...")
+            self._ensure_message_embeddings_then(
+                generation,
+                dataset_id,
+                db_path,
+                lambda: self._run_session_coverage_answer(
+                    generation,
+                    query,
+                    dataset_id,
+                    db_path,
+                    answer_settings,
+                ),
+            )
+            return
+        if answer_mode == ANSWER_MODE_RETRIEVAL_FALLBACK or answer_settings.answer_strategy == ANSWER_STRATEGY_RETRIEVAL_FALLBACK:
+            self._run_retrieval_fallback(generation, query, dataset_id, db_path)
+            return
+
+    def _ensure_message_embeddings_then(
+        self,
+        generation: int,
+        dataset_id: int,
+        db_path: Path,
+        continuation: Callable[[], None],
+    ) -> None:
+        from message_evidence_workstation.embeddings.chunking import message_vector_count
+
+        message_count = int(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
+                (dataset_id,),
+            ).fetchone()[0]
+        )
+        vector_count = message_vector_count(self.conn, dataset_id)
+        if vector_count >= message_count:
+            continuation()
+            return
+
+        embedding_model = load_settings().embedding_model
+        spec = get_model_spec(embedding_model)
+        if spec is None:
+            self.status_label.setText(
+                "Cannot build message embeddings automatically: unknown embedding model."
+            )
+            self.send_button.setEnabled(True)
+            return
+
+        self.status_label.setText(
+            f"Building message embeddings for semantic session boundaries "
+            f"({vector_count}/{message_count} ready)..."
+        )
+        job = EmbeddingJobSpec(
+            job_type="message_index",
+            db_path=db_path,
+            dataset_id=dataset_id,
+            adapter_key=spec.adapter_key,
+            model_id=spec.model_id,
+        )
+
+        def on_success(result: object) -> None:
+            if generation != self._request_generation:
+                return
+            success = bool(getattr(result, "success", False))
+            count = int(getattr(result, "count", 0))
+            total = int(getattr(result, "total_target", message_count) or message_count)
+            if not success:
+                error = str(getattr(result, "error", "unknown embedding build failure"))
+                self.status_label.setText(f"Message embedding build failed: {error}")
+                self.answer_view.setPlainText(
+                    "Session-based answering needs message embeddings for semantic boundaries. "
+                    f"Embedding build failed after {count}/{total} messages: {error}"
+                )
+                self.send_button.setEnabled(True)
+                return
+            self.status_label.setText(
+                f"Message embeddings ready ({count}/{total}). Continuing answer..."
+            )
+            continuation()
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._request_generation:
+                return
+            message = f"Automatic message embedding build failed: {exc}"
+            self.status_label.setText(message)
+            self.answer_view.setPlainText(message)
+            self.logger.error(
+                component="ui.conversational_tab",
+                operation="auto_message_embeddings_failed",
+                message=message,
+                exc=exc,
+                dataset_id=dataset_id,
+            )
+            self.send_button.setEnabled(True)
+
+        run_embedding_job(self, job, on_success=on_success, on_error=on_error)
+
+    def _run_exhaustive_window_scan_answer(
+        self,
+        generation: int,
+        query: str,
+        dataset_id: int,
+        db_path: Path,
+        answer_settings,
+    ) -> None:
+        nim = nim_settings_for_client()
+        app_settings = load_settings()
+
+        def answer_work() -> ConversationalAnswerResult:
+            worker_conn = connect(db_path)
+            try:
+                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
+                client = NimClient(nim)
+                return run_exhaustive_window_scan_answer(
+                    worker_conn,
+                    worker_logger,
+                    client,
+                    user_query=query,
+                    dataset_id=dataset_id,
+                    transcript_window_padding=answer_settings.transcript_window_padding,
+                    session_gap_minutes=answer_settings.session_gap_minutes,
+                    answer_settings=answer_settings,
+                    model_id=nim.model,
+                    provider_metadata=app_settings.nim_model_metadata.get(nim.model, {}),
+                    max_tokens=answer_settings.reserved_output_tokens,
+                )
+            finally:
+                worker_conn.close()
+
+        def on_success(result: object) -> None:
+            if generation != self._request_generation:
+                return
+            answer = result  # type: ignore[assignment]
+            self._show_answer_result(answer)
+            coverage = answer.coverage_summary
+            self.plan_view.setPlainText(
+                f"Exhaustive window scan\n"
+                f"Sessions considered: {coverage.sessions_considered}\n"
+                f"Sessions inspected: {coverage.sessions_inspected}\n"
+                f"Windows inspected: {coverage.windows_inspected}\n"
+                f"Sessions skipped: {coverage.sessions_skipped}\n"
+                f"Messages in inspected windows: {coverage.messages_considered}"
+            )
+            self._append_chat("Assistant", answer.answer)
+            self.status_label.setText(
+                f"Answer complete - mode: {answer.mode}; "
+                f"{len(answer.candidate_evidence_blocks)} candidate block(s)."
+            )
+            self.send_button.setEnabled(True)
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._request_generation:
+                return
+            if isinstance(exc, ConversationalAnswerParseError):
+                message = f"Exhaustive window scan answer invalid: {exc}"
+            elif isinstance(exc, NimClientError):
+                message = f"NIM exhaustive window scan call failed: {nim_error_user_message(exc)}"
+            else:
+                message = f"Exhaustive window scan answer failed: {exc}"
+            self.status_label.setText(message)
+            self.answer_view.setPlainText(message)
+            self._append_chat("System", message)
+            self.logger.error(
+                component="ui.conversational_tab",
+                operation="exhaustive_window_scan_answer_failed",
+                message=message,
+                exc=exc,
+                dataset_id=self.dataset_id,
+            )
+            self.send_button.setEnabled(True)
+
+        run_background(self, answer_work, on_success=on_success, on_error=on_error)
+
+    def _run_session_coverage_answer(
+        self,
+        generation: int,
+        query: str,
+        dataset_id: int,
+        db_path: Path,
+        answer_settings,
+    ) -> None:
+        nim = nim_settings_for_client()
+
+        def answer_work() -> ConversationalAnswerResult:
+            worker_conn = connect(db_path)
+            try:
+                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
+                client = NimClient(nim)
+                return run_session_coverage_answer(
+                    worker_conn,
+                    worker_logger,
+                    client,
+                    user_query=query,
+                    dataset_id=dataset_id,
+                    max_inspected_sessions=answer_settings.max_inspected_sessions,
+                    transcript_window_padding=answer_settings.transcript_window_padding,
+                    session_gap_minutes=answer_settings.session_gap_minutes,
+                    max_tokens=answer_settings.reserved_output_tokens,
+                )
+            finally:
+                worker_conn.close()
+
+        def on_success(result: object) -> None:
+            if generation != self._request_generation:
+                return
+            answer = result  # type: ignore[assignment]
+            self._show_answer_result(answer)
+            coverage = answer.coverage_summary
+            self.plan_view.setPlainText(
+                f"Session-coverage answer\n"
+                f"Sessions considered: {coverage.sessions_considered}\n"
+                f"Sessions inspected: {coverage.sessions_inspected}\n"
+                f"Sessions skipped: {coverage.sessions_skipped}\n"
+                f"Messages in inspected windows: {coverage.messages_considered}"
+            )
+            self._append_chat("Assistant", answer.answer)
+            self.status_label.setText(
+                f"Answer complete — mode: {answer.mode}; "
+                f"{len(answer.candidate_evidence_blocks)} candidate block(s)."
+            )
+            self.send_button.setEnabled(True)
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._request_generation:
+                return
+            if isinstance(exc, ConversationalAnswerParseError):
+                message = f"Session coverage answer invalid: {exc}"
+            elif isinstance(exc, NimClientError):
+                message = f"NIM session coverage call failed: {nim_error_user_message(exc)}"
+            else:
+                message = f"Session coverage answer failed: {exc}"
+            self.status_label.setText(message)
+            self.answer_view.setPlainText(message)
+            self._append_chat("System", message)
+            self.logger.error(
+                component="ui.conversational_tab",
+                operation="session_coverage_answer_failed",
+                message=message,
+                exc=exc,
+                dataset_id=self.dataset_id,
+            )
+            self.send_button.setEnabled(True)
+
+        run_background(self, answer_work, on_success=on_success, on_error=on_error)
+
+    def _run_whole_transcript_answer(
+        self,
+        generation: int,
+        query: str,
+        dataset_id: int,
+        db_path: Path,
+        transcript,
+        answer_settings,
+    ) -> None:
+        nim = nim_settings_for_client()
+
+        def answer_work() -> ConversationalAnswerResult:
+            worker_conn = connect(db_path)
+            try:
+                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
+                client = NimClient(nim)
+                return run_whole_transcript_answer(
+                    worker_conn,
+                    worker_logger,
+                    client,
+                    user_query=query,
+                    dataset_id=dataset_id,
+                    transcript=transcript,
+                    max_tokens=answer_settings.reserved_output_tokens,
+                )
+            finally:
+                worker_conn.close()
+
+        def on_success(result: object) -> None:
+            if generation != self._request_generation:
+                return
+            answer = result  # type: ignore[assignment]
+            self._show_answer_result(answer)
+            self.plan_view.setPlainText(
+                f"Whole-transcript answer\n"
+                f"Messages considered: {answer.coverage_summary.messages_considered}\n"
+                f"Threads: {', '.join(answer.coverage_summary.source_thread_ids)}"
+            )
+            self._append_chat("Assistant", answer.answer)
+            self.status_label.setText(
+                f"Answer complete — mode: {answer.mode}; "
+                f"{len(answer.candidate_evidence_blocks)} candidate block(s)."
+            )
+            self.send_button.setEnabled(True)
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._request_generation:
+                return
+            if isinstance(exc, ConversationalAnswerParseError):
+                message = f"Answer output invalid: {exc}"
+            elif isinstance(exc, NimClientError):
+                message = f"NIM answer call failed: {nim_error_user_message(exc)}"
+            else:
+                message = f"Conversational answer failed: {exc}"
+            self.status_label.setText(message)
+            self.answer_view.setPlainText(message)
+            self._append_chat("System", message)
+            self.logger.error(
+                component="ui.conversational_tab",
+                operation="whole_transcript_answer_failed",
+                message=message,
+                exc=exc,
+                dataset_id=self.dataset_id,
+            )
+            self.send_button.setEnabled(True)
+
+        run_background(self, answer_work, on_success=on_success, on_error=on_error)
+
+    def _run_retrieval_fallback(
+        self,
+        generation: int,
+        query: str,
+        dataset_id: int,
+        db_path: Path,
+    ) -> None:
+        self.status_label.setText("Planning retrieval fallback (lower recall)…")
         sort_index = dict(self._sort_index_by_message)
         embedding_model = load_settings().embedding_model
         spec = get_model_spec(embedding_model)
+        nim = nim_settings_for_client()
 
         def plan_work() -> SearchPlannerPlan:
             worker_conn = connect(db_path)

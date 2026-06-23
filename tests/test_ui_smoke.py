@@ -65,10 +65,40 @@ def test_main_window_with_dataset(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
     context = bootstrap_app()
     window = MainWindow(context)
-    assert window.sidebar.thread_list.count() == 2
+    assert window.sidebar.thread_list.count() == 1
     assert window.tabs.count() == 6
     assert window.tabs.tabText(4) == "Setup / Settings"
     assert window.tabs.tabText(5) == "Transcript Widget"
+    assert window.settings_tab.chunk_similarity_threshold.value() >= 0.0
+    assert window.settings_tab.chunk_session_gap_hours.value() > 0.0
+    assert window.settings_tab.chunk_max_chars.value() >= 100
+    assert "message embeddings" in window.settings_tab.chunk_preview_label.text().lower()
+
+
+def test_settings_context_budget_readout_present(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
+    context = bootstrap_app()
+    window = MainWindow(context)
+    readout = window.settings_tab.context_budget_readout.text()
+    assert "Selected answer model" in readout
+    assert "Context window tokens" in readout
+    assert "Usable input budget" in readout
+    assert "Auto mode decision" in readout
+
+
+def test_settings_loads_answer_token_defaults(tmp_path) -> None:
+    from message_evidence_workstation.config.settings import AnswerSettings, load_settings
+
+    settings = load_settings()
+    assert isinstance(settings.answer, AnswerSettings)
+    assert settings.answer.context_safety_ratio == 0.70
+    assert settings.answer.reserved_output_tokens == 4096
+    assert settings.answer.window_target_tokens == 12000
 
 
 def test_sidebar_category_tree_shows_names_and_child_evidence_blocks(tmp_path, qapp, monkeypatch) -> None:
@@ -233,7 +263,7 @@ def test_simple_search_shows_transcript_for_selected_group(tmp_path, qapp, monke
     assert tab.results_list.count() >= 1
     assert "matching message(s)" in tab.results_list.item(0).text()
     assert tab.thread_view.header.text().startswith("Search context:")
-    assert tab.thread_view.message_list.count() == 3
+    assert tab.thread_view.message_list.count() == 100
     assert "allergy" in tab.thread_view.message_list.item(0).text().lower()
 
 
@@ -250,7 +280,7 @@ def test_transcript_widget_tab_updates_summary_when_state_changes(tmp_path, qapp
     assert tab.surface_tabs.count() == 2
     assert tab.surface_tabs.tabText(0) == "Existing Model/View"
     assert tab.surface_tabs.tabText(1) == "Gen2 Paper Transcript"
-    assert tab.thread_combo.count() == 2
+    assert tab.thread_combo.count() == 1
     assert "Context:" in tab.summary_label.text()
 
     tab._model.move_boundary("relevant_end", 2)

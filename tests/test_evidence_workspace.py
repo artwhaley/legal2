@@ -48,7 +48,7 @@ def test_import_into_workspace_loads_dataset_and_metadata(tmp_path, logger) -> N
     dataset_id = import_into_workspace(conn, logger, FIXTURE_DIR)
     assert dataset_id == 1
     row = conn.execute("SELECT COUNT(*) AS count FROM message WHERE dataset_id = ?", (dataset_id,)).fetchone()
-    assert int(row["count"]) == 5
+    assert int(row["count"]) == 100
     metadata = get_workspace_metadata(conn)
     assert metadata["format_id"] == WORKSPACE_FORMAT_ID
     assert "updated_at" in metadata

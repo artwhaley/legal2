@@ -55,7 +55,7 @@ def test_allergies_finds_allergy(fts_db) -> None:
 
 def test_malformed_partial_query_returns_empty(fts_db) -> None:
     conn, logger, dataset_id = fts_db
-    hits = fts.search_partial(conn, logger, dataset_id, "NEAR(")
+    hits = fts.search_partial(conn, logger, dataset_id, ":::")
     assert hits == []
 
 
@@ -64,3 +64,10 @@ def test_question_mark_in_query_does_not_raise(fts_db) -> None:
     results = fts.search_messages(conn, logger, dataset_id, "allergies?")
     message_ids = {hit.message_id for hit in results["exact"] + results["partial"]}
     assert "msg_001" in message_ids
+
+
+def test_hyphenated_query_does_not_raise(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    results = fts.search_messages(conn, logger, dataset_id, "two-window")
+    assert "exact" in results
+    assert "partial" in results

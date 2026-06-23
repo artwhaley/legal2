@@ -121,6 +121,41 @@ def _migrate_to_version(
                 ON evidence_block(category_id);
             """
         )
+    if current < 3 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v3",
+            message="Applying schema migration to version 3",
+            details={"from_version": current},
+        )
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS transcript_session (
+                session_id TEXT NOT NULL,
+                dataset_id INTEGER NOT NULL,
+                source_thread_id TEXT NOT NULL,
+                session_index INTEGER NOT NULL,
+                calendar_date TEXT NOT NULL,
+                start_message_id TEXT NOT NULL,
+                end_message_id TEXT NOT NULL,
+                start_timestamp TEXT NOT NULL,
+                end_timestamp TEXT NOT NULL,
+                participants_json TEXT NOT NULL DEFAULT '[]',
+                message_count INTEGER NOT NULL DEFAULT 0,
+                title TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'built',
+                summary_json TEXT NOT NULL DEFAULT '{}',
+                summary_status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (dataset_id, session_id),
+                FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_transcript_session_dataset_thread
+                ON transcript_session(dataset_id, source_thread_id, session_index);
+            """
+        )
 
 
 def _ensure_workspace_metadata(conn: sqlite3.Connection) -> None:

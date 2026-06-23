@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from message_evidence_workstation.app_bootstrap import AppContext
+from message_evidence_workstation.db import repositories
 from message_evidence_workstation.domain.models import Message
 from message_evidence_workstation.ui.conversational_tab import ConversationalTab
 from message_evidence_workstation.ui.output_formatting_tab import OutputFormattingTab
@@ -80,6 +81,9 @@ class MainWindow(QMainWindow):
         self.simple_search_tab.set_dataset(context.dataset_id)
         self.conversational_tab.set_dataset(context.dataset_id)
         self.conversational_tab.set_category_refresh_handler(self._refresh_workspaces)
+        self.conversational_tab.message_citation_selected.connect(
+            self._on_conversational_citation_selected
+        )
         self.output_formatting_tab.set_dataset(context.dataset_id)
         self.output_formatting_tab.set_refresh_handler(self._refresh_workspaces)
         self.transcript_widget_tab.set_dataset(context.dataset_id)
@@ -131,3 +135,21 @@ class MainWindow(QMainWindow):
     def _on_evidence_block_selected(self, evidence_block_id: int) -> None:
         self.tabs.setCurrentWidget(self.transcript_widget_tab)
         self.transcript_widget_tab.select_evidence_block(evidence_block_id)
+
+    def _on_conversational_citation_selected(self, message_id: str, source_thread_id: str) -> None:
+        if self.context.dataset_id is None:
+            return
+        threads = repositories.list_source_threads(self.context.conn, self.context.dataset_id)
+        display_title = source_thread_id
+        for thread in threads:
+            if thread.source_thread_id == source_thread_id:
+                display_title = thread.display_title
+                break
+        self.tabs.setCurrentWidget(self.source_thread_view)
+        self.source_thread_view.show_thread(
+            self.context.dataset_id,
+            source_thread_id,
+            display_title,
+        )
+        self.source_thread_view.focus_message(message_id)
+        self.transcript_widget_tab.select_source_thread(source_thread_id)

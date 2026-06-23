@@ -26,14 +26,22 @@ def repo_db(tmp_path):
 def test_list_source_threads(repo_db) -> None:
     conn, dataset_id = repo_db
     threads = list_source_threads(conn, dataset_id)
-    assert len(threads) == 2
-    assert {thread.source_thread_id for thread in threads} == {"thread_001", "thread_002"}
+    assert len(threads) == 1
+    assert {thread.source_thread_id for thread in threads} == {"thread_001"}
+    assert threads[0].message_count == 100
 
 
 def test_list_messages_for_thread_order(repo_db) -> None:
     conn, dataset_id = repo_db
-    messages = list_messages_for_thread(conn, dataset_id, "thread_002")
-    assert [message.message_id for message in messages] == ["msg_004", "msg_005"]
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
+    assert [message.message_id for message in messages[:5]] == [
+        "msg_001",
+        "msg_002",
+        "msg_003",
+        "msg_004",
+        "msg_005",
+    ]
+    assert len(messages) == 100
 
 
 def test_long_thread_remains_fetchable(repo_db) -> None:
@@ -60,4 +68,4 @@ def test_long_thread_remains_fetchable(repo_db) -> None:
         )
     conn.commit()
     messages = list_messages_for_thread(conn, dataset_id, "thread_001")
-    assert len(messages) == 103
+    assert len(messages) == 200

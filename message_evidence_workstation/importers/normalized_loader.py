@@ -118,6 +118,7 @@ def clear_dataset(conn: sqlite3.Connection, dataset_id: int) -> None:
         (dataset_id,),
     )
     conn.execute("DELETE FROM evidence_block WHERE dataset_id = ?", (dataset_id,))
+    conn.execute("DELETE FROM transcript_session WHERE dataset_id = ?", (dataset_id,))
     conn.execute("DELETE FROM category WHERE dataset_id = ?", (dataset_id,))
     ensure_chunk_metadata_schema(conn)
     clear_chunk_vectors(conn, dataset_id)
@@ -283,6 +284,9 @@ def load_normalized_dataset(
         from message_evidence_workstation.search.fts import rebuild_message_fts
 
         rebuild_message_fts(conn, logger, dataset_id)
+        from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
+
+        rebuild_dataset_sessions(conn, logger, dataset_id)
         if embedding_snapshot is not None:
             restore_dataset_embeddings(
                 conn,

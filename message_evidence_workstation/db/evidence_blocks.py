@@ -6,6 +6,7 @@ import sqlite3
 from typing import Any
 
 from message_evidence_workstation.domain.constants import (
+    CREATED_BY_CONVERSATIONAL_ANSWER,
     CREATED_BY_MANUAL,
     CREATED_BY_SIMPLE_SEARCH,
     UNCATEGORIZED_CATEGORY_NAME,
@@ -14,6 +15,7 @@ from message_evidence_workstation.domain.models import Category, EvidenceBlock
 from message_evidence_workstation.domain.slots import (
     default_slots_for_hit_index,
     hit_index_for_message,
+    slots_from_message_boundary_ids,
     validate_slot_bounds,
 )
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
@@ -291,6 +293,51 @@ def create_evidence_block_from_search(
         ordered_message_ids=ordered_message_ids,
         summary=summary,
         created_by=CREATED_BY_SIMPLE_SEARCH,
+    )
+
+
+def create_evidence_block_from_conversational_candidate(
+    conn: sqlite3.Connection,
+    logger: ProcessLogger,
+    *,
+    dataset_id: int,
+    source_thread_id: str,
+    ordered_message_ids: list[str],
+    title: str,
+    summary: str,
+    core_message_id: str,
+    leading_context_start_message_id: str,
+    relevant_start_message_id: str,
+    relevant_end_message_id: str,
+    trailing_context_end_message_id: str,
+    highlighted_message_ids: list[str] | None = None,
+    category_id: int | None = None,
+) -> EvidenceBlock:
+    if category_id is None:
+        category_id = ensure_uncategorized_category(conn, logger, dataset_id).category_id
+    context_start, relevant_start, relevant_end, context_end = slots_from_message_boundary_ids(
+        ordered_message_ids,
+        leading_context_start_message_id=leading_context_start_message_id,
+        relevant_start_message_id=relevant_start_message_id,
+        relevant_end_message_id=relevant_end_message_id,
+        trailing_context_end_message_id=trailing_context_end_message_id,
+    )
+    return create_evidence_block(
+        conn,
+        logger,
+        dataset_id=dataset_id,
+        category_id=category_id,
+        source_thread_id=source_thread_id,
+        title=title,
+        summary=summary,
+        core_hit_message_id=core_message_id,
+        ordered_message_ids=ordered_message_ids,
+        context_start_slot=context_start,
+        relevant_start_slot=relevant_start,
+        relevant_end_slot=relevant_end,
+        context_end_slot=context_end,
+        highlighted_message_ids=highlighted_message_ids,
+        created_by=CREATED_BY_CONVERSATIONAL_ANSWER,
     )
 
 

@@ -43,8 +43,8 @@ def test_load_sample_fixture_counts(loaded_db) -> None:
         "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
         (dataset_id,),
     ).fetchone()[0]
-    assert thread_count == 2
-    assert message_count == 5
+    assert thread_count == 1
+    assert message_count == 100
 
 
 def test_messages_sorted_by_thread_timestamp_and_sort_index(loaded_db) -> None:
@@ -58,7 +58,8 @@ def test_messages_sorted_by_thread_timestamp_and_sort_index(loaded_db) -> None:
         """,
         (dataset_id,),
     ).fetchall()
-    assert [row["message_id"] for row in rows] == ["msg_001", "msg_002", "msg_003"]
+    assert [row["message_id"] for row in rows[:3]] == ["msg_001", "msg_002", "msg_003"]
+    assert len(rows) == 100
 
 
 def test_malformed_jsonl_reports_line_number(tmp_path) -> None:
@@ -99,7 +100,7 @@ def test_reload_is_idempotent_with_skip(loaded_db) -> None:
     again = load_normalized_dataset(conn, logger, FIXTURE_DIR, reload=False)
     assert again == dataset_id
     message_count = conn.execute("SELECT COUNT(*) FROM message").fetchone()[0]
-    assert message_count == 5
+    assert message_count == 100
 
 
 def test_reload_clears_dataset_with_audit_rows(loaded_db) -> None:
@@ -123,7 +124,7 @@ def test_reload_clears_dataset_with_audit_rows(loaded_db) -> None:
     conn.commit()
     reloaded_id = load_normalized_dataset(conn, logger, FIXTURE_DIR, reload=True)
     assert reloaded_id != dataset_id
-    assert conn.execute("SELECT COUNT(*) FROM message").fetchone()[0] == 5
+    assert conn.execute("SELECT COUNT(*) FROM message").fetchone()[0] == 100
     assert conn.execute("SELECT COUNT(*) FROM model_run WHERE dataset_id = ?", (dataset_id,)).fetchone()[0] == 0
 
 

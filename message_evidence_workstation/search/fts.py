@@ -118,8 +118,9 @@ def build_prefix_query(query: str) -> str:
     escaped_tokens = []
     for token in tokens:
         cleaned = re.sub(r'["*]', "", token)
-        if cleaned:
-            escaped_tokens.append(f"{cleaned}*")
+        parts = [part for part in re.split(r"[^\w']+", cleaned, flags=re.UNICODE) if part]
+        if parts:
+            escaped_tokens.extend(f"{part}*" for part in parts)
     return " ".join(escaped_tokens)
 
 

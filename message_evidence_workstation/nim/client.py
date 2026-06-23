@@ -7,7 +7,7 @@ import socket
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from message_evidence_workstation.config.settings import NimSettings
@@ -16,6 +16,7 @@ from message_evidence_workstation.config.settings import NimSettings
 @dataclass(slots=True)
 class NimModelInfo:
     id: str
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -107,7 +108,8 @@ class NimClient:
         for item in models:
             model_id = item.get("id") or item.get("name")
             if model_id:
-                results.append(NimModelInfo(id=str(model_id)))
+                metadata = dict(item) if isinstance(item, dict) else {}
+                results.append(NimModelInfo(id=str(model_id), metadata=metadata))
         return results
 
     def chat_completion(

@@ -38,6 +38,7 @@ class EmbeddingJobSpec:
     vector_query: str = ""
     use_message_vectors: bool = False
     use_chunk_vectors: bool = False
+    chunking_config: dict[str, Any] = field(default_factory=dict)
     harness_user_query: str = ""
     harness_strategy_summary: str = ""
     harness_extra_queries: list[str] = field(default_factory=list)
@@ -143,6 +144,7 @@ def _execute(spec: EmbeddingJobSpec) -> Any:
                 adapter=adapter,
                 adapter_info=info,
                 force_restart=spec.force_restart,
+                chunking_config=spec.chunking_config,
             )
         if spec.job_type == "vector_search":
             from message_evidence_workstation.search.embedding_search import (

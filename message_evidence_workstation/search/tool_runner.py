@@ -91,27 +91,64 @@ def _extract_json_object(content: str) -> dict[str, Any]:
     text = content.strip()
     if not text:
         raise PlannerParseError("Planner returned empty content")
-    fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    fence = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
     if fence:
         text = fence.group(1)
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError as exc:
-        start = text.find("{")
-        end = text.rfind("}")
-        if start >= 0 and end > start:
+
+    def _with_json_context(exc: json.JSONDecodeError, source: str) -> PlannerParseError:
+        start = max(0, exc.pos - 240)
+        end = min(len(source), exc.pos + 240)
+        context = source[start:end]
+        return PlannerParseError(
+            f"Planner output is not valid JSON: {exc.msg} at char {exc.pos}",
+            details={
+                "error_position": exc.pos,
+                "content_length": len(source),
+                "content_preview": source[:500],
+                "error_context": context,
+                "possibly_truncated": exc.pos >= max(0, len(source) - 8),
+            },
+        )
+
+    def _without_trailing_commas(source: str) -> str:
+        return re.sub(r",\s*([}\]])", r"\1", source)
+
+    decoder = json.JSONDecoder()
+    last_error: json.JSONDecodeError | None = None
+    candidates: list[str] = [text]
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(text[start : end + 1])
+    for candidate in list(candidates):
+        repaired = _without_trailing_commas(candidate)
+        if repaired != candidate:
+            candidates.append(repaired)
+
+    for candidate in candidates:
+        try:
+            payload = json.loads(candidate)
+            break
+        except json.JSONDecodeError as exc:
+            last_error = exc
+        for index, char in enumerate(candidate):
+            if char != "{":
+                continue
             try:
-                payload = json.loads(text[start : end + 1])
-            except json.JSONDecodeError:
-                raise PlannerParseError(
-                    f"Planner output is not valid JSON: {exc}",
-                    details={"content_preview": content[:500]},
-                ) from exc
+                payload, _end = decoder.raw_decode(candidate[index:])
+                break
+            except json.JSONDecodeError as exc:
+                last_error = exc
         else:
-            raise PlannerParseError(
-                f"Planner output is not valid JSON: {exc}",
-                details={"content_preview": content[:500]},
-            ) from exc
+            continue
+        break
+    else:
+        if last_error is not None:
+            raise _with_json_context(last_error, text) from last_error
+        raise PlannerParseError(
+            "Planner output is not valid JSON: no JSON object found",
+            details={"content_preview": content[:500], "content_length": len(content)},
+        )
     if not isinstance(payload, dict):
         raise PlannerParseError("Planner output must be a JSON object")
     return payload

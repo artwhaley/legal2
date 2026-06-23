@@ -4,10 +4,34 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
+import struct
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import datetime
 
 DEFAULT_MAX_CHARS = 1200
+DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD = 0.72
+DEFAULT_SESSION_GAP_HOURS = 12.0
+
+
+@dataclass(slots=True)
+class ChunkingConfig:
+    max_chars: int = DEFAULT_MAX_CHARS
+    semantic_similarity_threshold: float = DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD
+    session_gap_hours: float = DEFAULT_SESSION_GAP_HOURS
+    use_semantic_boundaries: bool = True
+    split_on_date_change: bool = True
+
+    def to_metadata(self) -> dict[str, object]:
+        return {
+            "strategy": "chronological_semantic",
+            "max_chars": int(self.max_chars),
+            "semantic_similarity_threshold": float(self.semantic_similarity_threshold),
+            "session_gap_hours": float(self.session_gap_hours),
+            "use_semantic_boundaries": bool(self.use_semantic_boundaries),
+            "split_on_date_change": bool(self.split_on_date_change),
+            "overlap_policy": "none",
+        }
 
 
 @dataclass(slots=True)
@@ -27,24 +51,159 @@ class _MessageRow:
     source_thread_id: str
     body: str
     sort_index: int
+    timestamp: str = ""
+    vector: tuple[float, ...] | None = None
 
 
 def _checksum(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
+def config_from_mapping(mapping: dict | None = None, *, max_chars: int | None = None) -> ChunkingConfig:
+    payload = mapping or {}
+    return ChunkingConfig(
+        max_chars=int(payload.get("max_chars", max_chars or DEFAULT_MAX_CHARS)),
+        semantic_similarity_threshold=float(
+            payload.get("semantic_similarity_threshold", DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD)
+        ),
+        session_gap_hours=float(payload.get("session_gap_hours", DEFAULT_SESSION_GAP_HOURS)),
+        use_semantic_boundaries=bool(payload.get("use_semantic_boundaries", True)),
+        split_on_date_change=bool(payload.get("split_on_date_change", True)),
+    )
+
+
+def _parse_timestamp(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _cosine_similarity(left: tuple[float, ...], right: tuple[float, ...]) -> float:
+    if not left or not right or len(left) != len(right):
+        return 1.0
+    dot = sum(a * b for a, b in zip(left, right, strict=True))
+    left_norm = sum(value * value for value in left) ** 0.5
+    right_norm = sum(value * value for value in right) ** 0.5
+    if left_norm <= 0 or right_norm <= 0:
+        return 1.0
+    return dot / (left_norm * right_norm)
+
+
+def _mean_vector(vectors: list[tuple[float, ...]]) -> tuple[float, ...] | None:
+    if not vectors:
+        return None
+    dimensions = len(vectors[0])
+    if dimensions <= 0:
+        return None
+    totals = [0.0] * dimensions
+    count = 0
+    for vector in vectors:
+        if len(vector) != dimensions:
+            continue
+        count += 1
+        for index, value in enumerate(vector):
+            totals[index] += value
+    if count <= 0:
+        return None
+    return tuple(value / count for value in totals)
+
+
+def _time_or_date_boundary(
+    previous: _MessageRow | None,
+    current: _MessageRow,
+    config: ChunkingConfig,
+) -> bool:
+    if previous is None:
+        return False
+    previous_ts = _parse_timestamp(previous.timestamp)
+    current_ts = _parse_timestamp(current.timestamp)
+    if previous_ts is None or current_ts is None:
+        return False
+    if config.split_on_date_change and previous_ts.date() != current_ts.date():
+        return True
+    gap_hours = (current_ts - previous_ts).total_seconds() / 3600.0
+    return gap_hours > config.session_gap_hours
+
+
+def _semantic_boundary(
+    current_vectors: list[tuple[float, ...]],
+    next_vector: tuple[float, ...] | None,
+    config: ChunkingConfig,
+) -> bool:
+    if not config.use_semantic_boundaries or next_vector is None or not current_vectors:
+        return False
+    centroid = _mean_vector(current_vectors)
+    if centroid is None:
+        return False
+    return _cosine_similarity(centroid, next_vector) < config.semantic_similarity_threshold
+
+
+def _deserialize_float32_vector(blob: bytes) -> tuple[float, ...]:
+    if not blob:
+        return ()
+    dimensions = len(blob) // 4
+    if dimensions <= 0:
+        return ()
+    return struct.unpack(f"<{dimensions}f", blob[: dimensions * 4])
+
+
+def load_message_vector_map(conn: sqlite3.Connection, dataset_id: int) -> dict[str, tuple[float, ...]]:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import MESSAGE_VEC_TABLE, load_sqlite_vec
+
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+        (MESSAGE_VEC_TABLE,),
+    ).fetchone()
+    if row is None:
+        return {}
+    load_sqlite_vec(conn)
+    rows = conn.execute(
+        f"SELECT message_id, embedding FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
+        (dataset_id,),
+    ).fetchall()
+    return {
+        str(row["message_id"]): _deserialize_float32_vector(bytes(row["embedding"]))
+        for row in rows
+    }
+
+
+def message_vector_count(conn: sqlite3.Connection, dataset_id: int) -> int:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import MESSAGE_VEC_TABLE, load_sqlite_vec
+
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
+        (MESSAGE_VEC_TABLE,),
+    ).fetchone()
+    if row is None:
+        return 0
+    load_sqlite_vec(conn)
+    return int(
+        conn.execute(
+            f"SELECT COUNT(*) FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
+            (dataset_id,),
+        ).fetchone()[0]
+    )
+
+
 def build_thread_chunks(
     messages: list[_MessageRow],
     *,
     max_chars: int = DEFAULT_MAX_CHARS,
+    config: ChunkingConfig | None = None,
 ) -> list[MessageChunkSpec]:
     """Pack whole messages into chunks without splitting message bodies."""
     if not messages:
         return []
+    resolved_config = config or ChunkingConfig(max_chars=max_chars)
     ordered = sorted(messages, key=lambda row: (row.sort_index, row.message_id))
     chunks: list[MessageChunkSpec] = []
     current_ids: list[str] = []
     current_parts: list[str] = []
+    current_vectors: list[tuple[float, ...]] = []
+    previous_message: _MessageRow | None = None
 
     def flush() -> None:
         if not current_ids:
@@ -67,12 +226,24 @@ def build_thread_chunks(
         if not piece:
             continue
         prospective_len = len("\n".join([*current_parts, piece])) if current_parts else len(piece)
-        if current_parts and prospective_len > max_chars:
+        should_break = (
+            current_parts
+            and (
+                prospective_len > resolved_config.max_chars
+                or _time_or_date_boundary(previous_message, message, resolved_config)
+                or _semantic_boundary(current_vectors, message.vector, resolved_config)
+            )
+        )
+        if should_break:
             flush()
             current_ids = []
             current_parts = []
+            current_vectors = []
         current_ids.append(message.message_id)
         current_parts.append(piece)
+        if message.vector is not None:
+            current_vectors.append(message.vector)
+        previous_message = message
     flush()
     return chunks
 
@@ -81,13 +252,15 @@ def build_dataset_chunks(
     messages_by_thread: dict[str, list[_MessageRow]],
     *,
     max_chars: int = DEFAULT_MAX_CHARS,
+    config: ChunkingConfig | None = None,
 ) -> list[MessageChunkSpec]:
     chunks: list[MessageChunkSpec] = []
+    resolved_config = config or ChunkingConfig(max_chars=max_chars)
     for source_thread_id in sorted(messages_by_thread):
         thread_messages = messages_by_thread[source_thread_id]
         if not thread_messages:
             continue
-        chunks.extend(build_thread_chunks(thread_messages, max_chars=max_chars))
+        chunks.extend(build_thread_chunks(thread_messages, config=resolved_config))
     return chunks
 
 
@@ -96,8 +269,15 @@ def iter_dataset_chunks(
     dataset_id: int,
     *,
     max_chars: int = DEFAULT_MAX_CHARS,
+    config: ChunkingConfig | None = None,
 ) -> Iterator[MessageChunkSpec]:
     """Yield chunks one thread at a time to avoid loading the whole dataset into RAM."""
+    resolved_config = config or ChunkingConfig(max_chars=max_chars)
+    vectors_by_message = (
+        load_message_vector_map(conn, dataset_id)
+        if resolved_config.use_semantic_boundaries
+        else {}
+    )
     thread_rows = conn.execute(
         """
         SELECT DISTINCT source_thread_id
@@ -111,7 +291,7 @@ def iter_dataset_chunks(
         source_thread_id = thread_row["source_thread_id"]
         message_rows = conn.execute(
             """
-            SELECT message_id, source_thread_id, body_normalized, sort_index
+            SELECT message_id, source_thread_id, body_normalized, sort_index, timestamp
             FROM message
             WHERE dataset_id = ? AND source_thread_id = ?
             ORDER BY sort_index, message_id
@@ -124,10 +304,12 @@ def iter_dataset_chunks(
                 source_thread_id=row["source_thread_id"],
                 body=row["body_normalized"] or "",
                 sort_index=row["sort_index"],
+                timestamp=row["timestamp"],
+                vector=vectors_by_message.get(str(row["message_id"])),
             )
             for row in message_rows
         ]
-        yield from build_thread_chunks(messages, max_chars=max_chars)
+        yield from build_thread_chunks(messages, config=resolved_config)
 
 
 def count_dataset_chunks(
@@ -135,5 +317,6 @@ def count_dataset_chunks(
     dataset_id: int,
     *,
     max_chars: int = DEFAULT_MAX_CHARS,
+    config: ChunkingConfig | None = None,
 ) -> int:
-    return sum(1 for _ in iter_dataset_chunks(conn, dataset_id, max_chars=max_chars))
+    return sum(1 for _ in iter_dataset_chunks(conn, dataset_id, max_chars=max_chars, config=config))

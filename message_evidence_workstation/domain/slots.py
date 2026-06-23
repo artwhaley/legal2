@@ -51,3 +51,23 @@ def hit_index_for_message(ordered_message_ids: list[str], message_id: str) -> in
         return ordered_message_ids.index(message_id)
     except ValueError:
         return 0
+
+
+def slots_from_message_boundary_ids(
+    ordered_message_ids: list[str],
+    *,
+    leading_context_start_message_id: str,
+    relevant_start_message_id: str,
+    relevant_end_message_id: str,
+    trailing_context_end_message_id: str,
+) -> tuple[int, int, int, int]:
+    context_start = hit_index_for_message(ordered_message_ids, leading_context_start_message_id)
+    relevant_start = hit_index_for_message(ordered_message_ids, relevant_start_message_id)
+    relevant_end = hit_index_for_message(ordered_message_ids, relevant_end_message_id) + 1
+    context_end = hit_index_for_message(ordered_message_ids, trailing_context_end_message_id) + 1
+    message_count = len(ordered_message_ids)
+    context_start = max(0, min(context_start, message_count))
+    relevant_start = max(context_start, min(relevant_start, message_count))
+    relevant_end = max(relevant_start, min(relevant_end, message_count))
+    context_end = max(relevant_end, min(context_end, message_count))
+    return context_start, relevant_start, relevant_end, context_end
