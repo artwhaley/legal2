@@ -83,8 +83,9 @@ def test_regression_whole_transcript_finds_answer_top_k_would_miss(eval_db) -> N
     )
     assert "msg_098" not in json.dumps(synthesis_payload)
 
-    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content, dataset_id=None, **kwargs):
-        assert "msg_098" in user_content
+    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content=None, messages=None, dataset_id=None, **kwargs):
+        assert messages is not None
+        assert "msg_098" in messages[1]["content"]
         return NimChatResult(
             content=json.dumps(
                 {

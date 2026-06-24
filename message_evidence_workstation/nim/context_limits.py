@@ -71,10 +71,12 @@ def record_learned_model_context(model_id: str, context_tokens: int) -> dict[str
     settings = load_settings()
     metadata = dict(settings.nim_model_metadata.get(model_id, {}))
     learned = int(context_tokens)
-    existing = metadata.get("context_length")
-    if existing is not None:
+    existing_source = str(metadata.get("context_source", ""))
+    existing_value = metadata.get("context_length")
+    if existing_source not in ("", "learned_from_api_error") and existing_value is not None:
         try:
-            learned = min(learned, int(existing))
+            if int(existing_value) >= learned:
+                return metadata
         except (TypeError, ValueError):
             pass
     metadata["context_length"] = learned

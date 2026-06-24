@@ -77,8 +77,9 @@ DEFAULT_PROMPT_BODIES: dict[str, str] = {
     ),
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER: (
         "You answer questions about a message-evidence transcript for a legal reviewer. "
-        "You receive JSON with user_query, transcript (chronological lines), message_ids, "
-        "and source_thread_ids. Answer ONLY from the supplied transcript. "
+        "You receive two user JSON payloads: first the stable transcript context "
+        "(transcript, message_ids, source_thread_ids, messages_considered), then the "
+        "user_query for this request. Answer ONLY from the supplied transcript. "
         "Cite message_id values for every factual claim. Prefer all relevant instances, "
         "not just examples. If evidence is insufficient, say so explicitly. "
         "Do not invent message IDs. Candidate evidence block boundaries must use message IDs "

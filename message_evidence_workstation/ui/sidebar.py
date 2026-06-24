@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from message_evidence_workstation.db import evidence_blocks, repositories
 from message_evidence_workstation.domain.constants import UNCATEGORIZED_CATEGORY_NAME
-from message_evidence_workstation.domain.models import Message
+from message_evidence_workstation.domain.models import EvidenceBlock, Message
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search.result_models import GroupedSearchResult
 from message_evidence_workstation.ui.simple_search_tab import MIME_SEARCH_RESULT
@@ -104,6 +104,7 @@ class Sidebar(QWidget):
     source_thread_selected = Signal(str, str)
     workstation_conversation_selected = Signal(int)
     evidence_block_selected = Signal(int)
+    search_drop_evidence_block_created = Signal(object)
 
     def __init__(
         self,
@@ -262,7 +263,11 @@ class Sidebar(QWidget):
             for child_index in range(category_item.childCount()):
                 child = category_item.child(child_index)
                 if int(child.data(0, ROLE_ITEM_ID)) == evidence_block_id:
-                    self.category_tree.setCurrentItem(child)
+                    self.category_tree.blockSignals(True)
+                    try:
+                        self.category_tree.setCurrentItem(child)
+                    finally:
+                        self.category_tree.blockSignals(False)
                     return
 
     def _on_thread_changed(self, index: int) -> None:
@@ -365,9 +370,9 @@ class Sidebar(QWidget):
         group: GroupedSearchResult,
         *,
         category_id: int | None = None,
-    ) -> None:
+    ) -> EvidenceBlock | None:
         if self.dataset_id is None or not group.hits:
-            return
+            return None
         messages = repositories.list_messages_for_thread(
             self.conn,
             self.dataset_id,
@@ -391,7 +396,11 @@ class Sidebar(QWidget):
             details={
                 "evidence_block_id": block.evidence_block_id,
                 "category_id": block.category_id,
+                "dataset_id": self.dataset_id,
+                "source_thread_id": group.source_thread_id,
+                "core_hit_message_id": group.primary_hit_message_id,
                 "hit_count": len(group.hits),
+                "source_action": "search_drop",
             },
             dataset_id=self.dataset_id,
         )
@@ -399,3 +408,5 @@ class Sidebar(QWidget):
             block.category_id,
             evidence_block_id=block.evidence_block_id,
         )
+        self.search_drop_evidence_block_created.emit(block)
+        return block

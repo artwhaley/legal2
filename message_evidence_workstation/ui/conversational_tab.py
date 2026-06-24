@@ -36,7 +36,6 @@ from message_evidence_workstation.nim.client import NimClient, NimClientError, n
 from message_evidence_workstation.nim.context_limits import (
     is_context_limit_error,
     parse_context_window_from_error,
-    record_learned_model_context,
 )
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
@@ -869,8 +868,6 @@ class ConversationalTab(QWidget):
         learned = parse_context_window_from_error(str(exc.details.get("body", "")))
         nim = nim_settings_for_client()
         model_id = nim.model or "unknown-model"
-        if learned is not None:
-            record_learned_model_context(model_id, learned)
         self.logger.warning(
             component="ui.conversational_tab",
             operation="context_limit_auto_recovery",

@@ -39,6 +39,24 @@ def fold_system_into_user(messages: list[dict[str, str]]) -> list[dict[str, str]
     return [{"role": "user", "content": merged_user}, *folded]
 
 
+def build_whole_transcript_cache_messages(
+    system_prompt: str,
+    *,
+    transcript_context: str,
+    user_query_content: str,
+    include_system_role: bool = True,
+) -> list[dict[str, str]]:
+    """Place stable transcript context before the per-request question for prefix caching."""
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": transcript_context},
+        {"role": "user", "content": user_query_content},
+    ]
+    if include_system_role:
+        return messages
+    return fold_system_into_user(messages)
+
+
 def build_chat_messages(
     system_prompt: str,
     user_content: str,

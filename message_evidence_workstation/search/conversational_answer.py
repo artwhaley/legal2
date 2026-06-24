@@ -12,6 +12,7 @@ from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.embeddings.chunking import config_from_mapping
 from message_evidence_workstation.nim.client import NimClient
 from message_evidence_workstation.nim.model_context import resolve_model_context
+from message_evidence_workstation.nim.message_roles import build_whole_transcript_cache_messages
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import (
     RUN_TYPE_COVERAGE_SESSION_ANSWER,
@@ -19,6 +20,7 @@ from message_evidence_workstation.nim.prompts import (
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     RUN_TYPE_SESSION_CLASSIFICATION,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
+    get_active_prompt,
 )
 from message_evidence_workstation.search.coverage_audit import run_coverage_audit
 from message_evidence_workstation.search.retrieval_assist import (
@@ -45,7 +47,7 @@ from message_evidence_workstation.search.transcript import (
 from message_evidence_workstation.search.token_budget import compute_usable_input_tokens, estimate_tokens
 from message_evidence_workstation.search.window_planner import (
     TranscriptWindow,
-    build_token_bounded_windows,
+    build_token_bounded_windows_for_dataset,
 )
 
 ANSWER_MODE_WHOLE_TRANSCRIPT = "whole_transcript"
@@ -258,16 +260,28 @@ def build_dataset_transcript(
     return transcript
 
 
-def build_whole_transcript_user_content(user_query: str, transcript: SerializedTranscript) -> str:
+def build_whole_transcript_context_content(transcript: SerializedTranscript) -> str:
+    """Stable transcript payload for cache-friendly requests (same per dataset)."""
     thread_ids = sorted({line.source_thread_id for line in transcript.lines})
     payload = {
-        "user_query": user_query,
         "transcript": transcript.text,
         "message_ids": transcript.message_ids,
         "source_thread_ids": thread_ids,
         "messages_considered": len(transcript.message_ids),
     }
     return json.dumps(payload, ensure_ascii=False)
+
+
+def build_whole_transcript_query_content(user_query: str) -> str:
+    """Per-request question payload appended after stable transcript context."""
+    return json.dumps({"user_query": user_query}, ensure_ascii=False)
+
+
+def build_whole_transcript_user_content(user_query: str, transcript: SerializedTranscript) -> str:
+    """Legacy combined payload with stable fields before the question (query last)."""
+    context = json.loads(build_whole_transcript_context_content(transcript))
+    context["user_query"] = user_query
+    return json.dumps(context, ensure_ascii=False)
 
 
 def _filter_valid_ids(ids: list[str], valid_ids: set[str]) -> tuple[list[str], list[str]]:
@@ -496,13 +510,21 @@ def run_whole_transcript_answer(
     valid_ids = set(transcript.message_ids)
     message_thread_by_id = {line.message_id: line.source_thread_id for line in transcript.lines}
     source_thread_ids = sorted({line.source_thread_id for line in transcript.lines})
-    user_content = build_whole_transcript_user_content(user_query, transcript)
+    user_content = build_whole_transcript_query_content(user_query)
+    prompt = get_active_prompt(conn, RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER)
+    if prompt is None:
+        raise RuntimeError(f"No active prompt template for run_type={RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER}")
+    messages = build_whole_transcript_cache_messages(
+        prompt["body"],
+        transcript_context=build_whole_transcript_context_content(transcript),
+        user_query_content=user_content,
+    )
     result = run_nim_chat(
         conn,
         logger,
         client,
         run_type=RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
-        user_content=user_content,
+        messages=messages,
         dataset_id=dataset_id,
         max_tokens=max_tokens,
     )
@@ -982,6 +1004,23 @@ def run_exhaustive_window_scan_answer(
 ) -> ConversationalAnswerResult:
     settings = answer_settings or load_settings().answer
     selected_model = model_id or client.settings.model or "unknown-model"
+    budget = resolve_answer_budget(
+        build_dataset_transcript(conn, dataset_id),
+        settings,
+        selected_model,
+        provider_metadata=provider_metadata,
+    )
+    window_target = min(settings.window_target_tokens, budget.usable_input_tokens)
+    planned_windows = build_token_bounded_windows_for_dataset(
+        conn,
+        dataset_id,
+        target_tokens=window_target,
+        overlap_messages=settings.window_overlap_messages,
+        model_id=selected_model,
+    )
+    if not planned_windows:
+        raise ConversationalAnswerParseError("No transcript windows available for exhaustive window scan")
+
     chunking_config = config_from_mapping(load_settings().chunking)
     chunking_config.session_gap_hours = max(1, session_gap_minutes) / 60.0
     sessions = rebuild_dataset_sessions(
@@ -990,24 +1029,7 @@ def run_exhaustive_window_scan_answer(
         dataset_id,
         gap_minutes=session_gap_minutes,
         chunking_config=chunking_config,
-        use_semantic_chunks=True,
-    )
-    if not sessions:
-        raise ConversationalAnswerParseError("No transcript sessions available for exhaustive window scan")
-
-    budget = resolve_answer_budget(
-        build_dataset_transcript(conn, dataset_id),
-        settings,
-        selected_model,
-        provider_metadata=provider_metadata,
-    )
-    planned_windows = build_token_bounded_windows(
-        conn,
-        dataset_id,
-        sessions,
-        target_tokens=min(settings.window_target_tokens, budget.usable_input_tokens),
-        overlap_messages=settings.window_overlap_messages,
-        model_id=selected_model,
+        use_semantic_chunks=False,
     )
     logger.info(
         component="search.conversational_answer",
@@ -1015,9 +1037,10 @@ def run_exhaustive_window_scan_answer(
         message="Built token-bounded transcript windows for exhaustive scan",
         details={
             "window_count": len(planned_windows),
-            "target_tokens": settings.window_target_tokens,
+            "target_tokens": window_target,
             "overlap_messages": settings.window_overlap_messages,
             "sessions_considered": len(sessions),
+            "windowing_mode": "token_bounded_thread",
         },
         dataset_id=dataset_id,
     )

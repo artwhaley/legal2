@@ -78,6 +78,8 @@ class MainWindow(QMainWindow):
         )
         self.sidebar.evidence_block_selected.connect(self._on_evidence_block_selected)
         self.transcript_widget_tab.evidence_block_created.connect(self._on_transcript_evidence_block_created)
+        self.simple_search_tab.evidence_block_created.connect(self._on_simple_search_evidence_block_created)
+        self.sidebar.search_drop_evidence_block_created.connect(self._on_search_drop_evidence_block_created)
         self.sidebar.set_dataset(context.dataset_id)
         self.simple_search_tab.set_dataset(context.dataset_id)
         self.conversational_tab.set_dataset(context.dataset_id)
@@ -107,6 +109,20 @@ class MainWindow(QMainWindow):
 
     def _on_transcript_evidence_block_created(self, evidence_block_id: int) -> None:
         self.sidebar.reveal_evidence_block(evidence_block_id)
+
+    def _on_simple_search_evidence_block_created(self, evidence_block_id: int) -> None:
+        self.sidebar.reveal_evidence_block(evidence_block_id)
+
+    def _on_search_drop_evidence_block_created(self, block: object) -> None:
+        from message_evidence_workstation.domain.models import EvidenceBlock
+
+        if not isinstance(block, EvidenceBlock):
+            return
+        self.tabs.setCurrentWidget(self.simple_search_tab)
+        self.simple_search_tab.transcript_widget.reveal_created_evidence_block(
+            block,
+            source_action="search_drop",
+        )
 
     def _placeholder_tab(self, title: str) -> QWidget:
         widget = QWidget()

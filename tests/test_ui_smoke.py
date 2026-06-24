@@ -262,9 +262,158 @@ def test_simple_search_shows_transcript_for_selected_group(tmp_path, qapp, monke
     assert tab.results_splitter.count() == 2
     assert tab.results_list.count() >= 1
     assert "matching message(s)" in tab.results_list.item(0).text()
-    assert tab.thread_view.header.text().startswith("Search context:")
-    assert tab.thread_view.message_list.count() == 100
-    assert "allergy" in tab.thread_view.message_list.item(0).text().lower()
+    assert tab.transcript_widget.transcript_surface is not None
+    assert tab.transcript_widget.model.message_count() == 100
+    assert tab.transcript_widget._source_thread_id == "thread_001"
+
+
+def test_simple_search_double_click_creates_uncategorized_block(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    context = bootstrap_app()
+    tab = SimpleSearchTab(context.conn, context.logger, db_path=context.db_path)
+    tab.set_dataset(context.dataset_id)
+    tab.search_box.setText("allergy")
+    tab._run_search()
+    qapp.processEvents()
+
+    before = evidence_blocks.list_evidence_blocks(context.conn, context.dataset_id)
+    tab.results_list.itemDoubleClicked.emit(tab.results_list.item(0))
+    qapp.processEvents()
+
+    after = evidence_blocks.list_evidence_blocks(context.conn, context.dataset_id)
+    assert len(after) == len(before) + 1
+    created = after[-1]
+    assert created.core_hit_message_id == "msg_001"
+    uncategorized = evidence_blocks.ensure_uncategorized_category(
+        context.conn, context.logger, context.dataset_id
+    )
+    assert created.category_id == uncategorized.category_id
+
+
+def test_simple_search_add_evidence_block_uses_viewport_center(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    context = bootstrap_app()
+    tab = SimpleSearchTab(context.conn, context.logger, db_path=context.db_path)
+    tab.set_dataset(context.dataset_id)
+    tab.search_box.setText("allergy")
+    tab._run_search()
+    qapp.processEvents()
+
+    tab.transcript_widget.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
+    before = evidence_blocks.list_evidence_blocks(
+        context.conn,
+        context.dataset_id,
+        source_thread_id="thread_001",
+    )
+    tab.add_evidence_block_button.click()
+    qapp.processEvents()
+
+    after = evidence_blocks.list_evidence_blocks(
+        context.conn,
+        context.dataset_id,
+        source_thread_id="thread_001",
+    )
+    assert len(after) == len(before) + 1
+    assert after[-1].core_hit_message_id == "msg_006"
+
+
+def test_search_drop_reveals_block_in_simple_search_transcript(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
+    context = bootstrap_app()
+    window = MainWindow(context)
+    category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
+
+    block = window.sidebar.handle_search_drop(_search_group("Drop into school"), category_id=category.category_id)
+    qapp.processEvents()
+
+    assert block is not None
+    assert window.tabs.currentWidget() is window.simple_search_tab
+    assert window.simple_search_tab.transcript_widget._source_thread_id == "thread_001"
+    overlay_ids = [
+        overlay.evidence_block_id
+        for overlay in window.simple_search_tab.transcript_widget.model.block_overlays()
+    ]
+    assert block.evidence_block_id in overlay_ids
+
+
+def test_search_drop_blank_area_reveals_in_simple_search(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
+    context = bootstrap_app()
+    window = MainWindow(context)
+    mime = QMimeData()
+    mime.setData(
+        MIME_SEARCH_RESULT,
+        json.dumps(_search_group("Blank drop reveal").to_drag_payload()).encode("utf-8"),
+    )
+
+    class _FakePosition:
+        def toPoint(self) -> QPoint:
+            return QPoint(-1, -1)
+
+    class _FakeDropEvent:
+        accepted = False
+        ignored = False
+
+        def mimeData(self) -> QMimeData:
+            return mime
+
+        def position(self) -> _FakePosition:
+            return _FakePosition()
+
+        def acceptProposedAction(self) -> None:
+            self.accepted = True
+
+        def ignore(self) -> None:
+            self.ignored = True
+
+    event = _FakeDropEvent()
+    window.sidebar.category_tree.dropEvent(event)
+    qapp.processEvents()
+
+    assert event.accepted
+    assert window.tabs.currentWidget() is window.simple_search_tab
+    overlays = window.simple_search_tab.transcript_widget.model.block_overlays()
+    assert any(overlay.core_hit_message_id == "msg_001" for overlay in overlays)
+
+
+def test_simple_search_block_creation_stays_on_simple_search_tab(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setenv(
+        "MEW_DATASET_PATH",
+        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    )
+    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
+    context = bootstrap_app()
+    window = MainWindow(context)
+    window.tabs.setCurrentWidget(window.simple_search_tab)
+    tab = window.simple_search_tab
+    tab.search_box.setText("allergy")
+    tab._run_search()
+    qapp.processEvents()
+
+    tab.transcript_widget.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
+    tab.add_evidence_block_button.click()
+    qapp.processEvents()
+
+    assert window.tabs.currentWidget() is window.simple_search_tab
 
 
 def test_transcript_widget_tab_loads_thread_without_default_block(tmp_path, qapp, monkeypatch) -> None:

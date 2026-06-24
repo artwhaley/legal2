@@ -51,6 +51,18 @@ def test_compute_usable_input_tokens_for_small_model() -> None:
     assert usable < 5395
 
 
+def test_compute_usable_input_tokens_for_8192_does_not_double_subtract_output() -> None:
+    usable, effective = compute_usable_input_tokens(
+        context_window_tokens=8192,
+        safety_ratio=0.70,
+        reserved_output_tokens=4096,
+        prompt_overhead_tokens=1500,
+    )
+    assert effective == 2048
+    assert usable == 4684
+    assert usable > 2186
+
+
 def test_parse_context_window_from_gemma_prompt_limit() -> None:
     body = '{"error":"Input value error: prompt is [[16192]] long while only 4096 is supported"}'
     assert parse_context_window_from_error(body) == 4096
@@ -68,22 +80,13 @@ def test_is_context_limit_error_detects_500_prompt_too_long() -> None:
     assert is_context_limit_error(exc)
 
 
-def test_learned_context_preferred_over_provider_metadata() -> None:
+def test_learned_metadata_is_ignored_for_budgeting() -> None:
     resolved = resolve_model_context(
-        "google/gemma-2-2b-it",
-        provider_metadata={
-            "context_length": 8192,
-            "context_source": "learned_from_api_error",
-        },
-    )
-    assert resolved.context_window_tokens == 8192  # learned stored value
-
-    resolved_learned = resolve_model_context(
         "google/gemma-2-2b-it",
         provider_metadata={
             "context_length": 4096,
             "context_source": "learned_from_api_error",
         },
     )
-    assert resolved_learned.context_window_tokens == 4096
-    assert resolved_learned.source == "learned_from_api_error"
+    assert resolved.context_window_tokens == 8192
+    assert resolved.source == "default"

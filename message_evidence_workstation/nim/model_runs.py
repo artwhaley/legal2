@@ -9,12 +9,11 @@ from typing import Any
 
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
 from message_evidence_workstation.nim.client import NimChatResult, NimClient, NimClientError
-from message_evidence_workstation.nim.context_limits import (
-    is_context_limit_error,
-    parse_context_window_from_error,
-    record_learned_model_context,
+from message_evidence_workstation.nim.message_roles import (
+    MESSAGE_LAYOUT_FOLDED_USER,
+    build_chat_messages,
+    build_whole_transcript_cache_messages,
 )
-from message_evidence_workstation.nim.message_roles import MESSAGE_LAYOUT_FOLDED_USER, build_chat_messages
 from message_evidence_workstation.nim.prompts import get_active_prompt
 
 
@@ -58,6 +57,22 @@ def record_model_run(
     )
     conn.commit()
     return int(cursor.lastrowid)
+def _messages_input_summary(messages: list[dict[str, str]] | None) -> str:
+    if not messages:
+        return ""
+    return "\n\n".join(str(message.get("content", "")) for message in messages)
+
+
+def _cache_usage_details(raw_response: dict) -> dict[str, int]:
+    usage = raw_response.get("usage")
+    if not isinstance(usage, dict):
+        return {}
+    details: dict[str, int] = {}
+    for key in ("prompt_cache_hit_tokens", "prompt_cache_miss_tokens"):
+        value = usage.get(key)
+        if isinstance(value, int):
+            details[key] = value
+    return details
 
 
 def run_nim_chat(
@@ -66,7 +81,8 @@ def run_nim_chat(
     client: NimClient,
     *,
     run_type: str,
-    user_content: str,
+    user_content: str | None = None,
+    messages: list[dict[str, str]] | None = None,
     dataset_id: int | None = None,
     max_tokens: int | None = None,
     timeout_seconds: float | None = None,
@@ -75,11 +91,15 @@ def run_nim_chat(
     if prompt is None:
         raise RuntimeError(f"No active prompt template for run_type={run_type}")
     include_system_role = True  # per-model folding handled in NimClient.chat_completion
-    messages = build_chat_messages(
-        prompt["body"],
-        user_content,
-        include_system_role=include_system_role,
-    )
+    if messages is None:
+        if user_content is None:
+            raise ValueError("run_nim_chat requires user_content or messages")
+        messages = build_chat_messages(
+            prompt["body"],
+            user_content,
+            include_system_role=include_system_role,
+        )
+    input_summary = user_content if user_content is not None else _messages_input_summary(messages)
     request_payload = {
         "model": client.settings.model,
         "messages": messages,
@@ -116,7 +136,7 @@ def run_nim_chat(
             run_type=run_type,
             model=client.settings.model,
             prompt_template_id=int(prompt["prompt_template_id"]),
-            input_summary=user_content[:500],
+            input_summary=input_summary[:500],
             raw_request_json=request_payload,
             raw_response_json=result.raw_response,
             latency_ms=result.latency_ms,
@@ -128,6 +148,7 @@ def run_nim_chat(
             details={
                 "latency_ms": result.latency_ms,
                 "message_layout": result.message_layout,
+                **_cache_usage_details(result.raw_response),
             },
             dataset_id=dataset_id,
         )
@@ -141,17 +162,13 @@ def run_nim_chat(
             )
         return result
     except NimClientError as exc:
-        if is_context_limit_error(exc):
-            learned = parse_context_window_from_error(str(exc.details.get("body", "")))
-            if learned and client.settings.model:
-                record_learned_model_context(client.settings.model, learned)
         record_model_run(
             conn,
             dataset_id=dataset_id,
             run_type=run_type,
             model=client.settings.model,
             prompt_template_id=int(prompt["prompt_template_id"]),
-            input_summary=user_content[:500],
+            input_summary=input_summary[:500],
             raw_request_json=request_payload,
             raw_response_json={"error": str(exc), "details": exc.details},
             latency_ms=None,

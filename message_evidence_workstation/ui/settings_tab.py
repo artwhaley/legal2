@@ -169,7 +169,11 @@ class SettingsTab(QWidget):
         self.context_window_override_tokens.setRange(0, 2_000_000)
         self.context_window_override_tokens.setSingleStep(1024)
         self.context_window_override_tokens.setValue(self.settings.answer.context_window_override_tokens)
-        answer_form.addRow("Context window override tokens", self.context_window_override_tokens)
+        self.context_window_override_tokens.setToolTip(
+            "Set your model's context window size in tokens. "
+            "0 uses the built-in default (8192). This value is never changed automatically."
+        )
+        answer_form.addRow("Model context window (tokens)", self.context_window_override_tokens)
         self.context_safety_ratio = QDoubleSpinBox()
         self.context_safety_ratio.setRange(0.25, 0.90)
         self.context_safety_ratio.setSingleStep(0.05)
@@ -633,7 +637,7 @@ class SettingsTab(QWidget):
             context_window = budget.context_window_tokens
             context_source = budget.context_source
             if context_source == "default":
-                context_source = "safe default (override in settings if needed)"
+                context_source = "built-in default (8192) — set Model context window above for your model"
         else:
             from message_evidence_workstation.nim.model_context import resolve_model_context
 
@@ -648,7 +652,7 @@ class SettingsTab(QWidget):
             )
             context_window = model_context.context_window_tokens
             context_source = (
-                "safe default (override in settings if needed)"
+                "built-in default (8192) — set Model context window above for your model"
                 if model_context.source == "default"
                 else model_context.source
             )
@@ -817,7 +821,7 @@ class SettingsTab(QWidget):
     def _merge_model_metadata(self, model_id: str, provider_metadata: dict) -> dict:
         merged = dict(provider_metadata)
         existing = self.settings.nim_model_metadata.get(model_id, {})
-        for key in ("context_length", "context_source", "supports_system_role", "message_role_source"):
+        for key in ("supports_system_role", "message_role_source"):
             if key in existing:
                 merged[key] = existing[key]
         return merged

@@ -28,10 +28,15 @@ def compute_usable_input_tokens(
     reserved_output_tokens: int,
     prompt_overhead_tokens: int,
 ) -> tuple[int, int]:
-    """Return (usable_input_tokens, effective_reserved_output_tokens)."""
+    """Return (usable_input_tokens, effective_reserved_output_tokens).
+
+    Input budget is derived from the context window minus prompt template overhead,
+    with a single safety margin. Output ``max_tokens`` is capped separately via
+    ``effective_reserved_output_tokens`` and is not subtracted again from input budget.
+    """
     reserved = effective_reserved_output_tokens(context_window_tokens, reserved_output_tokens)
-    total_safe = math.floor(context_window_tokens * safety_ratio)
-    usable = total_safe - reserved - prompt_overhead_tokens
+    base = context_window_tokens - max(0, prompt_overhead_tokens)
+    usable = math.floor(base * safety_ratio)
     return max(256, usable), reserved
 
 

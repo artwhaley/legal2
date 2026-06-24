@@ -107,3 +107,18 @@ def test_window_text_contains_message_ids(planner_db) -> None:
     window = windows[0]
     assert window.start_message_id in window.text
     assert window.end_message_id in window.text
+
+
+def test_dataset_windowing_packs_full_thread_not_one_message_per_window(planner_db) -> None:
+    conn, _logger, dataset_id, _sessions = planner_db
+    from message_evidence_workstation.search.window_planner import build_token_bounded_windows_for_dataset
+
+    windows = build_token_bounded_windows_for_dataset(
+        conn,
+        dataset_id,
+        target_tokens=50_000,
+        overlap_messages=0,
+        model_id="test-model",
+    )
+    assert len(windows) == 1
+    assert len(windows[0].message_ids) == 100

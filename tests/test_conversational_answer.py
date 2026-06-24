@@ -31,6 +31,8 @@ from message_evidence_workstation.search.conversational_answer import (
     ANSWER_STRATEGY_RETRIEVAL_FALLBACK,
     ConversationalAnswerParseError,
     build_dataset_transcript,
+    build_whole_transcript_context_content,
+    build_whole_transcript_query_content,
     build_whole_transcript_user_content,
     build_exhaustive_window_merge_user_content,
     parse_exhaustive_window_scan_response,
@@ -54,7 +56,7 @@ def answer_db(tmp_path):
     return conn, logger, dataset_id
 
 
-def test_resolve_answer_budget_provider_context_routes_to_windowed(answer_db) -> None:
+def test_resolve_answer_budget_ignores_provider_metadata_without_user_setting(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO)
@@ -64,10 +66,8 @@ def test_resolve_answer_budget_provider_context_routes_to_windowed(answer_db) ->
         "nvidia/nemotron-mini-4b-instruct",
         provider_metadata={"context_length": 4096},
     )
-    assert budget.context_source == "provider"
-    assert budget.effective_reserved_output_tokens <= 1024
-    if budget.transcript_tokens > budget.usable_input_tokens:
-        assert budget.decision == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
+    assert budget.context_source == "default"
+    assert budget.context_window_tokens == 8192
 
 
 def test_resolve_answer_budget_unknown_default_uses_conservative_window(answer_db) -> None:
@@ -187,6 +187,18 @@ def test_build_whole_transcript_user_content_includes_full_transcript(answer_db)
     assert len(payload["message_ids"]) == len(transcript.message_ids)
     assert "[msg_001]" in payload["transcript"]
     assert "[msg_100]" in payload["transcript"]
+    keys = list(payload.keys())
+    assert keys.index("user_query") > keys.index("transcript")
+
+
+def test_build_whole_transcript_cache_payload_splits_context_and_query(answer_db) -> None:
+    conn, _, dataset_id = answer_db
+    transcript = build_dataset_transcript(conn, dataset_id)
+    context = json.loads(build_whole_transcript_context_content(transcript))
+    query = json.loads(build_whole_transcript_query_content("allergy forms"))
+    assert "user_query" not in context
+    assert query == {"user_query": "allergy forms"}
+    assert context["transcript"] == transcript.text
 
 
 def test_build_exhaustive_window_merge_user_content_reports_full_coverage(answer_db) -> None:
@@ -325,12 +337,15 @@ def test_parse_whole_transcript_answer_response_accepts_wrapped_json() -> None:
 def test_run_whole_transcript_answer_passes_full_transcript_to_nim(answer_db) -> None:
     conn, logger, dataset_id = answer_db
     transcript = serialize_thread_transcript(conn, dataset_id, "thread_001")
-    captured: dict[str, str] = {}
+    captured: dict[str, object] = {}
 
-    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content, dataset_id=None, **kwargs):
+    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content=None, messages=None, dataset_id=None, **kwargs):
         captured["run_type"] = run_type
-        captured["user_content"] = user_content
-        payload = json.loads(user_content)
+        captured["messages"] = messages
+        assert user_content is None
+        assert messages is not None
+        context_payload = json.loads(messages[1]["content"])
+        query_payload = json.loads(messages[2]["content"])
         return NimChatResult(
             content=json.dumps(
                 {
@@ -340,8 +355,8 @@ def test_run_whole_transcript_answer_passes_full_transcript_to_nim(answer_db) ->
                     "uncertainties": [],
                     "coverage_summary": {
                         "mode": "whole_transcript",
-                        "messages_considered": len(payload["message_ids"]),
-                        "source_thread_ids": payload["source_thread_ids"],
+                        "messages_considered": len(context_payload["message_ids"]),
+                        "source_thread_ids": context_payload["source_thread_ids"],
                     },
                 }
             ),
@@ -363,9 +378,15 @@ def test_run_whole_transcript_answer_passes_full_transcript_to_nim(answer_db) ->
             transcript=transcript,
         )
     assert captured["run_type"] == RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER
-    payload = json.loads(captured["user_content"])
-    assert payload["transcript"] == transcript.text
-    assert len(payload["transcript"].splitlines()) == 100
+    messages = captured["messages"]
+    assert messages[0]["role"] == "system"
+    assert messages[1]["role"] == "user"
+    assert messages[2]["role"] == "user"
+    context_payload = json.loads(messages[1]["content"])
+    query_payload = json.loads(messages[2]["content"])
+    assert context_payload["transcript"] == transcript.text
+    assert query_payload["user_query"] == "allergy paperwork"
+    assert len(context_payload["transcript"].splitlines()) == 100
     assert result.mode == ANSWER_MODE_WHOLE_TRANSCRIPT
     assert result.cited_message_ids == ["msg_002"]
 
@@ -493,7 +514,7 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
     )
 
     answer_settings = AnswerSettings(
-        window_target_tokens=12_000,
+        window_target_tokens=500,
         window_overlap_messages=2,
         context_window_override_tokens=1_000_000,
     )
@@ -600,7 +621,7 @@ def test_whole_transcript_answer_passes_reserved_output_tokens(answer_db) -> Non
     transcript = build_dataset_transcript(conn, dataset_id)
     captured: dict[str, object] = {}
 
-    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content, dataset_id=None, **kwargs):
+    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content=None, messages=None, dataset_id=None, **kwargs):
         captured["max_tokens"] = kwargs.get("max_tokens")
         return NimChatResult(
             content=json.dumps(

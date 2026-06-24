@@ -6,7 +6,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, Qt, QTimer
+from PySide6.QtCore import QMimeData, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QDrag
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -38,7 +38,7 @@ from message_evidence_workstation.search.grouping import group_hits
 from message_evidence_workstation.search.keyword_expansion import expand_keywords
 from message_evidence_workstation.search.result_models import GroupedSearchResult, SearchHit
 from message_evidence_workstation.ui.background_tasks import run_background
-from message_evidence_workstation.ui.source_thread_view import SourceThreadView
+from message_evidence_workstation.ui.evidence_block_transcript_widget import EvidenceBlockTranscriptWidget
 
 MIME_SEARCH_RESULT = "application/x-mew-search-result"
 MATCH_COLORS = {
@@ -65,6 +65,8 @@ class DraggableResultsList(QListWidget):
 
 
 class SimpleSearchTab(QWidget):
+    evidence_block_created = Signal(int)
+
     def __init__(
         self,
         conn: sqlite3.Connection,
@@ -126,9 +128,23 @@ class SimpleSearchTab(QWidget):
         self.results_splitter = QSplitter(Qt.Orientation.Vertical)
         self.results_list = DraggableResultsList(self)
         self.results_list.currentRowChanged.connect(self._on_result_selected)
+        self.results_list.itemDoubleClicked.connect(self._on_result_double_clicked)
         self.results_splitter.addWidget(self.results_list)
-        self.thread_view = SourceThreadView(conn, logger)
-        self.results_splitter.addWidget(self.thread_view)
+
+        transcript_controls = QHBoxLayout()
+        transcript_controls.addWidget(QLabel("Evidence transcript"))
+        transcript_controls.addStretch()
+        self.add_evidence_block_button = QPushButton("Add evidence block")
+        self.add_evidence_block_button.clicked.connect(self._on_add_evidence_block_clicked)
+        self.add_evidence_block_button.setEnabled(False)
+        transcript_wrapper = QWidget()
+        transcript_layout = QVBoxLayout(transcript_wrapper)
+        transcript_layout.setContentsMargins(0, 0, 0, 0)
+        transcript_layout.addLayout(transcript_controls)
+        self.transcript_widget = EvidenceBlockTranscriptWidget(conn, logger, transcript_wrapper)
+        self.transcript_widget.evidence_block_created.connect(self.evidence_block_created.emit)
+        transcript_layout.addWidget(self.transcript_widget, stretch=1)
+        self.results_splitter.addWidget(transcript_wrapper)
         self.results_splitter.setStretchFactor(0, 1)
         self.results_splitter.setStretchFactor(1, 2)
         self.results_splitter.setSizes([240, 480])
@@ -145,7 +161,8 @@ class SimpleSearchTab(QWidget):
         self._thread_titles_by_id = {}
         self.results_list.clear()
         self._groups = []
-        self.thread_view.clear()
+        self.transcript_widget.set_dataset(dataset_id)
+        self.add_evidence_block_button.setEnabled(dataset_id is not None)
         if dataset_id is None:
             self.status_label.setText("Load a dataset to search.")
             return
@@ -443,7 +460,7 @@ class SimpleSearchTab(QWidget):
     def _run_search(self, *, expand_keywords: bool = False) -> None:
         self.results_list.clear()
         self._groups = []
-        self.thread_view.clear()
+        self.transcript_widget.set_dataset(self.dataset_id)
         if self.dataset_id is None:
             return
         query = self.search_box.text().strip()
@@ -508,14 +525,51 @@ class SimpleSearchTab(QWidget):
         if row < 0 or row >= len(self._groups) or self.dataset_id is None:
             return
         group = self._groups[row]
-        display_title = self._thread_titles_by_id.get(group.source_thread_id, group.source_thread_id)
-        self.thread_view.show_search_group(
+        self._navigate_to_search_group(group, source_action="result_select")
+
+    def _on_result_double_clicked(self, _item: QListWidgetItem) -> None:
+        row = self.results_list.currentRow()
+        if row < 0 or row >= len(self._groups) or self.dataset_id is None:
+            return
+        group = self._groups[row]
+        self._navigate_to_search_group(group, source_action="result_double_click")
+        block = self.transcript_widget.create_evidence_block_for_message(
+            group.primary_hit_message_id,
+            source_action="result_double_click",
+        )
+        if block is None:
+            return
+
+    def _on_add_evidence_block_clicked(self) -> None:
+        self.transcript_widget.create_evidence_block_from_viewport_center(
+            source_action="viewport_button",
+        )
+
+    def _navigate_to_search_group(
+        self,
+        group: GroupedSearchResult,
+        *,
+        source_action: str,
+    ) -> None:
+        self.transcript_widget.load_source_thread(
+            group.source_thread_id,
+            source_action=source_action,
+        )
+        self.transcript_widget.focus_message(
+            group.primary_hit_message_id,
+            source_action=source_action,
+        )
+        self.logger.info(
+            component="ui.simple_search_tab",
+            operation="result_navigation",
+            message="Navigated simple search transcript to grouped result",
+            details={
+                "dataset_id": self.dataset_id,
+                "source_thread_id": group.source_thread_id,
+                "message_id": group.primary_hit_message_id,
+                "source_action": source_action,
+            },
             dataset_id=self.dataset_id,
-            source_thread_id=group.source_thread_id,
-            display_title=display_title,
-            primary_hit_message_id=group.primary_hit_message_id,
-            hit_message_ids={hit.message_id for hit in group.hits},
-            retrieval_methods=group.retrieval_methods,
         )
 
     def start_drag_for_row(self, row: int) -> None:
