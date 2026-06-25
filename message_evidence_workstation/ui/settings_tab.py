@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -22,27 +23,43 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QScrollArea,
+    QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
-from message_evidence_workstation.config.settings import AppSettings, load_settings, save_settings
+from message_evidence_workstation.config.settings import (
+    AppSettings,
+    ModelRoleConfig,
+    ModelRoutingSettings,
+    PROVIDER_GOOGLE,
+    PROVIDER_NIM,
+    default_model_routing,
+    load_settings,
+    save_settings,
+)
 from message_evidence_workstation.domain.constants import (
     SEVERITY_DEBUG,
     SEVERITY_ERROR,
     SEVERITY_INFO,
     SEVERITY_WARNING,
 )
+from message_evidence_workstation.llm.errors import ModelError, model_error_user_message
+from message_evidence_workstation.llm.router import ModelRouter
+from message_evidence_workstation.llm.types import ModelTaskRole, ModelTestResult, UserFacingModelRole
 from message_evidence_workstation.logging_ui.log_bus import LogBus
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, fetch_process_logs
 from message_evidence_workstation.nim.client import (
-    NimClient,
     NimClientError,
-    NimTestResult,
     nim_error_log_details,
     nim_error_user_message,
 )
+
+
+# T25: task roles for settings-only NIM operations (not routed through run_nim_chat).
+MODEL_LIST_TASK_ROLE = ModelTaskRole.MODEL_LIST
+MODEL_TEST_TASK_ROLE = ModelTaskRole.MODEL_TEST
 
 
 class SettingsTab(QWidget):
@@ -65,8 +82,9 @@ class SettingsTab(QWidget):
 
         self.db_path = db_path or default_db_path()
         self._entries: list[dict[str, Any]] = []
-        self._model_runs: list = []
         self.settings = load_settings()
+        self._models_by_provider: dict[str, list] = {}
+        self._initializing = True
 
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
@@ -82,116 +100,136 @@ class SettingsTab(QWidget):
         layout = QVBoxLayout(content)
         layout.addWidget(QLabel("Setup / Settings"))
 
-        nim_group = QGroupBox("NVIDIA NIM")
+        nim_group = QGroupBox("API settings")
         nim_form = QFormLayout(nim_group)
         self.nim_base_url = QLineEdit(self.settings.nim.api_base_url)
-        nim_form.addRow("API base URL", self.nim_base_url)
+        nim_form.addRow("NIM API base URL", self.nim_base_url)
         self.nim_api_key = QLineEdit(self.settings.nim.api_key)
         self.nim_api_key.setEchoMode(QLineEdit.EchoMode.Password)
         self.nim_api_key.setPlaceholderText("Use MEW_NIM_API_KEY env var or enter key")
-        nim_form.addRow("API key", self.nim_api_key)
-        self.nim_model = QComboBox()
-        self.nim_model.setEditable(True)
-        self.nim_model.setEditText(self.settings.nim.model)
-        self.nim_model.activated.connect(lambda _index: self._persist_nim_model_selection())
-        nim_form.addRow("Model", self.nim_model)
+        nim_form.addRow("NIM API key", self.nim_api_key)
+        self.google_api_key = QLineEdit(self._google_api_key_from_settings())
+        self.google_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.google_api_key.setPlaceholderText("Use MEW_GOOGLE_API_KEY env var or enter key")
+        nim_form.addRow("Google API key", self.google_api_key)
         self.nim_temperature = QDoubleSpinBox()
         self.nim_temperature.setRange(0.0, 2.0)
         self.nim_temperature.setSingleStep(0.1)
         self.nim_temperature.setValue(self.settings.nim.temperature)
-        nim_form.addRow("Temperature", self.nim_temperature)
+        nim_form.addRow("Shared temperature", self.nim_temperature)
         self.nim_max_tokens = QSpinBox()
-        self.nim_max_tokens.setRange(1, 32768)
+        self.nim_max_tokens.setRange(256, 131_072)
+        self.nim_max_tokens.setSingleStep(256)
         self.nim_max_tokens.setValue(self.settings.nim.max_output_tokens)
+        self.nim_max_tokens.setToolTip(
+            "Maximum output tokens sent on every routed model call, including conversational answers."
+        )
         nim_form.addRow("Max output tokens", self.nim_max_tokens)
+        self.context_window_tokens = QSpinBox()
+        self.context_window_tokens.setRange(0, 2_000_000)
+        self.context_window_tokens.setSingleStep(1024)
+        self.context_window_tokens.setValue(self.settings.nim.context_window_tokens)
+        self.context_window_tokens.setToolTip(
+            "Context window size for the selected writing model. "
+            "0 uses the built-in default (8192)."
+        )
+        nim_form.addRow("Model context window (tokens)", self.context_window_tokens)
+        self.context_safety_ratio = QDoubleSpinBox()
+        self.context_safety_ratio.setRange(0.25, 0.90)
+        self.context_safety_ratio.setSingleStep(0.05)
+        self.context_safety_ratio.setValue(self.settings.nim.context_safety_ratio)
+        nim_form.addRow("Context safety ratio", self.context_safety_ratio)
+        self.prompt_overhead_tokens = QSpinBox()
+        self.prompt_overhead_tokens.setRange(0, 20000)
+        self.prompt_overhead_tokens.setValue(self.settings.nim.prompt_overhead_tokens)
+        nim_form.addRow("Prompt overhead tokens", self.prompt_overhead_tokens)
         self.nim_timeout = QDoubleSpinBox()
         self.nim_timeout.setRange(1.0, 3600.0)
         self.nim_timeout.setValue(self.settings.nim.timeout_seconds)
-        self.nim_timeout.setToolTip("NIM chat completion wait time. Increase if calls time out.")
+        self.nim_timeout.setToolTip(
+            "Shared model timeout for routed provider calls. Increase if calls time out."
+        )
         self.nim_timeout.valueChanged.connect(self._persist_nim_timeout)
-        nim_form.addRow("Timeout (s)", self.nim_timeout)
+        nim_form.addRow("Shared timeout (s)", self.nim_timeout)
         self.nim_streaming = QCheckBox("Streaming enabled")
         self.nim_streaming.setChecked(self.settings.nim.streaming)
         nim_form.addRow("", self.nim_streaming)
-        nim_buttons = QHBoxLayout()
-        self.refresh_models_button = QPushButton("Refresh model list")
-        self.refresh_models_button.clicked.connect(self._refresh_models)
-        nim_buttons.addWidget(self.refresh_models_button)
-        self.test_model_button = QPushButton("Test model")
-        self.test_model_button.setToolTip(
-            "Send a minimal POST /chat/completions request with the selected model."
-        )
-        self.test_model_button.clicked.connect(self._test_model)
-        nim_buttons.addWidget(self.test_model_button)
-        self.save_nim_button = QPushButton("Save NIM settings")
-        self.save_nim_button.clicked.connect(self._save_nim_settings)
-        nim_buttons.addWidget(self.save_nim_button)
-        nim_form.addRow("", nim_buttons)
-        self.nim_test_result = QLabel("Model test: not run yet.")
-        self.nim_test_result.setWordWrap(True)
-        self.nim_test_result.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        nim_form.addRow("Model test", self.nim_test_result)
+        for widget in (
+            self.nim_max_tokens,
+            self.context_window_tokens,
+            self.context_safety_ratio,
+            self.prompt_overhead_tokens,
+        ):
+            widget.valueChanged.connect(self.refresh_context_budget_readout)
         layout.addWidget(nim_group)
+
+        routing_group = QGroupBox("Model routing")
+        routing_form = QFormLayout(routing_group)
+        self.role_provider: dict[UserFacingModelRole, QComboBox] = {}
+        self.role_model: dict[UserFacingModelRole, QComboBox] = {}
+        self.role_test_result: dict[UserFacingModelRole, QLabel] = {}
+        for label, role in (
+            ("Expansion model", UserFacingModelRole.EXPANSION),
+            ("Research model", UserFacingModelRole.RESEARCH),
+            ("Writing model", UserFacingModelRole.WRITING),
+        ):
+            row = QWidget()
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            provider = QComboBox()
+            provider.addItem("NVIDIA NIM", PROVIDER_NIM)
+            provider.addItem("Google AI Studio", PROVIDER_GOOGLE)
+            model = QComboBox()
+            model.setEditable(True)
+            test_button = QPushButton("Test")
+            test_button.clicked.connect(lambda _checked=False, r=role: self._test_role_model(r))
+            self.role_provider[role] = provider
+            self.role_model[role] = model
+            provider.currentIndexChanged.connect(
+                lambda _index, r=role: self._on_role_provider_changed(r)
+            )
+            self.role_model[role].currentIndexChanged.connect(self.refresh_context_budget_readout)
+            self.role_model[role].editTextChanged.connect(self.refresh_context_budget_readout)
+            row_layout.addWidget(provider)
+            row_layout.addWidget(model, stretch=1)
+            row_layout.addWidget(test_button)
+            routing_form.addRow(label, row)
+            result_label = QLabel("Not tested yet.")
+            result_label.setWordWrap(True)
+            result_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self.role_test_result[role] = result_label
+            routing_form.addRow(f"{label} test", result_label)
+        self._populate_role_routing_controls()
+        routing_buttons = QHBoxLayout()
+        self.refresh_models_button = QPushButton("Refresh model lists")
+        self.refresh_models_button.setToolTip(
+            "Fetch available models from NIM and Google (when credentials are configured)."
+        )
+        self.refresh_models_button.clicked.connect(self._refresh_models)
+        routing_buttons.addWidget(self.refresh_models_button)
+        self.save_routing_button = QPushButton("Save API settings")
+        self.save_routing_button.clicked.connect(self._save_api_settings)
+        routing_buttons.addWidget(self.save_routing_button)
+        routing_form.addRow("", routing_buttons)
+        layout.addWidget(routing_group)
 
         answer_group = QGroupBox("Conversational answer strategy")
         answer_form = QFormLayout(answer_group)
         self.answer_strategy = QComboBox()
         for label, value in (
-            ("Auto (whole transcript if it fits, else exhaustive window scan)", "auto"),
-            ("Whole transcript", "whole_transcript"),
+            ("Whole transcript (default)", "whole_transcript"),
             ("Exhaustive window scan (inspect every session)", "exhaustive_window_scan"),
             ("Session summary triage (faster, lower recall)", "session_coverage"),
-            ("Retrieval fallback / debug (lower recall)", "retrieval_fallback"),
         ):
             self.answer_strategy.addItem(label, value)
         strategy_index = self.answer_strategy.findData(self.settings.answer.answer_strategy)
         if strategy_index >= 0:
             self.answer_strategy.setCurrentIndex(strategy_index)
         answer_form.addRow("Answer strategy", self.answer_strategy)
-        self.whole_transcript_max_chars = QSpinBox()
-        self.whole_transcript_max_chars.setRange(10_000, 2_000_000)
-        self.whole_transcript_max_chars.setSingleStep(10_000)
-        self.whole_transcript_max_chars.setValue(self.settings.answer.whole_transcript_max_chars)
-        answer_form.addRow("Whole transcript max chars", self.whole_transcript_max_chars)
         self.answer_session_gap_minutes = QSpinBox()
         self.answer_session_gap_minutes.setRange(15, 24 * 60)
         self.answer_session_gap_minutes.setValue(self.settings.answer.session_gap_minutes)
         answer_form.addRow("Session gap (minutes)", self.answer_session_gap_minutes)
-        self.max_inspected_sessions = QSpinBox()
-        self.max_inspected_sessions.setRange(1, 100)
-        self.max_inspected_sessions.setValue(self.settings.answer.max_inspected_sessions)
-        answer_form.addRow("Max inspected sessions", self.max_inspected_sessions)
-        self.transcript_window_padding = QSpinBox()
-        self.transcript_window_padding.setRange(0, 20)
-        self.transcript_window_padding.setValue(self.settings.answer.transcript_window_padding)
-        answer_form.addRow("Transcript window padding", self.transcript_window_padding)
-        self.context_window_override_tokens = QSpinBox()
-        self.context_window_override_tokens.setRange(0, 2_000_000)
-        self.context_window_override_tokens.setSingleStep(1024)
-        self.context_window_override_tokens.setValue(self.settings.answer.context_window_override_tokens)
-        self.context_window_override_tokens.setToolTip(
-            "Set your model's context window size in tokens. "
-            "0 uses the built-in default (8192). This value is never changed automatically."
-        )
-        answer_form.addRow("Model context window (tokens)", self.context_window_override_tokens)
-        self.context_safety_ratio = QDoubleSpinBox()
-        self.context_safety_ratio.setRange(0.25, 0.90)
-        self.context_safety_ratio.setSingleStep(0.05)
-        self.context_safety_ratio.setValue(self.settings.answer.context_safety_ratio)
-        answer_form.addRow("Context safety ratio", self.context_safety_ratio)
-        self.reserved_output_tokens = QSpinBox()
-        self.reserved_output_tokens.setRange(256, 32768)
-        self.reserved_output_tokens.setValue(self.settings.answer.reserved_output_tokens)
-        answer_form.addRow("Reserved output tokens", self.reserved_output_tokens)
-        self.prompt_overhead_tokens = QSpinBox()
-        self.prompt_overhead_tokens.setRange(0, 20000)
-        self.prompt_overhead_tokens.setValue(self.settings.answer.prompt_overhead_tokens)
-        answer_form.addRow("Prompt overhead tokens", self.prompt_overhead_tokens)
-        self.window_target_tokens = QSpinBox()
-        self.window_target_tokens.setRange(500, 200000)
-        self.window_target_tokens.setSingleStep(500)
-        self.window_target_tokens.setValue(self.settings.answer.window_target_tokens)
-        answer_form.addRow("Exhaustive window target tokens", self.window_target_tokens)
         self.window_overlap_messages = QSpinBox()
         self.window_overlap_messages.setRange(0, 20)
         self.window_overlap_messages.setValue(self.settings.answer.window_overlap_messages)
@@ -201,13 +239,8 @@ class SettingsTab(QWidget):
         answer_form.addRow("Context budget readout", self.context_budget_readout)
         for widget in (
             self.answer_strategy,
-            self.context_window_override_tokens,
-            self.context_safety_ratio,
-            self.reserved_output_tokens,
-            self.prompt_overhead_tokens,
-            self.window_target_tokens,
             self.window_overlap_messages,
-            self.nim_model,
+            self.role_model[UserFacingModelRole.WRITING],
         ):
             if isinstance(widget, QComboBox):
                 widget.currentIndexChanged.connect(self.refresh_context_budget_readout)
@@ -232,7 +265,6 @@ class SettingsTab(QWidget):
             "keyword_expansion",
             "conversational_search_planner",
             "conversational_search_synthesis",
-            "evidence_range_suggestion",
             "whole_transcript_answer",
             "coverage_session_answer",
             "coverage_audit",
@@ -274,24 +306,29 @@ class SettingsTab(QWidget):
         chunking_group = QGroupBox("Semantic chunking")
         chunking_form = QFormLayout(chunking_group)
         from message_evidence_workstation.embeddings.chunking import (
+            DEFAULT_DESIRED_AVERAGE_CHUNK_MESSAGES,
             DEFAULT_MAX_CHARS,
-            DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD,
             DEFAULT_SESSION_GAP_HOURS,
         )
 
         chunking_settings = self.settings.chunking or {}
-        self.chunk_similarity_threshold = QDoubleSpinBox()
-        self.chunk_similarity_threshold.setRange(0.0, 1.0)
-        self.chunk_similarity_threshold.setDecimals(2)
-        self.chunk_similarity_threshold.setSingleStep(0.05)
-        self.chunk_similarity_threshold.setValue(
-            float(chunking_settings.get("semantic_similarity_threshold", DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD))
+        self.chunk_desired_average = QSlider(Qt.Orientation.Horizontal)
+        self.chunk_desired_average.setRange(2, 20)
+        self.chunk_desired_average.setSingleStep(1)
+        self.chunk_desired_average.setPageStep(1)
+        self.chunk_desired_average.setValue(
+            int(chunking_settings.get("desired_average_chunk_messages", DEFAULT_DESIRED_AVERAGE_CHUNK_MESSAGES))
         )
-        self.chunk_similarity_threshold.setToolTip(
-            "Start a new chronological chunk when the next message is below this cosine similarity."
+        self.chunk_desired_average.setToolTip(
+            "Target average messages per semantic chunk. The app calibrates the similarity threshold to match this."
         )
-        self.chunk_similarity_threshold.valueChanged.connect(self._on_chunking_controls_changed)
-        chunking_form.addRow("Semantic similarity threshold", self.chunk_similarity_threshold)
+        self.chunk_desired_average_label = QLabel()
+        self.chunk_desired_average_label.setText(f"{self.chunk_desired_average.value()} messages")
+        desired_layout = QHBoxLayout()
+        desired_layout.addWidget(self.chunk_desired_average)
+        desired_layout.addWidget(self.chunk_desired_average_label)
+        self.chunk_desired_average.valueChanged.connect(self._on_chunking_controls_changed)
+        chunking_form.addRow("Desired average chunk length", desired_layout)
 
         self.chunk_session_gap_hours = QDoubleSpinBox()
         self.chunk_session_gap_hours.setRange(0.25, 168.0)
@@ -346,31 +383,6 @@ class SettingsTab(QWidget):
         embedding_form.addRow("", embedding_buttons)
         layout.addWidget(embedding_group)
 
-        audit_group = QGroupBox("Audit export and ModelRun viewer")
-        audit_layout = QVBoxLayout(audit_group)
-        audit_buttons = QHBoxLayout()
-        self.export_log_json_button = QPushButton("Export process log (JSON)")
-        self.export_log_json_button.clicked.connect(self._export_process_log_json)
-        audit_buttons.addWidget(self.export_log_json_button)
-        self.export_log_text_button = QPushButton("Export process log (text)")
-        self.export_log_text_button.clicked.connect(self._export_process_log_text)
-        audit_buttons.addWidget(self.export_log_text_button)
-        self.export_audit_bundle_button = QPushButton("Export audit bundle…")
-        self.export_audit_bundle_button.clicked.connect(self._export_audit_bundle)
-        audit_buttons.addWidget(self.export_audit_bundle_button)
-        audit_buttons.addStretch()
-        audit_layout.addLayout(audit_buttons)
-        audit_layout.addWidget(QLabel("ModelRun records"))
-        self.model_run_list = QListWidget()
-        self.model_run_list.currentRowChanged.connect(self._on_model_run_selected)
-        audit_layout.addWidget(self.model_run_list)
-        from PySide6.QtWidgets import QTextEdit
-
-        self.model_run_detail = QTextEdit()
-        self.model_run_detail.setReadOnly(True)
-        audit_layout.addWidget(self.model_run_detail)
-        layout.addWidget(audit_group)
-
         layout.addWidget(QLabel("Verbose process log (live + persisted)"))
 
         controls = QHBoxLayout()
@@ -406,12 +418,12 @@ class SettingsTab(QWidget):
         )
         self._load_selected_prompt()
         self.refresh_persisted_logs()
-        self.refresh_model_runs()
         self._chunk_preview_timer = QTimer(self)
         self._chunk_preview_timer.setSingleShot(True)
         self._chunk_preview_timer.timeout.connect(self._update_chunk_preview)
         self.start_embedding_model_preload()
         self._update_chunk_preview()
+        self._initializing = False
 
     _MAX_LIVE_LOG_ENTRIES = 500
     _LIVE_LOG_STATUS_ONLY = frozenset(
@@ -571,51 +583,139 @@ class SettingsTab(QWidget):
                 exc=exc,
             )
 
+    def _ensure_model_routing(self) -> ModelRoutingSettings:
+        if self.settings.model_routing is None:
+            self.settings.model_routing = default_model_routing(self.settings.nim)
+        return self.settings.model_routing
+
+    def _google_api_key_from_settings(self) -> str:
+        routing = self.settings.model_routing
+        if routing is not None and routing.expansion.provider == PROVIDER_GOOGLE:
+            return routing.expansion.api_key
+        if routing is not None and routing.research.api_key:
+            return routing.research.api_key
+        if routing is not None and routing.writing.api_key:
+            return routing.writing.api_key
+        return ""
+
+    def _populate_role_routing_controls(self) -> None:
+        routing = self._ensure_model_routing()
+        for role, config in (
+            (UserFacingModelRole.EXPANSION, routing.expansion),
+            (UserFacingModelRole.RESEARCH, routing.research),
+            (UserFacingModelRole.WRITING, routing.writing),
+        ):
+            self.role_provider[role].blockSignals(True)
+            self.role_model[role].blockSignals(True)
+            provider_index = self.role_provider[role].findData(config.provider)
+            if provider_index >= 0:
+                self.role_provider[role].setCurrentIndex(provider_index)
+            self.role_model[role].setEditable(True)
+            self.role_model[role].setCurrentText(config.model)
+            self.role_model[role].blockSignals(False)
+            self.role_provider[role].blockSignals(False)
+
+    def _role_config_from_ui(self, role: UserFacingModelRole) -> ModelRoleConfig:
+        nim = self._current_nim_settings()
+        provider = str(self.role_provider[role].currentData() or PROVIDER_NIM)
+        google_key = self.google_api_key.text().strip()
+        routing = self._ensure_model_routing()
+        existing = {
+            UserFacingModelRole.EXPANSION: routing.expansion,
+            UserFacingModelRole.RESEARCH: routing.research,
+            UserFacingModelRole.WRITING: routing.writing,
+        }[role]
+        model = self.role_model[role].currentText().strip()
+        if not model and existing.provider == provider:
+            model = existing.model.strip()
+        if provider == PROVIDER_NIM:
+            return replace(
+                existing,
+                provider=provider,
+                model=model,
+                api_base_url=nim.api_base_url,
+                api_key=nim.api_key,
+                temperature=nim.temperature,
+                max_output_tokens=nim.max_output_tokens,
+                timeout_seconds=nim.timeout_seconds,
+            )
+        return replace(
+            existing,
+            provider=provider,
+            model=model,
+            api_base_url="",
+            api_key=google_key,
+            temperature=nim.temperature,
+            max_output_tokens=nim.max_output_tokens,
+            timeout_seconds=nim.timeout_seconds,
+        )
+
+    def _apply_role_routing_to_settings(self) -> None:
+        routing = self._ensure_model_routing()
+        routing.expansion = self._role_config_from_ui(UserFacingModelRole.EXPANSION)
+        routing.research = self._role_config_from_ui(UserFacingModelRole.RESEARCH)
+        routing.writing = self._role_config_from_ui(UserFacingModelRole.WRITING)
+        self.settings.model_routing = routing
+
+    def _save_api_settings(self) -> None:
+        self.settings.nim = self._current_nim_settings()
+        self._apply_role_routing_to_settings()
+        save_settings(self.settings)
+        self._populate_role_routing_controls()
+        self.refresh_context_budget_readout()
+        self.logger.info(
+            component="ui.settings_tab",
+            operation="api_settings_saved",
+            message="API settings saved",
+            details={
+                "nim_api_base_url": self.settings.nim.api_base_url,
+                "expansion_provider": self.settings.model_routing.expansion.provider if self.settings.model_routing else "",
+                "research_provider": self.settings.model_routing.research.provider if self.settings.model_routing else "",
+                "writing_provider": self.settings.model_routing.writing.provider if self.settings.model_routing else "",
+            },
+        )
+
+    def _router_from_ui(self) -> ModelRouter:
+        self.settings.nim = self._current_nim_settings()
+        self._apply_role_routing_to_settings()
+        return ModelRouter(self.settings)
+
     def _current_nim_settings(self):
         self.settings.nim.api_base_url = self.nim_base_url.text().strip()
         self.settings.nim.api_key = self.nim_api_key.text().strip()
-        self.settings.nim.model = self.nim_model.currentText().strip()
         self.settings.nim.temperature = float(self.nim_temperature.value())
         self.settings.nim.max_output_tokens = int(self.nim_max_tokens.value())
+        self.settings.nim.context_window_tokens = int(self.context_window_tokens.value())
+        self.settings.nim.context_safety_ratio = float(self.context_safety_ratio.value())
+        self.settings.nim.prompt_overhead_tokens = int(self.prompt_overhead_tokens.value())
         self.settings.nim.timeout_seconds = float(self.nim_timeout.value())
         self.settings.nim.streaming = self.nim_streaming.isChecked()
         return self.settings.nim
 
-    def _save_nim_settings(self) -> None:
-        nim = self._current_nim_settings()
-        self.settings.nim = nim
-        save_settings(self.settings)
-        self.logger.info(
-            component="ui.settings_tab",
-            operation="nim_settings_saved",
-            message="NIM settings saved",
-            details={"api_base_url": nim.api_base_url, "model": nim.model},
-        )
-
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
         self.refresh_context_budget_readout()
+        self._update_chunk_preview()
 
     def refresh_context_budget_readout(self) -> None:
+        if not hasattr(self, "answer_strategy") or not hasattr(self, "context_budget_readout"):
+            return
         from message_evidence_workstation.config.settings import AnswerSettings
         from message_evidence_workstation.search.conversational_answer import (
             build_dataset_transcript,
             resolve_answer_budget,
         )
 
-        model_id = self.nim_model.currentText().strip() or self.settings.nim.model or "unknown-model"
-        provider_metadata = self.settings.nim_model_metadata.get(model_id, {})
+        nim_settings = self._current_nim_settings()
+        model_id = (
+            self.role_model[UserFacingModelRole.WRITING].currentText().strip()
+            or (self.settings.model_routing.writing.model if self.settings.model_routing else "")
+            or "unknown-model"
+        )
+        provider_metadata = self.settings.model_metadata.get(model_id, {})
         answer_settings = AnswerSettings(
-            answer_strategy=str(self.answer_strategy.currentData() or "auto"),
-            whole_transcript_max_chars=int(self.whole_transcript_max_chars.value()),
+            answer_strategy=str(self.answer_strategy.currentData() or "whole_transcript"),
             session_gap_minutes=int(self.answer_session_gap_minutes.value()),
-            max_inspected_sessions=int(self.max_inspected_sessions.value()),
-            transcript_window_padding=int(self.transcript_window_padding.value()),
-            context_window_override_tokens=int(self.context_window_override_tokens.value()),
-            context_safety_ratio=float(self.context_safety_ratio.value()),
-            reserved_output_tokens=int(self.reserved_output_tokens.value()),
-            prompt_overhead_tokens=int(self.prompt_overhead_tokens.value()),
-            window_target_tokens=int(self.window_target_tokens.value()),
             window_overlap_messages=int(self.window_overlap_messages.value()),
         )
         transcript_tokens = "n/a"
@@ -626,6 +726,7 @@ class SettingsTab(QWidget):
                 transcript,
                 answer_settings,
                 model_id,
+                nim_settings=nim_settings,
                 provider_metadata=provider_metadata,
             )
             transcript_tokens = (
@@ -633,37 +734,36 @@ class SettingsTab(QWidget):
             )
             auto_decision = budget.decision
             usable_input = budget.usable_input_tokens
-            effective_output = budget.effective_reserved_output_tokens
+            max_output = budget.max_output_tokens
             context_window = budget.context_window_tokens
             context_source = budget.context_source
             if context_source == "default":
-                context_source = "built-in default (8192) — set Model context window above for your model"
+                context_source = "built-in default (8192) — set Model context window in API settings"
         else:
             from message_evidence_workstation.nim.model_context import resolve_model_context
+            from message_evidence_workstation.search.token_budget import compute_usable_input_tokens
 
             model_context = resolve_model_context(
                 model_id,
                 provider_metadata=provider_metadata,
                 user_override_tokens=(
-                    answer_settings.context_window_override_tokens
-                    if answer_settings.context_window_override_tokens > 0
+                    nim_settings.context_window_tokens
+                    if nim_settings.context_window_tokens > 0
                     else None
                 ),
             )
             context_window = model_context.context_window_tokens
             context_source = (
-                "built-in default (8192) — set Model context window above for your model"
+                "built-in default (8192) — set Model context window in API settings"
                 if model_context.source == "default"
                 else model_context.source
             )
-            from message_evidence_workstation.search.token_budget import compute_usable_input_tokens
-
-            usable_input, effective_output = compute_usable_input_tokens(
+            usable_input = compute_usable_input_tokens(
                 context_window_tokens=context_window,
-                safety_ratio=max(0.25, min(0.90, answer_settings.context_safety_ratio)),
-                reserved_output_tokens=answer_settings.reserved_output_tokens,
-                prompt_overhead_tokens=answer_settings.prompt_overhead_tokens,
+                safety_ratio=max(0.25, min(0.90, nim_settings.context_safety_ratio)),
+                prompt_overhead_tokens=nim_settings.prompt_overhead_tokens,
             )
+            max_output = max(1, nim_settings.max_output_tokens)
         self.context_budget_readout.setText(
             "\n".join(
                 [
@@ -671,9 +771,8 @@ class SettingsTab(QWidget):
                     f"Context window tokens: {context_window}",
                     f"Context source: {context_source}",
                     f"Usable input budget: {usable_input}",
-                    f"Reserved output tokens: {answer_settings.reserved_output_tokens}",
-                    f"Effective output cap: {effective_output}",
-                    f"Prompt overhead tokens: {answer_settings.prompt_overhead_tokens}",
+                    f"Max output tokens (API settings): {max_output}",
+                    f"Prompt overhead tokens (API settings): {nim_settings.prompt_overhead_tokens}",
                     f"Transcript token estimate: {transcript_tokens}",
                     f"Auto mode decision: {auto_decision}",
                 ]
@@ -682,19 +781,9 @@ class SettingsTab(QWidget):
 
     def _save_answer_settings(self) -> None:
         self.settings.answer.answer_strategy = str(
-            self.answer_strategy.currentData() or "auto"
+            self.answer_strategy.currentData() or "whole_transcript"
         )
-        self.settings.answer.whole_transcript_max_chars = int(self.whole_transcript_max_chars.value())
         self.settings.answer.session_gap_minutes = int(self.answer_session_gap_minutes.value())
-        self.settings.answer.max_inspected_sessions = int(self.max_inspected_sessions.value())
-        self.settings.answer.transcript_window_padding = int(self.transcript_window_padding.value())
-        self.settings.answer.context_window_override_tokens = int(
-            self.context_window_override_tokens.value()
-        )
-        self.settings.answer.context_safety_ratio = float(self.context_safety_ratio.value())
-        self.settings.answer.reserved_output_tokens = int(self.reserved_output_tokens.value())
-        self.settings.answer.prompt_overhead_tokens = int(self.prompt_overhead_tokens.value())
-        self.settings.answer.window_target_tokens = int(self.window_target_tokens.value())
         self.settings.answer.window_overlap_messages = int(self.window_overlap_messages.value())
         save_settings(self.settings)
         self.refresh_context_budget_readout()
@@ -704,7 +793,7 @@ class SettingsTab(QWidget):
             message="Conversational answer settings saved",
             details={
                 "answer_strategy": self.settings.answer.answer_strategy,
-                "whole_transcript_max_chars": self.settings.answer.whole_transcript_max_chars,
+                "session_gap_minutes": self.settings.answer.session_gap_minutes,
             },
         )
 
@@ -724,22 +813,85 @@ class SettingsTab(QWidget):
             f"Rebuilt {len(sessions)} transcript session(s) for dataset {self.dataset_id}."
         )
 
-    def _persist_nim_model_selection(self) -> None:
-        model = self.nim_model.currentText().strip()
-        if not model:
-            return
+    def _settings_for_model_list(self):
+        import copy
+
         self.settings.nim = self._current_nim_settings()
-        self.settings.nim.model = model
-        save_settings(self.settings)
+        self._apply_role_routing_to_settings()
+        settings = copy.deepcopy(self.settings)
+        google_key = self.google_api_key.text().strip()
+        if google_key and settings.model_routing is not None:
+            routing = settings.model_routing
+            settings.model_routing = replace(
+                routing,
+                expansion=replace(routing.expansion, api_key=google_key),
+                research=replace(routing.research, api_key=google_key),
+                writing=replace(routing.writing, api_key=google_key),
+            )
+        return settings
+
+    def _on_role_provider_changed(self, role: UserFacingModelRole) -> None:
+        self._populate_role_model_combo(role, prefer_current=False)
+        if self._initializing:
+            return
+        self.refresh_context_budget_readout()
+
+    def _stored_model_for_role_provider(self, role: UserFacingModelRole, provider: str) -> str:
+        routing = self._ensure_model_routing()
+        config = {
+            UserFacingModelRole.EXPANSION: routing.expansion,
+            UserFacingModelRole.RESEARCH: routing.research,
+            UserFacingModelRole.WRITING: routing.writing,
+        }[role]
+        if config.provider != provider:
+            return ""
+        return config.model.strip()
+
+    def _populate_role_model_combo(
+        self,
+        role: UserFacingModelRole,
+        *,
+        prefer_current: bool = True,
+    ) -> None:
+        provider = str(self.role_provider[role].currentData() or PROVIDER_NIM)
+        combo = self.role_model[role]
+        current = combo.currentText().strip()
+        stored = self._stored_model_for_role_provider(role, provider)
+        models = self._models_by_provider.get(provider, [])
+        combo.blockSignals(True)
+        combo.clear()
+        for model in models:
+            combo.addItem(model.id)
+        combo.setEditable(True)
+        preferred = current if prefer_current and current else stored
+        if preferred:
+            combo.setCurrentText(preferred)
+        elif models:
+            combo.setCurrentText(models[0].id)
+        combo.blockSignals(False)
+
+    def _apply_cached_models_to_ui(self) -> None:
+        nim_models = self._models_by_provider.get(PROVIDER_NIM, [])
+        if nim_models:
+            self.settings.model_metadata = {
+                model.id: self._merge_model_metadata(model.id, dict(model.metadata))
+                for model in nim_models
+            }
+        for role in (
+            UserFacingModelRole.EXPANSION,
+            UserFacingModelRole.RESEARCH,
+            UserFacingModelRole.WRITING,
+        ):
+            self._populate_role_model_combo(role)
 
     def _persist_nim_timeout(self, _value: float) -> None:
         self.settings.nim = self._current_nim_settings()
         save_settings(self.settings)
 
     def _refresh_models(self) -> None:
-        nim = self._current_nim_settings()
+        settings_snapshot = self._settings_for_model_list()
         self.refresh_models_button.setEnabled(False)
-        self.embedding_status.setText("Fetching NIM model list…")
+        self.embedding_status.setText("Fetching model lists from NIM and Google…")
         db_path = self.db_path
         dataset_id = self.dataset_id
 
@@ -755,61 +907,84 @@ class SettingsTab(QWidget):
                 )
                 worker_logger.info(
                     component="ui.settings_tab",
-                    operation="nim_model_list_start",
-                    message="Refreshing NIM model list (HTTP request running in background)",
-                    details={"api_base_url": nim.api_base_url},
+                    operation="model_list_start",
+                    message="Refreshing provider model lists (background)",
+                    details={"task_role": MODEL_LIST_TASK_ROLE.value},
                     dataset_id=dataset_id,
                 )
-                return NimClient(nim).list_models()
+                router = ModelRouter(settings_snapshot)
+                models_by_provider: dict[str, list] = {}
+                errors: dict[str, str] = {}
+                for provider in (PROVIDER_NIM, PROVIDER_GOOGLE):
+                    try:
+                        models_by_provider[provider] = router.list_models_for_provider(provider)
+                    except (NimClientError, ModelError) as exc:
+                        errors[provider] = (
+                            nim_error_user_message(exc)
+                            if isinstance(exc, NimClientError)
+                            else model_error_user_message(exc)
+                        )
+                return models_by_provider, errors
             finally:
                 worker_conn.close()
 
-        def on_success(models: object) -> None:
+        def on_success(result: object) -> None:
             self.refresh_models_button.setEnabled(True)
-            model_list = list(models)  # type: ignore[arg-type]
-            self.nim_model.clear()
-            for model in model_list:
-                self.nim_model.addItem(model.id)
-            selected = self.nim_model.currentText().strip()
-            if model_list and not selected:
-                self.nim_model.setCurrentText(model_list[0].id)
-            self.settings.nim.manual_model_entry_enabled = False
-            self.settings.nim_model_metadata = {
-                model.id: self._merge_model_metadata(model.id, dict(model.metadata))
-                for model in model_list
-            }
-            save_settings(self.settings)
-            self._persist_nim_model_selection()
-            self.refresh_context_budget_readout()
-            self.embedding_status.setText(f"NIM model list refreshed ({len(model_list)} models)")
+            models_by_provider, errors = result  # type: ignore[misc]
+            for provider, models in models_by_provider.items():
+                self._models_by_provider[provider] = list(models)
+            if models_by_provider:
+                self._apply_cached_models_to_ui()
+                save_settings(self.settings)
+                self.refresh_context_budget_readout()
+            parts = []
+            nim_count = len(models_by_provider.get(PROVIDER_NIM, []))
+            google_count = len(models_by_provider.get(PROVIDER_GOOGLE, []))
+            if nim_count:
+                parts.append(f"NIM {nim_count}")
+            if google_count:
+                parts.append(f"Google {google_count}")
+            if parts:
+                summary = "Model lists refreshed (" + ", ".join(parts) + ")"
+            else:
+                summary = "No model lists returned"
+            if errors:
+                summary += " — " + "; ".join(f"{provider}: {message}" for provider, message in errors.items())
+            self.embedding_status.setText(summary)
             self.logger.info(
                 component="ui.settings_tab",
-                operation="nim_model_list_success",
-                message="NIM model list refreshed",
+                operation="model_list_success",
+                message="Provider model lists refreshed",
                 details={
-                    "model_count": len(model_list),
-                    "selected_model": self.nim_model.currentText().strip(),
+                    "nim_model_count": nim_count,
+                    "google_model_count": google_count,
+                    "errors": errors,
                 },
             )
 
         def on_error(exc: BaseException) -> None:
             self.refresh_models_button.setEnabled(True)
-            if isinstance(exc, NimClientError):
-                self.settings.nim.manual_model_entry_enabled = True
-                self.nim_model.setEditable(True)
-                self.embedding_status.setText(f"NIM model list failed: {nim_error_user_message(exc)}")
+            if isinstance(exc, (NimClientError, ModelError)):
+                message = (
+                    nim_error_user_message(exc)
+                    if isinstance(exc, NimClientError)
+                    else model_error_user_message(exc)
+                )
+                for combo in self.role_model.values():
+                    combo.setEditable(True)
+                self.embedding_status.setText(f"Model list refresh failed: {message}")
                 self.logger.error(
                     component="ui.settings_tab",
-                    operation="nim_model_list_failed",
+                    operation="model_list_failed",
                     message=str(exc),
-                    details={"error_type": exc.error_type, **exc.details},
+                    details={"error_type": exc.error_type, **getattr(exc, "details", {})},
                     exc=exc,
                 )
             else:
-                self.embedding_status.setText(f"NIM model list failed: {exc}")
+                self.embedding_status.setText(f"Model list refresh failed: {exc}")
                 self.logger.error(
                     component="ui.settings_tab",
-                    operation="nim_model_list_failed",
+                    operation="model_list_failed",
                     message="Unexpected model list failure",
                     exc=exc,
                 )
@@ -820,19 +995,20 @@ class SettingsTab(QWidget):
 
     def _merge_model_metadata(self, model_id: str, provider_metadata: dict) -> dict:
         merged = dict(provider_metadata)
-        existing = self.settings.nim_model_metadata.get(model_id, {})
+        existing = self.settings.model_metadata.get(model_id, {})
         for key in ("supports_system_role", "message_role_source"):
             if key in existing:
                 merged[key] = existing[key]
         return merged
 
-    def _format_nim_test_result(self, result: NimTestResult) -> str:
+    def _format_model_test_result(self, result: ModelTestResult) -> str:
         lines = [
-            f"{'OK' if result.success else 'FAILED'} | {result.method} {result.url}",
-            f"model={result.model}",
+            f"{'OK' if result.success else 'FAILED'} | {result.provider} {result.model}",
         ]
         if result.latency_ms is not None:
             lines.append(f"latency={result.latency_ms}ms")
+        if result.method:
+            lines.append(f"{result.method} {result.url}".strip())
         if result.success:
             lines.append(f"reply={result.response_preview!r}")
         else:
@@ -844,75 +1020,85 @@ class SettingsTab(QWidget):
                 lines.append(f"error_type={result.error_type}")
         return "\n".join(lines)
 
-    def _test_model(self) -> None:
-        nim = self._current_nim_settings()
-        if not nim.model:
-            self.nim_test_result.setText("Model test: select or enter a model first.")
+    def _test_role_model(self, role: UserFacingModelRole) -> None:
+        model = self.role_model[role].currentText().strip()
+        if not model:
+            self.role_test_result[role].setText("Model test: select or enter a model first.")
             return
-        self.test_model_button.setEnabled(False)
-        self.nim_test_result.setText(f"Testing POST /chat/completions for {nim.model}…")
+        self.refresh_models_button.setEnabled(False)
+        self.role_test_result[role].setText(f"Testing {role.value} model {model}…")
+        self.logger.info(
+            component="ui.settings_tab",
+            operation="model_test_start",
+            message="Starting routed model test",
+            details={"model": model, "role": role.value, "task_role": MODEL_TEST_TASK_ROLE.value},
+        )
 
-        def work() -> NimTestResult:
-            return NimClient(nim).test_model()
+        def work() -> ModelTestResult:
+            return self._router_from_ui().test_model(user_facing_role=role)
 
         def on_success(result: object) -> None:
-            self.test_model_button.setEnabled(True)
+            self.refresh_models_button.setEnabled(True)
             test_result = result  # type: ignore[assignment]
-            assert isinstance(test_result, NimTestResult)
-            summary = self._format_nim_test_result(test_result)
-            self.nim_test_result.setText(summary)
+            assert isinstance(test_result, ModelTestResult)
+            summary = self._format_model_test_result(test_result)
+            self.role_test_result[role].setText(summary)
             if test_result.success:
                 self.embedding_status.setText(
-                    f"Model test OK ({test_result.latency_ms}ms): {test_result.response_preview!r}"
+                    f"{role.value} model test OK ({test_result.latency_ms}ms): {test_result.response_preview!r}"
                 )
                 self.logger.info(
                     component="ui.settings_tab",
-                    operation="nim_model_test_success",
-                    message="NIM model test succeeded",
+                    operation="model_test_success",
+                    message="Model test succeeded",
                     details={
                         "model": test_result.model,
-                        "url": test_result.url,
-                        "method": test_result.method,
-                        "path": test_result.path,
+                        "provider": test_result.provider,
+                        "role": role.value,
                         "latency_ms": test_result.latency_ms,
                         "response_preview": test_result.response_preview,
+                        "task_role": MODEL_TEST_TASK_ROLE.value,
                     },
                 )
             else:
-                self.embedding_status.setText("NIM model test failed — see Model test readout.")
+                self.embedding_status.setText(f"{role.value} model test failed — see readout.")
                 self.logger.error(
                     component="ui.settings_tab",
-                    operation="nim_model_test_failed",
-                    message=test_result.error_message or "NIM model test failed",
+                    operation="model_test_failed",
+                    message=test_result.error_message or "Model test failed",
                     details={
                         "model": test_result.model,
-                        "url": test_result.url,
-                        "method": test_result.method,
-                        "path": test_result.path,
+                        "provider": test_result.provider,
+                        "role": role.value,
                         "latency_ms": test_result.latency_ms,
                         "status_code": test_result.status_code,
                         "response_body": test_result.response_body,
                         "error_type": test_result.error_type,
+                        "task_role": MODEL_TEST_TASK_ROLE.value,
                     },
                 )
 
         def on_error(exc: BaseException) -> None:
-            self.test_model_button.setEnabled(True)
-            if isinstance(exc, NimClientError):
-                message = nim_error_user_message(exc)
-                self.nim_test_result.setText(message)
+            self.refresh_models_button.setEnabled(True)
+            if isinstance(exc, (NimClientError, ModelError)):
+                message = (
+                    nim_error_user_message(exc)
+                    if isinstance(exc, NimClientError)
+                    else model_error_user_message(exc)
+                )
+                self.role_test_result[role].setText(message)
                 self.logger.error(
                     component="ui.settings_tab",
-                    operation="nim_model_test_failed",
+                    operation="model_test_failed",
                     message=message,
-                    details=nim_error_log_details(exc),
+                    details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else {"error_type": exc.error_type},
                     exc=exc,
                 )
             else:
-                self.nim_test_result.setText(f"Model test failed: {exc}")
+                self.role_test_result[role].setText(f"Model test failed: {exc}")
                 self.logger.error(
                     component="ui.settings_tab",
-                    operation="nim_model_test_failed",
+                    operation="model_test_failed",
                     message="Unexpected model test failure",
                     exc=exc,
                 )
@@ -1014,7 +1200,7 @@ class SettingsTab(QWidget):
 
         return ChunkingConfig(
             max_chars=int(self.chunk_max_chars.value()),
-            semantic_similarity_threshold=float(self.chunk_similarity_threshold.value()),
+            desired_average_chunk_messages=int(self.chunk_desired_average.value()),
             session_gap_hours=float(self.chunk_session_gap_hours.value()),
             use_semantic_boundaries=True,
             split_on_date_change=True,
@@ -1025,6 +1211,7 @@ class SettingsTab(QWidget):
         self.settings.chunking = {
             "max_chars": config.max_chars,
             "semantic_similarity_threshold": config.semantic_similarity_threshold,
+            "desired_average_chunk_messages": config.desired_average_chunk_messages,
             "session_gap_hours": config.session_gap_hours,
             "use_semantic_boundaries": config.use_semantic_boundaries,
             "split_on_date_change": config.split_on_date_change,
@@ -1038,8 +1225,14 @@ class SettingsTab(QWidget):
             self.chunk_preview_label.setText("Load a dataset to preview chunk counts.")
             return
         try:
-            from message_evidence_workstation.embeddings.chunking import count_dataset_chunks, message_vector_count
+            from message_evidence_workstation.embeddings.chunking import (
+                calibrated_config_for_dataset,
+                count_dataset_chunks,
+                message_vector_count,
+            )
 
+            config = self._current_chunking_config()
+            self.chunk_desired_average_label.setText(f"{config.desired_average_chunk_messages} messages")
             message_count = int(
                 self.conn.execute(
                     "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
@@ -1053,11 +1246,13 @@ class SettingsTab(QWidget):
                     f"({vector_count}/{message_count} message vectors ready)."
                 )
                 return
-            config = self._current_chunking_config()
-            chunk_count = count_dataset_chunks(self.conn, self.dataset_id, config=config)
+            calibrated_config = calibrated_config_for_dataset(self.conn, self.dataset_id, config)
+            chunk_count = count_dataset_chunks(self.conn, self.dataset_id, config=calibrated_config)
+            average = message_count / chunk_count if chunk_count else 0
             self.chunk_preview_label.setText(
                 f"{chunk_count} chunks from {message_count} messages | "
-                f"threshold={config.semantic_similarity_threshold:.2f}, "
+                f"avg={average:.1f} msg/chunk, target={config.desired_average_chunk_messages}, "
+                f"threshold={calibrated_config.semantic_similarity_threshold:.2f}, "
                 f"gap={config.session_gap_hours:g}h, max={config.max_chars} chars"
             )
         except Exception as exc:
@@ -1193,85 +1388,3 @@ class SettingsTab(QWidget):
     def _restart_chunk_index(self) -> None:
         self._start_index_job("chunk", force_restart=True)
 
-    def refresh_model_runs(self) -> None:
-        from message_evidence_workstation.export.audit_export import list_model_runs
-
-        self._model_runs = list_model_runs(self.conn, dataset_id=self.dataset_id, limit=200)
-        self.model_run_list.clear()
-        for run in self._model_runs:
-            status = "FAILED" if run.error_type else "ok"
-            latency = f"{run.latency_ms}ms" if run.latency_ms is not None else "—"
-            prompt_version = run.prompt_version if run.prompt_version is not None else "—"
-            item = QListWidgetItem(
-                f"[{run.created_at}] {run.run_type} | {run.model} | v{prompt_version} | {latency} | {status}"
-            )
-            item.setData(Qt.ItemDataRole.UserRole, run.model_run_id)
-            self.model_run_list.addItem(item)
-        if self._model_runs:
-            self.model_run_list.setCurrentRow(len(self._model_runs) - 1)
-
-    def _on_model_run_selected(self, row: int) -> None:
-        if row < 0:
-            self.model_run_detail.clear()
-            return
-        from message_evidence_workstation.export.audit_export import get_model_run_detail
-
-        item = self.model_run_list.item(row)
-        if item is None:
-            return
-        detail = get_model_run_detail(self.conn, int(item.data(Qt.ItemDataRole.UserRole)))
-        if detail is None:
-            self.model_run_detail.clear()
-            return
-        self.model_run_detail.setPlainText(json.dumps(detail, indent=2))
-
-    def _export_process_log_json(self) -> None:
-        from PySide6.QtWidgets import QFileDialog
-
-        from message_evidence_workstation.export.audit_export import export_process_log_json
-
-        path, _ = QFileDialog.getSaveFileName(self, "Export process log", "process_log.json", "JSON (*.json)")
-        if not path:
-            return
-        size = export_process_log_json(self.conn, Path(path), dataset_id=self.dataset_id)
-        self.logger.info(
-            component="ui.settings_tab",
-            operation="process_log_export_json",
-            message=f"Exported process log JSON ({size} bytes)",
-            details={"path": path},
-            dataset_id=self.dataset_id,
-        )
-
-    def _export_process_log_text(self) -> None:
-        from PySide6.QtWidgets import QFileDialog
-
-        from message_evidence_workstation.export.audit_export import export_process_log_text
-
-        path, _ = QFileDialog.getSaveFileName(self, "Export process log", "process_log.txt", "Text (*.txt)")
-        if not path:
-            return
-        size = export_process_log_text(self.conn, Path(path), dataset_id=self.dataset_id)
-        self.logger.info(
-            component="ui.settings_tab",
-            operation="process_log_export_text",
-            message=f"Exported process log text ({size} bytes)",
-            details={"path": path},
-            dataset_id=self.dataset_id,
-        )
-
-    def _export_audit_bundle(self) -> None:
-        from PySide6.QtWidgets import QFileDialog
-
-        from message_evidence_workstation.export.audit_export import export_audit_bundle
-
-        path = QFileDialog.getExistingDirectory(self, "Choose audit export folder")
-        if not path:
-            return
-        sizes = export_audit_bundle(
-            self.conn,
-            self.logger,
-            Path(path),
-            dataset_id=self.dataset_id,
-        )
-        self.refresh_model_runs()
-        self.model_run_detail.setPlainText(json.dumps(sizes, indent=2))

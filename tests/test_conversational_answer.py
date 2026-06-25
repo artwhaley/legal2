@@ -12,9 +12,14 @@ from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.config.settings import NimSettings
-from message_evidence_workstation.nim.client import NimChatResult, NimClient
-from message_evidence_workstation.config.settings import AnswerSettings
+from message_evidence_workstation.config.settings import (
+    AnswerSettings,
+    LEGACY_ANSWER_STRATEGIES,
+    NimSettings,
+    _normalize_answer_settings,
+)
+from tests.router_helpers import router_with_role_models
+from message_evidence_workstation.nim.client import NimChatResult
 from message_evidence_workstation.nim.prompts import (
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
@@ -22,13 +27,11 @@ from message_evidence_workstation.nim.prompts import (
 )
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
-    ANSWER_MODE_RETRIEVAL_FALLBACK,
     ANSWER_MODE_SESSION_COVERAGE,
     ANSWER_MODE_WHOLE_TRANSCRIPT,
-    ANSWER_STRATEGY_AUTO,
     ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
     ANSWER_STRATEGY_SESSION_COVERAGE,
-    ANSWER_STRATEGY_RETRIEVAL_FALLBACK,
+    ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
     ConversationalAnswerParseError,
     build_dataset_transcript,
     build_whole_transcript_context_content,
@@ -59,11 +62,12 @@ def answer_db(tmp_path):
 def test_resolve_answer_budget_ignores_provider_metadata_without_user_setting(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO)
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     budget = resolve_answer_budget(
         transcript,
         settings,
         "nvidia/nemotron-mini-4b-instruct",
+        nim_settings=NimSettings(),
         provider_metadata={"context_length": 4096},
     )
     assert budget.context_source == "default"
@@ -73,72 +77,72 @@ def test_resolve_answer_budget_ignores_provider_metadata_without_user_setting(an
 def test_resolve_answer_budget_unknown_default_uses_conservative_window(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO)
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     budget = resolve_answer_budget(transcript, settings, "vendor/unknown-model")
     assert budget.context_source == "default"
     assert budget.context_window_tokens == 8192
 
 
-def test_resolve_answer_budget_auto_selects_whole_transcript_when_tokens_fit(answer_db) -> None:
+def test_resolve_answer_budget_whole_transcript_selects_whole_when_tokens_fit(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO, context_window_override_tokens=1_000_000)
-    budget = resolve_answer_budget(transcript, settings, "test-model")
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
+    budget = resolve_answer_budget(
+        transcript,
+        settings,
+        "test-model",
+        nim_settings=NimSettings(context_window_tokens=1_000_000),
+    )
     assert budget.decision == ANSWER_MODE_WHOLE_TRANSCRIPT
 
 
-def test_resolve_answer_budget_auto_selects_exhaustive_when_tokens_do_not_fit(answer_db) -> None:
+def test_resolve_answer_budget_whole_transcript_selects_exhaustive_when_tokens_do_not_fit(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(
-        answer_strategy=ANSWER_STRATEGY_AUTO,
-        context_window_override_tokens=500,
-        reserved_output_tokens=100,
-        prompt_overhead_tokens=100,
-    )
-    budget = resolve_answer_budget(transcript, settings, "test-model")
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
+    nim = NimSettings(context_window_tokens=500, max_output_tokens=100, prompt_overhead_tokens=100)
+    budget = resolve_answer_budget(transcript, settings, "test-model", nim_settings=nim)
     assert budget.decision == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
 
 
-def test_resolve_answer_mode_auto_selects_whole_transcript_when_fits(answer_db) -> None:
+def test_resolve_answer_mode_whole_transcript_selects_whole_when_fits(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO, context_window_override_tokens=1_000_000)
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     mode = resolve_answer_mode(
-        strategy=ANSWER_STRATEGY_AUTO,
+        strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
         transcript=transcript,
         answer_settings=settings,
+        nim_settings=NimSettings(context_window_tokens=1_000_000),
         model_id="test-model",
     )
     assert mode == ANSWER_MODE_WHOLE_TRANSCRIPT
 
 
-def test_resolve_answer_mode_auto_selects_exhaustive_window_scan_when_too_large(answer_db) -> None:
+def test_resolve_answer_mode_whole_transcript_selects_exhaustive_when_too_large(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(
-        answer_strategy=ANSWER_STRATEGY_AUTO,
-        context_window_override_tokens=500,
-        reserved_output_tokens=100,
-        prompt_overhead_tokens=100,
-    )
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
+    nim = NimSettings(context_window_tokens=500, max_output_tokens=100, prompt_overhead_tokens=100)
     mode = resolve_answer_mode(
-        strategy=ANSWER_STRATEGY_AUTO,
+        strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
         transcript=transcript,
         answer_settings=settings,
+        nim_settings=nim,
         model_id="test-model",
     )
     assert mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
 
 
-def test_char_limit_no_longer_controls_auto(answer_db) -> None:
+def test_char_limit_no_longer_controls_whole_transcript(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO, context_window_override_tokens=1_000_000)
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     mode = resolve_answer_mode(
-        strategy=ANSWER_STRATEGY_AUTO,
+        strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
         transcript=transcript,
         answer_settings=settings,
+        nim_settings=NimSettings(context_window_tokens=1_000_000),
         model_id="test-model",
         max_chars=10,
     )
@@ -148,34 +152,51 @@ def test_char_limit_no_longer_controls_auto(answer_db) -> None:
 def test_resolve_answer_mode_explicit_strategies_still_work(answer_db) -> None:
     conn, _, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(context_window_override_tokens=1_000_000)
+    settings = AnswerSettings()
+    nim = NimSettings(context_window_tokens=1_000_000)
     assert (
         resolve_answer_mode(
             strategy=ANSWER_STRATEGY_SESSION_COVERAGE,
             transcript=transcript,
             answer_settings=settings,
+            nim_settings=nim,
             model_id="test-model",
         )
         == ANSWER_MODE_SESSION_COVERAGE
     )
     assert (
         resolve_answer_mode(
-            strategy=ANSWER_STRATEGY_RETRIEVAL_FALLBACK,
-            transcript=transcript,
-            answer_settings=settings,
-            model_id="test-model",
-        )
-        == ANSWER_MODE_RETRIEVAL_FALLBACK
-    )
-    assert (
-        resolve_answer_mode(
             strategy=ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
             transcript=transcript,
             answer_settings=settings,
+            nim_settings=nim,
             model_id="test-model",
         )
         == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
     )
+
+
+def test_legacy_answer_strategies_normalize_to_whole_transcript() -> None:
+    for legacy in LEGACY_ANSWER_STRATEGIES:
+        normalized = _normalize_answer_settings({"answer_strategy": legacy})
+        assert normalized.answer_strategy == ANSWER_STRATEGY_WHOLE_TRANSCRIPT
+
+
+def test_resolve_answer_budget_never_returns_retrieval_fallback(answer_db) -> None:
+    conn, _, dataset_id = answer_db
+    transcript = build_dataset_transcript(conn, dataset_id)
+    for strategy in (
+        ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
+        ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
+        ANSWER_STRATEGY_SESSION_COVERAGE,
+    ):
+        budget = resolve_answer_budget(
+            transcript,
+            AnswerSettings(answer_strategy=strategy),
+            "test-model",
+            nim_settings=NimSettings(context_window_tokens=1_000_000),
+        )
+        assert budget.decision != "retrieval_fallback"
 
 
 def test_build_whole_transcript_user_content_includes_full_transcript(answer_db) -> None:
@@ -274,6 +295,97 @@ def test_parse_whole_transcript_answer_response_valid() -> None:
     assert result.coverage_summary.mode == "whole_transcript"
 
 
+def test_parse_whole_transcript_answer_response_accepts_answer_ranges() -> None:
+    content = json.dumps(
+        {
+            "answer": "The allergy issue appears in one compact exchange.",
+            "answer_summary": "The transcript contains one allergy-related exchange.",
+            "answer_format": "detailed",
+            "answer_ranges": [
+                {
+                    "title": "Allergy form and nurse call",
+                    "summary": "Art asks about the school allergy form and Jane mentions Nurse Kim.",
+                    "date_description": "On June 6, 2023",
+                    "display_text": "Art and Jane discussed the school allergy form and Nurse Kim.",
+                    "hit_message_id": "msg_002",
+                    "start_message_id": "msg_001",
+                    "end_message_id": "msg_003",
+                }
+            ],
+            "uncertainties": [],
+        }
+    )
+    result = parse_whole_transcript_answer_response(
+        content,
+        valid_message_ids={"msg_001", "msg_002", "msg_003", "msg_004", "msg_005", "msg_006"},
+        message_thread_by_id={
+            "msg_001": "thread_001",
+            "msg_002": "thread_001",
+            "msg_003": "thread_001",
+            "msg_004": "thread_001",
+            "msg_005": "thread_001",
+            "msg_006": "thread_001",
+        },
+        source_thread_ids=["thread_001"],
+        messages_considered=6,
+        message_order_by_thread={
+            "thread_001": ["msg_001", "msg_002", "msg_003", "msg_004", "msg_005", "msg_006"]
+        },
+    )
+
+    assert len(result.answer_ranges) == 1
+    answer_range = result.answer_ranges[0]
+    assert answer_range.hit_message_id == "msg_002"
+    assert answer_range.start_message_id == "msg_001"
+    assert answer_range.end_message_id == "msg_003"
+    assert answer_range.date_description == "On June 6, 2023"
+    assert answer_range.display_text == "Art and Jane discussed the school allergy form and Nurse Kim."
+    assert result.answer_summary == "The transcript contains one allergy-related exchange."
+    assert result.answer_format == "detailed"
+    candidate = result.candidate_evidence_blocks[0]
+    assert candidate.core_message_id == "msg_002"
+    assert candidate.relevant_start_message_id == "msg_001"
+    assert candidate.relevant_end_message_id == "msg_003"
+    assert candidate.leading_context_start_message_id == "msg_001"
+    assert candidate.trailing_context_end_message_id == "msg_006"
+    assert candidate.highlighted_message_ids == ["msg_002"]
+
+
+def test_parse_whole_transcript_answer_response_rejects_invalid_answer_range() -> None:
+    content = json.dumps(
+        {
+            "answer": "Invalid range should be skipped.",
+            "answer_ranges": [
+                {
+                    "title": "Bad range",
+                    "summary": "The hit is outside the selected range.",
+                    "hit_message_id": "msg_004",
+                    "start_message_id": "msg_001",
+                    "end_message_id": "msg_003",
+                }
+            ],
+            "uncertainties": [],
+        }
+    )
+    result = parse_whole_transcript_answer_response(
+        content,
+        valid_message_ids={"msg_001", "msg_002", "msg_003", "msg_004"},
+        message_thread_by_id={
+            "msg_001": "thread_001",
+            "msg_002": "thread_001",
+            "msg_003": "thread_001",
+            "msg_004": "thread_001",
+        },
+        source_thread_ids=["thread_001"],
+        messages_considered=4,
+        message_order_by_thread={"thread_001": ["msg_001", "msg_002", "msg_003", "msg_004"]},
+    )
+
+    assert result.answer_ranges == []
+    assert result.candidate_evidence_blocks == []
+    assert any("Skipped candidate evidence block" in item for item in result.uncertainties)
+
+
 def test_parse_whole_transcript_answer_response_rejects_invented_ids() -> None:
     content = json.dumps(
         {
@@ -364,7 +476,7 @@ def test_run_whole_transcript_answer_passes_full_transcript_to_nim(answer_db) ->
             latency_ms=1,
         )
 
-    client = NimClient(NimSettings(model="test-model", api_key="key"))
+    router = router_with_role_models()
     with patch(
         "message_evidence_workstation.search.conversational_answer.run_nim_chat",
         side_effect=fake_run_nim_chat,
@@ -372,7 +484,7 @@ def test_run_whole_transcript_answer_passes_full_transcript_to_nim(answer_db) ->
         result = run_whole_transcript_answer(
             conn,
             logger,
-            client,
+            router,
             user_query="allergy paperwork",
             dataset_id=dataset_id,
             transcript=transcript,
@@ -475,7 +587,7 @@ def test_run_session_coverage_answer_considers_all_sessions(answer_db) -> None:
 
     from message_evidence_workstation.search.conversational_answer import run_session_coverage_answer
 
-    client = NimClient(NimSettings(model="test-model", api_key="key"))
+    router = router_with_role_models()
     with (
         patch(
             "message_evidence_workstation.search.conversational_answer.run_nim_chat",
@@ -493,10 +605,9 @@ def test_run_session_coverage_answer_considers_all_sessions(answer_db) -> None:
         result = run_session_coverage_answer(
             conn,
             logger,
-            client,
+            router,
             user_query="allergy paperwork",
             dataset_id=dataset_id,
-            max_inspected_sessions=12,
         )
     assert result.mode == ANSWER_MODE_SESSION_COVERAGE
     rebuilt_sessions = list_sessions(conn, dataset_id)
@@ -507,17 +618,14 @@ def test_run_session_coverage_answer_considers_all_sessions(answer_db) -> None:
 
 def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_db) -> None:
     conn, logger, dataset_id = answer_db
-    from message_evidence_workstation.config.settings import AnswerSettings
+    from message_evidence_workstation.config.settings import AnswerSettings, NimSettings
     from message_evidence_workstation.nim.prompts import (
         RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
         RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     )
 
-    answer_settings = AnswerSettings(
-        window_target_tokens=500,
-        window_overlap_messages=2,
-        context_window_override_tokens=1_000_000,
-    )
+    answer_settings = AnswerSettings(window_overlap_messages=2)
+    nim_settings = NimSettings(context_window_tokens=1_000_000, max_output_tokens=4096)
     calls: list[tuple[str, dict, dict]] = []
     scan_count = 0
 
@@ -564,7 +672,7 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
             latency_ms=1,
         )
 
-    client = NimClient(NimSettings(model="test-model", api_key="key"))
+    router = router_with_role_models()
     with patch(
         "message_evidence_workstation.search.conversational_answer.run_nim_chat",
         side_effect=fake_run_nim_chat,
@@ -572,19 +680,23 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
         result = run_exhaustive_window_scan_answer(
             conn,
             logger,
-            client,
+            router,
             user_query="travel chess set",
             dataset_id=dataset_id,
             answer_settings=answer_settings,
-            max_tokens=answer_settings.reserved_output_tokens,
+            nim_settings=nim_settings,
+            max_tokens=nim_settings.max_output_tokens,
         )
 
     scan_calls = [call for call in calls if call[0] == RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN]
     assert len(scan_calls) == scan_count
     assert scan_count > 0
-    assert all(call[2].get("max_tokens") == answer_settings.reserved_output_tokens for call in scan_calls)
-    merge_call = next(call for call in calls if call[0] == RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE)
-    assert merge_call[2].get("max_tokens") >= 4096
+    assert all(call[2].get("max_tokens") == nim_settings.max_output_tokens for call in scan_calls)
+    merge_calls = [call for call in calls if call[0] == RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE]
+    if merge_calls:
+        assert merge_calls[0][2].get("max_tokens") == nim_settings.max_output_tokens
+    else:
+        assert scan_count == 1
     assert result.mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
     assert result.coverage_summary.windows_inspected == scan_count
     assert result.coverage_summary.token_budget is not None
@@ -616,7 +728,7 @@ def test_exhaustive_window_scan_allows_empty_answer_for_no_evidence() -> None:
     assert result.uncertainties == ["No relevant evidence found in the provided window"]
 
 
-def test_whole_transcript_answer_passes_reserved_output_tokens(answer_db) -> None:
+def test_whole_transcript_answer_passes_max_output_tokens(answer_db) -> None:
     conn, logger, dataset_id = answer_db
     transcript = build_dataset_transcript(conn, dataset_id)
     captured: dict[str, object] = {}
@@ -641,7 +753,7 @@ def test_whole_transcript_answer_passes_reserved_output_tokens(answer_db) -> Non
             latency_ms=1,
         )
 
-    client = NimClient(NimSettings(model="test-model", api_key="key"))
+    router = router_with_role_models()
     with patch(
         "message_evidence_workstation.search.conversational_answer.run_nim_chat",
         side_effect=fake_run_nim_chat,
@@ -649,7 +761,7 @@ def test_whole_transcript_answer_passes_reserved_output_tokens(answer_db) -> Non
         run_whole_transcript_answer(
             conn,
             logger,
-            client,
+            router,
             user_query="allergy",
             dataset_id=dataset_id,
             transcript=transcript,
@@ -663,8 +775,13 @@ def test_answer_budget_log_written(answer_db) -> None:
     from message_evidence_workstation.search.conversational_answer import log_answer_budget_resolved
 
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_AUTO, context_window_override_tokens=1_000_000)
-    budget = resolve_answer_budget(transcript, settings, "test-model")
+    settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
+    budget = resolve_answer_budget(
+        transcript,
+        settings,
+        "test-model",
+        nim_settings=NimSettings(context_window_tokens=1_000_000),
+    )
     log_answer_budget_resolved(
         logger,
         budget=budget,

@@ -252,6 +252,50 @@ CREATE TABLE IF NOT EXISTS transcript_session (
 
 CREATE INDEX IF NOT EXISTS idx_transcript_session_dataset_thread
     ON transcript_session(dataset_id, source_thread_id, session_index);
+
+CREATE TABLE IF NOT EXISTS printable_artifact_group (
+    printable_artifact_group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dataset_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_collapsed INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id)
+);
+
+CREATE TABLE IF NOT EXISTS printable_artifact (
+    printable_artifact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dataset_id INTEGER NOT NULL,
+    group_id INTEGER NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    exhibit_number TEXT NOT NULL DEFAULT '',
+    case_number TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id),
+    FOREIGN KEY (group_id) REFERENCES printable_artifact_group(printable_artifact_group_id)
+);
+
+CREATE TABLE IF NOT EXISTS printable_artifact_evidence_block (
+    printable_artifact_evidence_block_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    printable_artifact_id INTEGER NOT NULL,
+    evidence_block_id INTEGER NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (printable_artifact_id) REFERENCES printable_artifact(printable_artifact_id),
+    FOREIGN KEY (evidence_block_id) REFERENCES evidence_block(evidence_block_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_printable_artifact_group_dataset
+    ON printable_artifact_group(dataset_id, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_printable_artifact_group
+    ON printable_artifact(group_id, sort_order);
+
+CREATE INDEX IF NOT EXISTS idx_printable_artifact_evidence_block_artifact
+    ON printable_artifact_evidence_block(printable_artifact_id, sort_order);
 """
 
 # FTS virtual table created in T06; placeholder comment only here.

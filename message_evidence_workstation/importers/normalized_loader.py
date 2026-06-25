@@ -113,6 +113,13 @@ def clear_dataset(conn: sqlite3.Connection, dataset_id: int) -> None:
     )
     conn.execute("DELETE FROM workstation_conversation WHERE dataset_id = ?", (dataset_id,))
     conn.execute(
+        "DELETE FROM printable_artifact_evidence_block WHERE printable_artifact_id IN "
+        "(SELECT printable_artifact_id FROM printable_artifact WHERE dataset_id = ?)",
+        (dataset_id,),
+    )
+    conn.execute("DELETE FROM printable_artifact WHERE dataset_id = ?", (dataset_id,))
+    conn.execute("DELETE FROM printable_artifact_group WHERE dataset_id = ?", (dataset_id,))
+    conn.execute(
         "DELETE FROM evidence_block_highlight WHERE evidence_block_id IN "
         "(SELECT evidence_block_id FROM evidence_block WHERE dataset_id = ?)",
         (dataset_id,),
@@ -120,6 +127,9 @@ def clear_dataset(conn: sqlite3.Connection, dataset_id: int) -> None:
     conn.execute("DELETE FROM evidence_block WHERE dataset_id = ?", (dataset_id,))
     conn.execute("DELETE FROM transcript_session WHERE dataset_id = ?", (dataset_id,))
     conn.execute("DELETE FROM category WHERE dataset_id = ?", (dataset_id,))
+    from message_evidence_workstation.search.spellfix import clear_spellfix_for_dataset
+
+    clear_spellfix_for_dataset(conn, dataset_id)
     ensure_chunk_metadata_schema(conn)
     clear_chunk_vectors(conn, dataset_id)
     clear_message_vectors(conn, dataset_id)
@@ -284,6 +294,9 @@ def load_normalized_dataset(
         from message_evidence_workstation.search.fts import rebuild_message_fts
 
         rebuild_message_fts(conn, logger, dataset_id)
+        from message_evidence_workstation.search.spellfix import rebuild_spellfix_for_dataset
+
+        rebuild_spellfix_for_dataset(conn, logger, dataset_id)
         from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
 
         rebuild_dataset_sessions(conn, logger, dataset_id)

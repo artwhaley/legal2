@@ -9,6 +9,7 @@ from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search import fts
+from message_evidence_workstation.search.spellfix import SPELLFIX_TERM_TABLE, expand_fuzzy_terms
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
 
@@ -32,6 +33,68 @@ def test_partial_search_finds_prefix(fts_db) -> None:
     conn, logger, dataset_id = fts_db
     hits = fts.search_partial(conn, logger, dataset_id, "aller")
     assert "msg_001" in [hit.message_id for hit in hits]
+
+
+def test_trigram_search_finds_internal_misspelling_fragment(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    hits = fts.search_partial(conn, logger, dataset_id, "llerg")
+    assert "msg_001" in [hit.message_id for hit in hits]
+
+
+def test_spellfix_vocabulary_is_built_on_import(fts_db) -> None:
+    conn, _logger, dataset_id = fts_db
+    terms = {
+        row[0]
+        for row in conn.execute(
+            f"SELECT term FROM {SPELLFIX_TERM_TABLE} WHERE dataset_id = ?",
+            (dataset_id,),
+        ).fetchall()
+    }
+    assert "allergy" in terms
+
+
+def test_spellfix_expands_edit_distance_typo(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    assert expand_fuzzy_terms(conn, logger, dataset_id, "algery") == ["allergy"]
+
+
+def test_search_messages_includes_fuzzy_hits_for_typo(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    results = fts.search_messages(conn, logger, dataset_id, "algery")
+    assert "msg_001" in [hit.message_id for hit in results["fuzzy"]]
+
+
+def test_message_fts_uses_trigram_tokenizer(fts_db) -> None:
+    conn, _logger, _dataset_id = fts_db
+    sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'message_fts'"
+    ).fetchone()[0]
+    assert "tokenize='trigram'" in sql.replace(" ", "")
+
+
+def test_ensure_fts_schema_recreates_legacy_unicode_table(tmp_path) -> None:
+    conn = connect(tmp_path / "legacy_fts.db")
+    conn.execute(
+        """
+        CREATE VIRTUAL TABLE message_fts USING fts5(
+            message_id UNINDEXED,
+            dataset_id UNINDEXED,
+            source_thread_id UNINDEXED,
+            body,
+            body_normalized,
+            sender_display,
+            tokenize = 'unicode61'
+        )
+        """
+    )
+
+    recreated = fts.ensure_fts_schema(conn)
+
+    sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'message_fts'"
+    ).fetchone()[0]
+    assert recreated is True
+    assert "tokenize='trigram'" in sql.replace(" ", "")
 
 
 def test_empty_query_returns_no_hits(fts_db) -> None:

@@ -69,7 +69,7 @@ def is_context_limit_error(exc: BaseException) -> bool:
 
 def record_learned_model_context(model_id: str, context_tokens: int) -> dict[str, Any]:
     settings = load_settings()
-    metadata = dict(settings.nim_model_metadata.get(model_id, {}))
+    metadata = dict(settings.model_metadata.get(model_id, {}))
     learned = int(context_tokens)
     existing_source = str(metadata.get("context_source", ""))
     existing_value = metadata.get("context_length")
@@ -81,6 +81,6 @@ def record_learned_model_context(model_id: str, context_tokens: int) -> dict[str
             pass
     metadata["context_length"] = learned
     metadata["context_source"] = "learned_from_api_error"
-    settings.nim_model_metadata[model_id] = metadata
+    settings.model_metadata[model_id] = metadata
     save_settings(settings)
     return metadata

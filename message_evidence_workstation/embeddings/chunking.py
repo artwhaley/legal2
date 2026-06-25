@@ -11,6 +11,7 @@ from datetime import datetime
 
 DEFAULT_MAX_CHARS = 1200
 DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD = 0.72
+DEFAULT_DESIRED_AVERAGE_CHUNK_MESSAGES = 5
 DEFAULT_SESSION_GAP_HOURS = 12.0
 
 
@@ -18,6 +19,7 @@ DEFAULT_SESSION_GAP_HOURS = 12.0
 class ChunkingConfig:
     max_chars: int = DEFAULT_MAX_CHARS
     semantic_similarity_threshold: float = DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD
+    desired_average_chunk_messages: int = DEFAULT_DESIRED_AVERAGE_CHUNK_MESSAGES
     session_gap_hours: float = DEFAULT_SESSION_GAP_HOURS
     use_semantic_boundaries: bool = True
     split_on_date_change: bool = True
@@ -27,6 +29,7 @@ class ChunkingConfig:
             "strategy": "chronological_semantic",
             "max_chars": int(self.max_chars),
             "semantic_similarity_threshold": float(self.semantic_similarity_threshold),
+            "desired_average_chunk_messages": int(self.desired_average_chunk_messages),
             "session_gap_hours": float(self.session_gap_hours),
             "use_semantic_boundaries": bool(self.use_semantic_boundaries),
             "split_on_date_change": bool(self.split_on_date_change),
@@ -65,6 +68,9 @@ def config_from_mapping(mapping: dict | None = None, *, max_chars: int | None = 
         max_chars=int(payload.get("max_chars", max_chars or DEFAULT_MAX_CHARS)),
         semantic_similarity_threshold=float(
             payload.get("semantic_similarity_threshold", DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD)
+        ),
+        desired_average_chunk_messages=int(
+            payload.get("desired_average_chunk_messages", DEFAULT_DESIRED_AVERAGE_CHUNK_MESSAGES)
         ),
         session_gap_hours=float(payload.get("session_gap_hours", DEFAULT_SESSION_GAP_HOURS)),
         use_semantic_boundaries=bool(payload.get("use_semantic_boundaries", True)),
@@ -131,14 +137,71 @@ def _time_or_date_boundary(
 def _semantic_boundary(
     current_vectors: list[tuple[float, ...]],
     next_vector: tuple[float, ...] | None,
+    following_vector: tuple[float, ...] | None,
     config: ChunkingConfig,
 ) -> bool:
     if not config.use_semantic_boundaries or next_vector is None or not current_vectors:
         return False
+    strongest_existing_link = max(_cosine_similarity(vector, next_vector) for vector in current_vectors)
+    if strongest_existing_link >= config.semantic_similarity_threshold:
+        return False
+    if following_vector is not None:
+        strongest_following_link = max(_cosine_similarity(vector, following_vector) for vector in current_vectors)
+        if strongest_following_link >= config.semantic_similarity_threshold:
+            return False
     centroid = _mean_vector(current_vectors)
     if centroid is None:
         return False
     return _cosine_similarity(centroid, next_vector) < config.semantic_similarity_threshold
+
+
+def calibrate_semantic_similarity_threshold(
+    messages_by_thread: dict[str, list[_MessageRow]],
+    *,
+    config: ChunkingConfig,
+) -> float:
+    message_count = sum(1 for rows in messages_by_thread.values() for row in rows if row.body.strip())
+    if message_count <= 0 or config.desired_average_chunk_messages <= 0:
+        return config.semantic_similarity_threshold
+    target_chunks = max(1, round(message_count / config.desired_average_chunk_messages))
+    best_threshold = config.semantic_similarity_threshold
+    best_delta: tuple[int, float] | None = None
+    for step in range(0, 101):
+        threshold = step / 100
+        candidate_config = ChunkingConfig(
+            max_chars=config.max_chars,
+            semantic_similarity_threshold=threshold,
+            desired_average_chunk_messages=config.desired_average_chunk_messages,
+            session_gap_hours=config.session_gap_hours,
+            use_semantic_boundaries=config.use_semantic_boundaries,
+            split_on_date_change=config.split_on_date_change,
+        )
+        chunk_count = sum(
+            len(build_thread_chunks(rows, config=candidate_config))
+            for rows in messages_by_thread.values()
+        )
+        delta = (abs(chunk_count - target_chunks), abs(threshold - DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD))
+        if best_delta is None or delta < best_delta:
+            best_delta = delta
+            best_threshold = threshold
+    return best_threshold
+
+
+def config_with_calibrated_threshold(
+    messages_by_thread: dict[str, list[_MessageRow]],
+    config: ChunkingConfig,
+) -> ChunkingConfig:
+    if not config.use_semantic_boundaries:
+        return config
+    threshold = calibrate_semantic_similarity_threshold(messages_by_thread, config=config)
+    return ChunkingConfig(
+        max_chars=config.max_chars,
+        semantic_similarity_threshold=threshold,
+        desired_average_chunk_messages=config.desired_average_chunk_messages,
+        session_gap_hours=config.session_gap_hours,
+        use_semantic_boundaries=config.use_semantic_boundaries,
+        split_on_date_change=config.split_on_date_change,
+    )
 
 
 def _deserialize_float32_vector(blob: bytes) -> tuple[float, ...]:
@@ -188,6 +251,61 @@ def message_vector_count(conn: sqlite3.Connection, dataset_id: int) -> int:
     )
 
 
+def _load_messages_by_thread(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    config: ChunkingConfig,
+) -> dict[str, list[_MessageRow]]:
+    vectors_by_message = (
+        load_message_vector_map(conn, dataset_id)
+        if config.use_semantic_boundaries
+        else {}
+    )
+    thread_rows = conn.execute(
+        """
+        SELECT DISTINCT source_thread_id
+        FROM message
+        WHERE dataset_id = ?
+        ORDER BY source_thread_id
+        """,
+        (dataset_id,),
+    ).fetchall()
+    messages_by_thread: dict[str, list[_MessageRow]] = {}
+    for thread_row in thread_rows:
+        source_thread_id = thread_row["source_thread_id"]
+        message_rows = conn.execute(
+            """
+            SELECT message_id, source_thread_id, body_normalized, sort_index, timestamp
+            FROM message
+            WHERE dataset_id = ? AND source_thread_id = ?
+            ORDER BY sort_index, message_id
+            """,
+            (dataset_id, source_thread_id),
+        ).fetchall()
+        messages_by_thread[source_thread_id] = [
+            _MessageRow(
+                message_id=row["message_id"],
+                source_thread_id=row["source_thread_id"],
+                body=row["body_normalized"] or "",
+                sort_index=row["sort_index"],
+                timestamp=row["timestamp"],
+                vector=vectors_by_message.get(str(row["message_id"])),
+            )
+            for row in message_rows
+        ]
+    return messages_by_thread
+
+
+def calibrated_config_for_dataset(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    config: ChunkingConfig,
+) -> ChunkingConfig:
+    if not config.use_semantic_boundaries:
+        return config
+    return config_with_calibrated_threshold(_load_messages_by_thread(conn, dataset_id, config), config)
+
+
 def build_thread_chunks(
     messages: list[_MessageRow],
     *,
@@ -221,7 +339,7 @@ def build_thread_chunks(
             )
         )
 
-    for message in ordered:
+    for index, message in enumerate(ordered):
         piece = message.body.strip()
         if not piece:
             continue
@@ -231,7 +349,12 @@ def build_thread_chunks(
             and (
                 prospective_len > resolved_config.max_chars
                 or _time_or_date_boundary(previous_message, message, resolved_config)
-                or _semantic_boundary(current_vectors, message.vector, resolved_config)
+                or _semantic_boundary(
+                    current_vectors,
+                    message.vector,
+                    ordered[index + 1].vector if index + 1 < len(ordered) else None,
+                    resolved_config,
+                )
             )
         )
         if should_break:
@@ -256,6 +379,8 @@ def build_dataset_chunks(
 ) -> list[MessageChunkSpec]:
     chunks: list[MessageChunkSpec] = []
     resolved_config = config or ChunkingConfig(max_chars=max_chars)
+    if resolved_config.use_semantic_boundaries:
+        resolved_config = config_with_calibrated_threshold(messages_by_thread, resolved_config)
     for source_thread_id in sorted(messages_by_thread):
         thread_messages = messages_by_thread[source_thread_id]
         if not thread_messages:
@@ -273,43 +398,11 @@ def iter_dataset_chunks(
 ) -> Iterator[MessageChunkSpec]:
     """Yield chunks one thread at a time to avoid loading the whole dataset into RAM."""
     resolved_config = config or ChunkingConfig(max_chars=max_chars)
-    vectors_by_message = (
-        load_message_vector_map(conn, dataset_id)
-        if resolved_config.use_semantic_boundaries
-        else {}
-    )
-    thread_rows = conn.execute(
-        """
-        SELECT DISTINCT source_thread_id
-        FROM message
-        WHERE dataset_id = ?
-        ORDER BY source_thread_id
-        """,
-        (dataset_id,),
-    ).fetchall()
-    for thread_row in thread_rows:
-        source_thread_id = thread_row["source_thread_id"]
-        message_rows = conn.execute(
-            """
-            SELECT message_id, source_thread_id, body_normalized, sort_index, timestamp
-            FROM message
-            WHERE dataset_id = ? AND source_thread_id = ?
-            ORDER BY sort_index, message_id
-            """,
-            (dataset_id, source_thread_id),
-        ).fetchall()
-        messages = [
-            _MessageRow(
-                message_id=row["message_id"],
-                source_thread_id=row["source_thread_id"],
-                body=row["body_normalized"] or "",
-                sort_index=row["sort_index"],
-                timestamp=row["timestamp"],
-                vector=vectors_by_message.get(str(row["message_id"])),
-            )
-            for row in message_rows
-        ]
-        yield from build_thread_chunks(messages, config=resolved_config)
+    messages_by_thread = _load_messages_by_thread(conn, dataset_id, resolved_config)
+    if resolved_config.use_semantic_boundaries:
+        resolved_config = config_with_calibrated_threshold(messages_by_thread, resolved_config)
+    for source_thread_id in sorted(messages_by_thread):
+        yield from build_thread_chunks(messages_by_thread[source_thread_id], config=resolved_config)
 
 
 def count_dataset_chunks(

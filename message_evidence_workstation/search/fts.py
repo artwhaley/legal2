@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from message_evidence_workstation.db.fts_schema import MESSAGE_FTS_DDL
+from message_evidence_workstation.db.fts_schema import MESSAGE_FTS_DDL, MESSAGE_FTS_TOKENIZER
 
 if TYPE_CHECKING:
     from message_evidence_workstation.logging_ui.process_log import ProcessLogger
@@ -26,8 +26,18 @@ class FtsHit:
     rank: float
 
 
-def ensure_fts_schema(conn: sqlite3.Connection) -> None:
+def ensure_fts_schema(conn: sqlite3.Connection) -> bool:
+    existing = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'message_fts'"
+    ).fetchone()
+    if existing is not None:
+        sql = str(existing["sql"] if isinstance(existing, sqlite3.Row) else existing[0])
+        if f"tokenize='{MESSAGE_FTS_TOKENIZER}'" not in sql.replace(" ", ""):
+            conn.execute("DROP TABLE message_fts")
+            conn.executescript(MESSAGE_FTS_DDL)
+            return True
     conn.executescript(MESSAGE_FTS_DDL)
+    return False
 
 
 def clear_fts_for_dataset(conn: sqlite3.Connection, dataset_id: int) -> None:
@@ -120,7 +130,7 @@ def build_prefix_query(query: str) -> str:
         cleaned = re.sub(r'["*]', "", token)
         parts = [part for part in re.split(r"[^\w']+", cleaned, flags=re.UNICODE) if part]
         if parts:
-            escaped_tokens.extend(f"{part}*" for part in parts)
+            escaped_tokens.extend(parts)
     return " ".join(escaped_tokens)
 
 
@@ -185,8 +195,10 @@ def _search_token_variants(
 ) -> dict[str, list[FtsHit]]:
     exact_hits: list[FtsHit] = []
     partial_hits: list[FtsHit] = []
+    fuzzy_hits: list[FtsHit] = []
     seen_exact: set[str] = set()
     seen_partial: set[str] = set()
+    seen_fuzzy: set[str] = set()
     for variant in token_search_variants(token):
         for hit in search_exact(conn, logger, dataset_id, variant):
             if hit.message_id not in seen_exact:
@@ -196,7 +208,21 @@ def _search_token_variants(
             if hit.message_id not in seen_partial:
                 seen_partial.add(hit.message_id)
                 partial_hits.append(hit)
-    return {"exact": exact_hits, "partial": partial_hits}
+    from message_evidence_workstation.search.spellfix import expand_fuzzy_terms
+
+    for fuzzy_term in expand_fuzzy_terms(conn, logger, dataset_id, token):
+        for hit in search_exact(conn, logger, dataset_id, fuzzy_term):
+            if hit.message_id not in seen_exact and hit.message_id not in seen_partial and hit.message_id not in seen_fuzzy:
+                seen_fuzzy.add(hit.message_id)
+                fuzzy_hits.append(
+                    FtsHit(
+                        message_id=hit.message_id,
+                        source_thread_id=hit.source_thread_id,
+                        match_type="fuzzy",
+                        rank=hit.rank,
+                    )
+                )
+    return {"exact": exact_hits, "partial": partial_hits, "fuzzy": fuzzy_hits}
 
 
 def _run_fts_query(
@@ -324,13 +350,15 @@ def search_messages(
     tokens = tokenize_query(query)
     if len(tokens) <= 1:
         if not tokens:
-            return {"exact": [], "partial": []}
+            return {"exact": [], "partial": [], "fuzzy": []}
         return _search_token_variants(conn, logger, dataset_id, tokens[0])
 
     exact_hits: list[FtsHit] = []
     partial_hits: list[FtsHit] = []
+    fuzzy_hits: list[FtsHit] = []
     seen_exact: set[str] = set()
     seen_partial: set[str] = set()
+    seen_fuzzy: set[str] = set()
     for token in tokens:
         token_results = _search_token_variants(conn, logger, dataset_id, token)
         for hit in token_results["exact"]:
@@ -341,4 +369,8 @@ def search_messages(
             if hit.message_id not in seen_partial:
                 seen_partial.add(hit.message_id)
                 partial_hits.append(hit)
-    return {"exact": exact_hits, "partial": partial_hits}
+        for hit in token_results["fuzzy"]:
+            if hit.message_id not in seen_exact and hit.message_id not in seen_partial and hit.message_id not in seen_fuzzy:
+                seen_fuzzy.add(hit.message_id)
+                fuzzy_hits.append(hit)
+    return {"exact": exact_hits, "partial": partial_hits, "fuzzy": fuzzy_hits}

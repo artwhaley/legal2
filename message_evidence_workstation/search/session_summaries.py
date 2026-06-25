@@ -6,8 +6,8 @@ import json
 import sqlite3
 from typing import Any
 
+from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimClient
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import RUN_TYPE_SESSION_SUMMARY
 from message_evidence_workstation.search.session_map import (
@@ -86,7 +86,7 @@ def parse_session_summary_response(content: str) -> dict[str, Any]:
 def generate_session_summary(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     dataset_id: int,
     session: TranscriptSession,
@@ -95,7 +95,7 @@ def generate_session_summary(
     result = run_nim_chat(
         conn,
         logger,
-        client,
+        router,
         run_type=RUN_TYPE_SESSION_SUMMARY,
         user_content=build_session_summary_user_content(session, transcript_text),
         dataset_id=dataset_id,
@@ -116,13 +116,13 @@ def generate_session_summary(
 def ensure_session_summaries(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient | None,
+    router: ModelRouter | None,
     dataset_id: int,
     *,
     regenerate: bool = False,
 ) -> list[TranscriptSession]:
     sessions = list_sessions(conn, dataset_id)
-    if client is None:
+    if router is None:
         return sessions
     for session in sessions:
         if session.summary_status == SUMMARY_STATUS_READY and not regenerate:
@@ -131,7 +131,7 @@ def ensure_session_summaries(
             generate_session_summary(
                 conn,
                 logger,
-                client,
+                router,
                 dataset_id=dataset_id,
                 session=session,
             )

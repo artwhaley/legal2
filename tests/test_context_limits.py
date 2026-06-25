@@ -6,10 +6,7 @@ from message_evidence_workstation.nim.context_limits import (
     parse_context_window_from_error,
 )
 from message_evidence_workstation.nim.model_context import DEFAULT_CONTEXT_WINDOW_TOKENS, resolve_model_context
-from message_evidence_workstation.search.token_budget import (
-    compute_usable_input_tokens,
-    effective_reserved_output_tokens,
-)
+from message_evidence_workstation.search.token_budget import compute_usable_input_tokens
 
 
 def test_parse_context_window_from_error_openai_style() -> None:
@@ -36,31 +33,22 @@ def test_unknown_model_default_context_is_conservative() -> None:
     assert DEFAULT_CONTEXT_WINDOW_TOKENS == 8192
 
 
-def test_effective_reserved_output_caps_small_models() -> None:
-    assert effective_reserved_output_tokens(4096, 4096) == 1024
-
-
 def test_compute_usable_input_tokens_for_small_model() -> None:
-    usable, effective = compute_usable_input_tokens(
+    usable = compute_usable_input_tokens(
         context_window_tokens=4096,
         safety_ratio=0.70,
-        reserved_output_tokens=4096,
         prompt_overhead_tokens=1500,
     )
-    assert effective == 1024
     assert usable < 5395
 
 
-def test_compute_usable_input_tokens_for_8192_does_not_double_subtract_output() -> None:
-    usable, effective = compute_usable_input_tokens(
+def test_compute_usable_input_tokens_for_8192() -> None:
+    usable = compute_usable_input_tokens(
         context_window_tokens=8192,
         safety_ratio=0.70,
-        reserved_output_tokens=4096,
         prompt_overhead_tokens=1500,
     )
-    assert effective == 2048
     assert usable == 4684
-    assert usable > 2186
 
 
 def test_parse_context_window_from_gemma_prompt_limit() -> None:

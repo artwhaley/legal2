@@ -104,7 +104,7 @@ def is_system_role_unsupported_error(exc: BaseException) -> bool:
 def model_supports_system_role(model_id: str) -> bool | None:
     if not model_id:
         return None
-    metadata = load_settings().nim_model_metadata.get(model_id, {})
+    metadata = load_settings().model_metadata.get(model_id, {})
     if "supports_system_role" not in metadata:
         return None
     return bool(metadata["supports_system_role"])
@@ -112,10 +112,10 @@ def model_supports_system_role(model_id: str) -> bool | None:
 
 def record_system_role_support(model_id: str, supports_system_role: bool) -> dict[str, Any]:
     settings = load_settings()
-    metadata = dict(settings.nim_model_metadata.get(model_id, {}))
+    metadata = dict(settings.model_metadata.get(model_id, {}))
     metadata["supports_system_role"] = supports_system_role
     metadata["message_role_source"] = "learned_from_api_error"
-    settings.nim_model_metadata[model_id] = metadata
+    settings.model_metadata[model_id] = metadata
     save_settings(settings)
     return metadata
 

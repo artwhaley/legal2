@@ -5,10 +5,11 @@ from __future__ import annotations
 import sqlite3
 from typing import TYPE_CHECKING
 
-from message_evidence_workstation.db.fts_schema import MESSAGE_FTS_DDL
 from message_evidence_workstation.db.schema import CREATE_TABLES_SQL
 from message_evidence_workstation.embeddings.sqlite_vec_backend import ensure_chunk_metadata_schema
 from message_evidence_workstation.nim.prompts import seed_default_prompts
+from message_evidence_workstation.search.fts import ensure_fts_schema
+from message_evidence_workstation.search.spellfix import ensure_spellfix_schema
 from message_evidence_workstation.domain.constants import SCHEMA_VERSION
 
 if TYPE_CHECKING:
@@ -34,7 +35,8 @@ def initialize_schema(conn: sqlite3.Connection, logger: ProcessLogger) -> None:
     )
     try:
         conn.executescript(CREATE_TABLES_SQL)
-        conn.executescript(MESSAGE_FTS_DDL)
+        fts_recreated = ensure_fts_schema(conn)
+        ensure_spellfix_schema(conn)
         ensure_chunk_metadata_schema(conn)
         current = get_schema_version(conn)
         if current is None:
@@ -50,6 +52,10 @@ def initialize_schema(conn: sqlite3.Connection, logger: ProcessLogger) -> None:
             )
         conn.commit()
         _ensure_workspace_metadata(conn)
+        if fts_recreated:
+            _rebuild_fts_for_existing_datasets(conn, logger)
+        if current is not None and current < 5 <= SCHEMA_VERSION:
+            _rebuild_spellfix_for_existing_datasets(conn, logger)
         seed_default_prompts(conn, logger)
         logger.info(
             component="db.migrations",
@@ -156,6 +162,74 @@ def _migrate_to_version(
                 ON transcript_session(dataset_id, source_thread_id, session_index);
             """
         )
+    if current < 4 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v4",
+            message="Applying schema migration to version 4",
+            details={"from_version": current},
+        )
+    if current < 5 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v5",
+            message="Applying schema migration to version 5",
+            details={"from_version": current},
+        )
+    if current < 6 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v6",
+            message="Applying schema migration to version 6 (printable artifacts)",
+            details={"from_version": current},
+        )
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS printable_artifact_group (
+                printable_artifact_group_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dataset_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                is_collapsed INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS printable_artifact (
+                printable_artifact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                dataset_id INTEGER NOT NULL,
+                group_id INTEGER NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                exhibit_number TEXT NOT NULL DEFAULT '',
+                case_number TEXT NOT NULL DEFAULT '',
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id),
+                FOREIGN KEY (group_id) REFERENCES printable_artifact_group(printable_artifact_group_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS printable_artifact_evidence_block (
+                printable_artifact_evidence_block_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                printable_artifact_id INTEGER NOT NULL,
+                evidence_block_id INTEGER NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (printable_artifact_id) REFERENCES printable_artifact(printable_artifact_id),
+                FOREIGN KEY (evidence_block_id) REFERENCES evidence_block(evidence_block_id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_printable_artifact_group_dataset
+                ON printable_artifact_group(dataset_id, sort_order);
+
+            CREATE INDEX IF NOT EXISTS idx_printable_artifact_group
+                ON printable_artifact(group_id, sort_order);
+
+            CREATE INDEX IF NOT EXISTS idx_printable_artifact_evidence_block_artifact
+                ON printable_artifact_evidence_block(printable_artifact_id, sort_order);
+            """
+        )
 
 
 def _ensure_workspace_metadata(conn: sqlite3.Connection) -> None:
@@ -163,3 +237,21 @@ def _ensure_workspace_metadata(conn: sqlite3.Connection) -> None:
 
     if not get_workspace_metadata(conn):
         seed_workspace_metadata(conn, display_name="Evidence Workspace")
+
+
+def _rebuild_fts_for_existing_datasets(conn: sqlite3.Connection, logger: ProcessLogger) -> None:
+    from message_evidence_workstation.search.fts import rebuild_message_fts
+
+    rows = conn.execute("SELECT dataset_id FROM dataset ORDER BY dataset_id").fetchall()
+    for row in rows:
+        dataset_id = int(row["dataset_id"])
+        rebuild_message_fts(conn, logger, dataset_id)
+
+
+def _rebuild_spellfix_for_existing_datasets(conn: sqlite3.Connection, logger: ProcessLogger) -> None:
+    from message_evidence_workstation.search.spellfix import rebuild_spellfix_for_dataset
+
+    rows = conn.execute("SELECT dataset_id FROM dataset ORDER BY dataset_id").fetchall()
+    for row in rows:
+        dataset_id = int(row["dataset_id"])
+        rebuild_spellfix_for_dataset(conn, logger, dataset_id)

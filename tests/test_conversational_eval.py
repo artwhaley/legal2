@@ -13,7 +13,8 @@ from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimChatResult, NimClient
+from tests.router_helpers import router_with_role_models
+from message_evidence_workstation.nim.client import NimChatResult
 from message_evidence_workstation.search.conversational_answer import (
     build_dataset_transcript,
     build_whole_transcript_user_content,
@@ -46,8 +47,13 @@ def eval_db(tmp_path):
 def test_whole_transcript_mode_selected_for_sample_fixture(eval_db) -> None:
     conn, _, dataset_id = eval_db
     transcript = build_dataset_transcript(conn, dataset_id)
-    settings = AnswerSettings(context_window_override_tokens=500_000)
-    mode = resolve_answer_mode(strategy="auto", transcript=transcript, answer_settings=settings)
+    settings = AnswerSettings()
+    mode = resolve_answer_mode(
+        strategy="auto",
+        transcript=transcript,
+        answer_settings=settings,
+        nim_settings=NimSettings(context_window_tokens=500_000),
+    )
     assert mode == "whole_transcript"
 
 
@@ -104,7 +110,7 @@ def test_regression_whole_transcript_finds_answer_top_k_would_miss(eval_db) -> N
             latency_ms=1,
         )
 
-    client = NimClient(NimSettings(model="test-model", api_key="key"))
+    router = router_with_role_models()
     with patch(
         "message_evidence_workstation.search.conversational_answer.run_nim_chat",
         side_effect=fake_run_nim_chat,
@@ -112,7 +118,7 @@ def test_regression_whole_transcript_finds_answer_top_k_would_miss(eval_db) -> N
         result = run_whole_transcript_answer(
             conn,
             logger,
-            client,
+            router,
             user_query="travel chess set",
             dataset_id=dataset_id,
             transcript=transcript,

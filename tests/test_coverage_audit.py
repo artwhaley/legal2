@@ -13,7 +13,8 @@ from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.config.settings import NimSettings
-from message_evidence_workstation.nim.client import NimChatResult, NimClient
+from tests.router_helpers import router_with_role_models
+from message_evidence_workstation.nim.client import NimChatResult
 from message_evidence_workstation.search.conversational_answer import (
     SESSION_CLASS_NOT_RELEVANT,
     SESSION_CLASS_RELEVANT,
@@ -135,7 +136,7 @@ def test_session_coverage_audit_can_add_session(audit_db) -> None:
             latency_ms=1,
         )
 
-    client = NimClient(NimSettings(model="test-model", api_key="key"))
+    router = router_with_role_models()
     with (
         patch(
             "message_evidence_workstation.search.conversational_answer.run_nim_chat",
@@ -153,7 +154,7 @@ def test_session_coverage_audit_can_add_session(audit_db) -> None:
         result = run_session_coverage_answer(
             conn,
             logger,
-            client,
+            router,
             user_query="allergy",
             dataset_id=dataset_id,
         )

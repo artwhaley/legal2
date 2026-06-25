@@ -7,8 +7,8 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Any
 
+from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimClient
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import RUN_TYPE_COVERAGE_AUDIT
 from message_evidence_workstation.search.session_map import TranscriptSession
@@ -90,7 +90,7 @@ def parse_coverage_audit_response(
 def run_coverage_audit(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     user_query: str,
     dataset_id: int,
@@ -111,7 +111,7 @@ def run_coverage_audit(
     result = run_nim_chat(
         conn,
         logger,
-        client,
+        router,
         run_type=RUN_TYPE_COVERAGE_AUDIT,
         user_content=user_content,
         dataset_id=dataset_id,

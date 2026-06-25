@@ -182,6 +182,71 @@ class EvidenceBlockTranscriptWidget(QWidget):
             source_action=source_action,
         )
 
+    def create_evidence_block_for_answer_range(
+        self,
+        *,
+        hit_message_id: str,
+        relevant_start_message_id: str,
+        relevant_end_message_id: str,
+        leading_context_start_message_id: str,
+        trailing_context_end_message_id: str,
+        title: str,
+        summary: str = "",
+        category_id: int | None = None,
+        source_action: str = "answer_range",
+    ) -> EvidenceBlock | None:
+        if self.dataset_id is None or self._source_thread_id is None:
+            return None
+        self._persist_all_overlays()
+        messages = repositories.list_messages_for_thread(
+            self.conn,
+            self.dataset_id,
+            self._source_thread_id,
+        )
+        ordered_ids = [message.message_id for message in messages]
+        required_ids = {
+            hit_message_id,
+            relevant_start_message_id,
+            relevant_end_message_id,
+            leading_context_start_message_id,
+            trailing_context_end_message_id,
+        }
+        if not required_ids.issubset(set(ordered_ids)):
+            return None
+        block = evidence_blocks.create_evidence_block_from_conversational_candidate(
+            self.conn,
+            self.logger,
+            dataset_id=self.dataset_id,
+            source_thread_id=self._source_thread_id,
+            ordered_message_ids=ordered_ids,
+            title=title,
+            summary=summary,
+            core_message_id=hit_message_id,
+            leading_context_start_message_id=leading_context_start_message_id,
+            relevant_start_message_id=relevant_start_message_id,
+            relevant_end_message_id=relevant_end_message_id,
+            trailing_context_end_message_id=trailing_context_end_message_id,
+            highlighted_message_ids=[hit_message_id],
+            category_id=category_id,
+        )
+        self.logger.info(
+            component=_LOG_COMPONENT,
+            operation="answer_range_evidence_block_created",
+            message="Created evidence block from conversational answer range",
+            details={
+                "evidence_block_id": block.evidence_block_id,
+                "core_hit_message_id": hit_message_id,
+                "source_action": source_action,
+                "dataset_id": self.dataset_id,
+                "source_thread_id": self._source_thread_id,
+            },
+            dataset_id=self.dataset_id,
+        )
+        self._model.append_evidence_block(block)
+        self.focus_message(hit_message_id, source_action=source_action)
+        self.evidence_block_created.emit(block.evidence_block_id)
+        return block
+
     def _load_thread(self, source_thread_id: str, *, source_action: str) -> None:
         assert self.dataset_id is not None
         self._source_thread_id = source_thread_id

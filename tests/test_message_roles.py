@@ -5,7 +5,16 @@ from unittest.mock import patch
 
 import pytest
 
-from message_evidence_workstation.config.settings import AppSettings, NimSettings, save_settings
+from dataclasses import replace
+
+from message_evidence_workstation.config.settings import (
+    AppSettings,
+    ModelRoleConfig,
+    ModelRoutingSettings,
+    NimSettings,
+    PROVIDER_NIM,
+    save_settings,
+)
 from message_evidence_workstation.nim.client import NimClient, NimClientError
 from message_evidence_workstation.nim.message_roles import (
     fold_system_into_user,
@@ -34,10 +43,14 @@ def test_is_system_role_unsupported_error() -> None:
 
 
 def test_chat_completion_retries_without_system_role(tmp_path) -> None:
+    gemma = "google/gemma-2-2b-it"
     settings_path = tmp_path / "settings.json"
+    nim = NimSettings(api_key="key")
+    role = ModelRoleConfig(provider=PROVIDER_NIM, model=gemma, api_key="key")
+    routing = ModelRoutingSettings(expansion=role, research=replace(role), writing=replace(role))
     with patch("message_evidence_workstation.config.settings.settings_path", return_value=settings_path):
-        save_settings(AppSettings(nim=NimSettings(api_key="key", model="google/gemma-2-2b-it")))
-        client = NimClient(NimSettings(api_key="key", model="google/gemma-2-2b-it"))
+        save_settings(AppSettings(nim=nim, model_routing=routing, model_metadata={gemma: {}}))
+        client = NimClient(nim)
         calls: list[list[dict[str, str]]] = []
 
         def fake_urlopen(request, timeout=0):
@@ -69,7 +82,8 @@ def test_chat_completion_retries_without_system_role(tmp_path) -> None:
                 [
                     {"role": "system", "content": "System prompt"},
                     {"role": "user", "content": "User prompt"},
-                ]
+                ],
+                model=gemma,
             )
         assert result.content == "ok"
         assert result.message_layout == "folded_user"

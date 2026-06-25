@@ -38,6 +38,7 @@ class EmbeddingJobSpec:
     vector_query: str = ""
     use_message_vectors: bool = False
     use_chunk_vectors: bool = False
+    embedding_selectivity: str = "balanced"
     chunking_config: dict[str, Any] = field(default_factory=dict)
     harness_user_query: str = ""
     harness_strategy_summary: str = ""
@@ -163,6 +164,7 @@ def _execute(spec: EmbeddingJobSpec) -> Any:
                         query=spec.vector_query,
                         model_name=spec.model_id,
                         adapter=adapter,
+                        selectivity=spec.embedding_selectivity,
                     )
                 )
             if spec.use_chunk_vectors:
@@ -174,38 +176,10 @@ def _execute(spec: EmbeddingJobSpec) -> Any:
                         query=spec.vector_query,
                         model_name=spec.model_id,
                         adapter=adapter,
+                        selectivity=spec.embedding_selectivity,
                     )
                 )
             return vector_hits
-        if spec.job_type == "conversational_search":
-            from message_evidence_workstation.config.settings import nim_settings_for_client
-            from message_evidence_workstation.nim.client import NimClient
-            from message_evidence_workstation.search.tool_runner import (
-                SearchPlannerPlan,
-                ToolRunnerDeps,
-                execute_full_search_harness,
-            )
-
-            nim = nim_settings_for_client()
-            nim_client = NimClient(nim) if nim.model else None
-            plan = SearchPlannerPlan(
-                strategy_summary=spec.harness_strategy_summary or "Full search harness",
-                extra_search_queries=list(spec.harness_extra_queries),
-            )
-            deps = ToolRunnerDeps(
-                nim_client=nim_client,
-                embedding_adapter=adapter,
-                embedding_model_name=info.model_name,
-            )
-            return execute_full_search_harness(
-                conn,
-                logger,
-                dataset_id=spec.dataset_id,
-                user_query=spec.harness_user_query,
-                plan=plan,
-                deps=deps,
-                sort_index_by_message=dict(spec.sort_index_by_message),
-            )
         raise ValueError(f"Unknown embedding job type: {spec.job_type}")
     finally:
         conn.close()

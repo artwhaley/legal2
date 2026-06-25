@@ -7,6 +7,7 @@ import pytest
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.embeddings.adapters import FakeEmbeddingAdapter
+from message_evidence_workstation.embeddings.sqlite_vec_backend import VectorSearchHit
 from message_evidence_workstation.embeddings.index_jobs import (
     build_chunk_embedding_index,
     build_message_embedding_index,
@@ -16,6 +17,8 @@ from message_evidence_workstation.importers.normalized_loader import load_normal
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search.embedding_search import (
     EmbeddingIndexNotReadyError,
+    filter_vector_hits_by_selectivity,
+    resolve_embedding_selectivity,
     search_message_embeddings,
 )
 from message_evidence_workstation.search.fusion import fuse_hits
@@ -50,6 +53,23 @@ def test_message_embedding_search_returns_hits(search_db) -> None:
     assert hits
     assert hits[0].match_type == "message_embedding"
     assert hits[0].distance is not None
+
+
+def test_embedding_selectivity_profiles_adjust_result_squelch() -> None:
+    hits = [
+        VectorSearchHit("m1", "t1", distance=0.10, rank=1),
+        VectorSearchHit("m2", "t1", distance=0.25, rank=2),
+        VectorSearchHit("m3", "t1", distance=0.60, rank=3),
+    ]
+
+    broad = filter_vector_hits_by_selectivity(hits, "broad")
+    balanced = filter_vector_hits_by_selectivity(hits, "balanced")
+    narrow = filter_vector_hits_by_selectivity(hits, "narrow")
+
+    assert resolve_embedding_selectivity("broad").top_k > resolve_embedding_selectivity("narrow").top_k
+    assert [hit.message_id for hit in broad] == ["m1", "m2", "m3"]
+    assert [hit.message_id for hit in balanced] == ["m1", "m2"]
+    assert [hit.message_id for hit in narrow] == ["m1"]
 
 
 def test_stale_index_raises(search_db) -> None:

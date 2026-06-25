@@ -17,16 +17,19 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QSlider,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
-from message_evidence_workstation.config.settings import load_settings, nim_settings_for_client
+from message_evidence_workstation.config.settings import is_role_configured, load_settings
+from message_evidence_workstation.llm.types import UserFacingModelRole
 from message_evidence_workstation.db import repositories
 from message_evidence_workstation.db.connection import connect
+from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimClient, NimClientError, nim_error_user_message
+from message_evidence_workstation.nim.client import NimClientError, nim_error_user_message
 from message_evidence_workstation.search import fts
 from message_evidence_workstation.search.embedding_search import (
     EmbeddingIndexNotReadyError,
@@ -45,6 +48,7 @@ MATCH_COLORS = {
     "exact": QColor("#00aa00"),
     "partial": QColor("#88dd88"),
     "keyword": QColor("#cccc00"),
+    "fuzzy": QColor("#ffaa33"),
     "message_embedding": QColor("#9933ff"),
     "chunk_embedding": QColor("#ff66cc"),
 }
@@ -110,6 +114,22 @@ class SimpleSearchTab(QWidget):
         self.chunk_embedding_toggle = QCheckBox("Chunk Embedding Search (pink)")
         self.chunk_embedding_toggle.toggled.connect(self._on_vector_toggle_changed)
         layout.addWidget(self.chunk_embedding_toggle)
+
+        vector_selectivity_row = QHBoxLayout()
+        vector_selectivity_row.addWidget(QLabel("Embedding squelch"))
+        self.embedding_selectivity = QSlider(Qt.Orientation.Horizontal)
+        self.embedding_selectivity.setRange(0, 2)
+        self.embedding_selectivity.setSingleStep(1)
+        self.embedding_selectivity.setPageStep(1)
+        self.embedding_selectivity.setValue(1)
+        self.embedding_selectivity.setToolTip(
+            "Broad returns more embedding matches; Narrow suppresses more noisy vector matches."
+        )
+        self.embedding_selectivity.valueChanged.connect(self._on_embedding_selectivity_changed)
+        vector_selectivity_row.addWidget(self.embedding_selectivity, stretch=1)
+        self.embedding_selectivity_label = QLabel("Balanced")
+        vector_selectivity_row.addWidget(self.embedding_selectivity_label)
+        layout.addLayout(vector_selectivity_row)
 
         chip_controls = QHBoxLayout()
         self.chip_container = QHBoxLayout()
@@ -207,6 +227,27 @@ class SimpleSearchTab(QWidget):
             self._debounce.stop()
             self._run_search(expand_keywords=False)
 
+    def _embedding_selectivity_value(self) -> str:
+        return {
+            0: "broad",
+            1: "balanced",
+            2: "narrow",
+        }.get(int(self.embedding_selectivity.value()), "balanced")
+
+    def _on_embedding_selectivity_changed(self, _value: int) -> None:
+        label = {
+            "broad": "Broad",
+            "balanced": "Balanced",
+            "narrow": "Narrow",
+        }[self._embedding_selectivity_value()]
+        self.embedding_selectivity_label.setText(label)
+        if (
+            self.search_box.text().strip()
+            and (self.message_embedding_toggle.isChecked() or self.chunk_embedding_toggle.isChecked())
+        ):
+            self._debounce.stop()
+            self._run_search(expand_keywords=False)
+
     def _message_details(self, message_id: str) -> dict[str, str]:
         row = self.conn.execute(
             """
@@ -255,6 +296,25 @@ class SimpleSearchTab(QWidget):
                     source_thread_id=fts_hit.source_thread_id,
                     match_type="partial",
                     retrieval_method="fts_partial",
+                    query_text=query,
+                    matched_term=query,
+                    score=fts_hit.rank,
+                    sender_display=details["sender_display"],
+                    timestamp=details["timestamp"],
+                    body=details["body"],
+                    snippet=details["body"][:160],
+                )
+            )
+        for fts_hit in results["fuzzy"]:
+            if any(existing.message_id == fts_hit.message_id for existing in hits):
+                continue
+            details = self._message_details(fts_hit.message_id)
+            hits.append(
+                SearchHit(
+                    message_id=fts_hit.message_id,
+                    source_thread_id=fts_hit.source_thread_id,
+                    match_type="fuzzy",
+                    retrieval_method="spellfix_fuzzy",
                     query_text=query,
                     matched_term=query,
                     score=fts_hit.rank,
@@ -324,10 +384,10 @@ class SimpleSearchTab(QWidget):
     def _request_keyword_expansion(self, query: str) -> None:
         if not self.keyword_toggle.isChecked() or query == self._last_expansion_query:
             return
-        nim = nim_settings_for_client()
-        if not nim.model:
+        settings = load_settings()
+        if not is_role_configured(settings, UserFacingModelRole.EXPANSION):
             self.status_label.setText(
-                "NIM model not configured - open Setup / Settings and select a model."
+                "Expansion model not configured — open Setup / Settings and assign an Expansion model."
             )
             return
 
@@ -341,11 +401,11 @@ class SimpleSearchTab(QWidget):
             worker_conn = connect(db_path)
             try:
                 worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
-                client = NimClient(nim)
+                router = ModelRouter(load_settings())
                 return expand_keywords(
                     worker_conn,
                     worker_logger,
-                    client,
+                    router,
                     query,
                     dataset_id=dataset_id,
                 )
@@ -424,6 +484,7 @@ class SimpleSearchTab(QWidget):
             vector_query=query,
             use_message_vectors=use_message,
             use_chunk_vectors=use_chunk,
+            embedding_selectivity=self._embedding_selectivity_value(),
         )
 
         def on_success(vector_hits: object) -> None:

@@ -102,8 +102,6 @@ class CategoryDropTree(QTreeWidget):
 
 class Sidebar(QWidget):
     source_thread_selected = Signal(str, str)
-    workstation_conversation_selected = Signal(int)
-    evidence_block_selected = Signal(int)
     search_drop_evidence_block_created = Signal(object)
 
     def __init__(
@@ -136,7 +134,6 @@ class Sidebar(QWidget):
         self.category_tree.setHeaderHidden(True)
         self.category_tree.itemCollapsed.connect(self._on_category_item_collapsed)
         self.category_tree.itemExpanded.connect(self._on_category_item_expanded)
-        self.category_tree.currentItemChanged.connect(self._on_category_tree_current_item_changed)
         self.category_tree.itemDoubleClicked.connect(self._rename_category)
         layout.addWidget(self.category_tree, stretch=9)
 
@@ -310,18 +307,6 @@ class Sidebar(QWidget):
         category_id = int(item.data(0, ROLE_ITEM_ID))
         repositories.set_category_collapsed(self.conn, self.logger, category_id, False)
 
-    def _on_category_tree_current_item_changed(
-        self,
-        current: QTreeWidgetItem | None,
-        _previous: QTreeWidgetItem | None,
-    ) -> None:
-        if current is None:
-            return
-        kind = current.data(0, ROLE_ITEM_KIND)
-        item_id = int(current.data(0, ROLE_ITEM_ID))
-        if kind == "evidence_block":
-            self.evidence_block_selected.emit(item_id)
-
     def create_manual_evidence_block(
         self,
         messages: list[Message],
@@ -379,16 +364,38 @@ class Sidebar(QWidget):
             group.source_thread_id,
         )
         ordered_ids = [message.message_id for message in messages]
-        block = evidence_blocks.create_evidence_block_from_search(
-            self.conn,
-            self.logger,
-            dataset_id=self.dataset_id,
-            source_thread_id=group.source_thread_id,
-            primary_hit_message_id=group.primary_hit_message_id,
-            title=group.title or group.snippet or group.primary_hit_message_id,
-            ordered_message_ids=ordered_ids,
-            category_id=category_id,
-        )
+        if group.relevant_start_message_id and group.relevant_end_message_id:
+            block = evidence_blocks.create_evidence_block_from_conversational_candidate(
+                self.conn,
+                self.logger,
+                dataset_id=self.dataset_id,
+                source_thread_id=group.source_thread_id,
+                ordered_message_ids=ordered_ids,
+                title=group.title or group.snippet or group.primary_hit_message_id,
+                summary=group.summary or group.snippet,
+                core_message_id=group.primary_hit_message_id,
+                leading_context_start_message_id=(
+                    group.leading_context_start_message_id or group.relevant_start_message_id
+                ),
+                relevant_start_message_id=group.relevant_start_message_id,
+                relevant_end_message_id=group.relevant_end_message_id,
+                trailing_context_end_message_id=(
+                    group.trailing_context_end_message_id or group.relevant_end_message_id
+                ),
+                highlighted_message_ids=[group.primary_hit_message_id],
+                category_id=category_id,
+            )
+        else:
+            block = evidence_blocks.create_evidence_block_from_search(
+                self.conn,
+                self.logger,
+                dataset_id=self.dataset_id,
+                source_thread_id=group.source_thread_id,
+                primary_hit_message_id=group.primary_hit_message_id,
+                title=group.title or group.snippet or group.primary_hit_message_id,
+                ordered_message_ids=ordered_ids,
+                category_id=category_id,
+            )
         self.logger.info(
             component="ui.sidebar",
             operation="search_drop_create_evidence_block",

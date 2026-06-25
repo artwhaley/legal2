@@ -23,6 +23,9 @@ dev = [
 where = ["."]
 include = ["message_evidence_workstation*"]
 
+[tool.setuptools.package-data]
+message_evidence_workstation = ["native/*.dll", "native/*.so", "native/*.dylib"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

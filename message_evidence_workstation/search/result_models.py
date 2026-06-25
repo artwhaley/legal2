@@ -34,15 +34,21 @@ class GroupedSearchResult:
     title: str = ""
     snippet: str = ""
     retrieval_methods: set[str] = field(default_factory=set)
+    relevant_start_message_id: str = ""
+    relevant_end_message_id: str = ""
+    leading_context_start_message_id: str = ""
+    trailing_context_end_message_id: str = ""
+    summary: str = ""
 
     def to_drag_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "group_id": self.group_id,
             "source_thread_id": self.source_thread_id,
             "primary_hit_message_id": self.primary_hit_message_id,
             "query_text": self.hits[0].query_text if self.hits else "",
             "title": self.title,
             "snippet": self.snippet,
+            "summary": self.summary,
             "hits": [
                 {
                     "message_id": hit.message_id,
@@ -57,6 +63,15 @@ class GroupedSearchResult:
                 for hit in self.hits
             ],
         }
+        if self.relevant_start_message_id and self.relevant_end_message_id:
+            payload["answer_range"] = {
+                "hit_message_id": self.primary_hit_message_id,
+                "start_message_id": self.relevant_start_message_id,
+                "end_message_id": self.relevant_end_message_id,
+                "leading_context_start_message_id": self.leading_context_start_message_id,
+                "trailing_context_end_message_id": self.trailing_context_end_message_id,
+            }
+        return payload
 
     @classmethod
     def from_drag_payload(cls, payload: dict[str, Any]) -> GroupedSearchResult:
@@ -82,5 +97,16 @@ class GroupedSearchResult:
             hits=hits,
             title=payload.get("title", ""),
             snippet=payload.get("snippet", ""),
+            summary=payload.get("summary", ""),
             retrieval_methods=methods,
+            relevant_start_message_id=(payload.get("answer_range") or {}).get("start_message_id", ""),
+            relevant_end_message_id=(payload.get("answer_range") or {}).get("end_message_id", ""),
+            leading_context_start_message_id=(payload.get("answer_range") or {}).get(
+                "leading_context_start_message_id",
+                "",
+            ),
+            trailing_context_end_message_id=(payload.get("answer_range") or {}).get(
+                "trailing_context_end_message_id",
+                "",
+            ),
         )

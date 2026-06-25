@@ -1,6 +1,8 @@
 """Shared domain constants."""
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 6
+
+DEFAULT_PRINTABLE_ARTIFACT_GROUP_NAME = "Default"
 
 WORKSPACE_FORMAT_ID = "message_evidence_workstation.evw"
 WORKSPACE_FORMAT_VERSION = 1

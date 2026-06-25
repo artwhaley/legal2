@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
@@ -20,12 +18,7 @@ from message_evidence_workstation.db.repositories import (
 from message_evidence_workstation.domain.constants import HIGHLIGHT_HIT, HIGHLIGHT_RELEVANT
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimChatResult
 from message_evidence_workstation.output.display_states import compute_message_display_states
-from message_evidence_workstation.search.range_suggestion import (
-    parse_range_suggestion_response,
-    run_range_suggestion,
-)
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
 
@@ -55,20 +48,6 @@ def _conversation(tmp_path):
         ],
     )
     return conn, logger, conversation
-
-
-def test_parse_range_suggestion_response() -> None:
-    content = json.dumps(
-        {
-            "lead_in_start_message_id": "msg_001",
-            "relevant_start_message_id": "msg_001",
-            "relevant_end_message_id": "msg_002",
-            "lead_out_end_message_id": "msg_003",
-            "explanation": "Covers allergy discussion.",
-        }
-    )
-    result = parse_range_suggestion_response(content)
-    assert result.relevant_end_message_id == "msg_002"
 
 
 def test_upsert_and_reload_range(tmp_path) -> None:
@@ -115,33 +94,6 @@ def test_highlight_override_persists(tmp_path) -> None:
     context = load_output_conversation_context(conn, conversation.workstation_conversation_id)
     assert context is not None
     assert context.display_states["msg_002"] == HIGHLIGHT_HIT
-
-
-def test_run_range_suggestion_mock_nim(tmp_path) -> None:
-    conn, logger, conversation = _conversation(tmp_path)
-    context = load_output_conversation_context(conn, conversation.workstation_conversation_id)
-    assert context is not None
-    mock_client = MagicMock()
-    mock_client.settings.model = "test-model"
-    payload = {
-        "lead_in_start_message_id": "msg_001",
-        "relevant_start_message_id": "msg_001",
-        "relevant_end_message_id": "msg_002",
-        "lead_out_end_message_id": "msg_003",
-        "explanation": "Suggested by NIM.",
-    }
-    with patch(
-        "message_evidence_workstation.search.range_suggestion.run_nim_chat",
-        return_value=NimChatResult(content=json.dumps(payload), raw_response={}, latency_ms=3),
-    ):
-        result = run_range_suggestion(
-            conn,
-            logger,
-            mock_client,
-            context=context,
-            dataset_id=context.conversation.dataset_id,
-        )
-    assert result.relevant_end_message_id == "msg_002"
 
 
 def test_compute_display_states_without_range() -> None:

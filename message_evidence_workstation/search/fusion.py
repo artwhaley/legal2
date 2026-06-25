@@ -8,8 +8,9 @@ MATCH_PRIORITY = {
     "exact": 0,
     "partial": 1,
     "keyword": 2,
-    "message_embedding": 3,
-    "chunk_embedding": 4,
+    "fuzzy": 3,
+    "message_embedding": 4,
+    "chunk_embedding": 5,
 }
 
 

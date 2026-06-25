@@ -6,10 +6,14 @@ import json
 import re
 import sqlite3
 
+from message_evidence_workstation.llm.types import ModelTaskRole
+from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.nim.client import NimClient
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import RUN_TYPE_KEYWORD_EXPANSION
+
+# T25: internal task role for expand_keywords (see llm.task_roles.RUN_TYPE_TO_TASK_ROLE).
+TASK_ROLE = ModelTaskRole.SEARCH_EXPANSION
 
 KEYWORD_EXPANSION_MAX_TOKENS = 1024
 MAX_EXPANSION_TERMS = 20
@@ -92,7 +96,7 @@ def parse_expansion_terms(content: str) -> list[str]:
 def expand_keywords(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     query: str,
     *,
     dataset_id: int | None = None,
@@ -100,7 +104,7 @@ def expand_keywords(
     result = run_nim_chat(
         conn,
         logger,
-        client,
+        router,
         run_type=RUN_TYPE_KEYWORD_EXPANSION,
         user_content=query,
         dataset_id=dataset_id,

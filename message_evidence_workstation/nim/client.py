@@ -192,7 +192,7 @@ class NimClient:
         max_tokens: int | None = None,
         timeout_seconds: float | None = None,
     ) -> NimChatResult:
-        selected_model = model or self.settings.model
+        selected_model = model
         if not selected_model:
             raise NimClientError("NIM model is not configured", error_type="missing_model")
         prepared_messages, message_layout = prepare_chat_messages(selected_model, messages)
@@ -262,7 +262,7 @@ class NimClient:
         timeout_seconds: float | None = None,
     ) -> NimTestResult:
         """Minimal chat completion ping for connectivity / model entitlement checks."""
-        selected_model = model or self.settings.model
+        selected_model = model
         if not selected_model:
             raise NimClientError("NIM model is not configured", error_type="missing_model")
         path = "/chat/completions"

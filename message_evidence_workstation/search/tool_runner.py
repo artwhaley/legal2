@@ -12,6 +12,8 @@ from typing import Any
 from message_evidence_workstation.db import repositories
 from message_evidence_workstation.domain.models import Message
 from message_evidence_workstation.embeddings.adapters import EmbeddingAdapter
+from message_evidence_workstation.config.settings import load_settings
+from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.nim.client import NimClient
 from message_evidence_workstation.nim.model_runs import run_nim_chat
@@ -251,6 +253,25 @@ def _fts_to_hits(
                 snippet=details["body"][:160],
             )
         )
+    for fts_hit in results["fuzzy"]:
+        if any(existing.message_id == fts_hit.message_id for existing in hits):
+            continue
+        details = _message_details(conn, dataset_id, fts_hit.message_id)
+        hits.append(
+            SearchHit(
+                message_id=fts_hit.message_id,
+                source_thread_id=fts_hit.source_thread_id,
+                match_type="fuzzy",
+                retrieval_method="spellfix_fuzzy",
+                query_text=query,
+                matched_term=query,
+                score=fts_hit.rank,
+                sender_display=details["sender_display"],
+                timestamp=details["timestamp"],
+                body=details["body"],
+                snippet=details["body"][:160],
+            )
+        )
     return fuse_hits(hits)
 
 
@@ -261,7 +282,8 @@ def _keyword_expansion_hits(
     dataset_id: int,
     query: str,
 ) -> tuple[list[str], list[SearchHit]]:
-    terms = expand_keywords(conn, logger, client, query, dataset_id=dataset_id)
+    router = ModelRouter(load_settings())
+    terms = expand_keywords(conn, logger, router, query, dataset_id=dataset_id)
     hits: list[SearchHit] = []
     for term in terms:
         for fts_hit in fts.search_exact(conn, logger, dataset_id, term):

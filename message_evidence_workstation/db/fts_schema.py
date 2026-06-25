@@ -1,5 +1,7 @@
 """FTS5 virtual table DDL."""
 
+MESSAGE_FTS_TOKENIZER = "trigram"
+
 MESSAGE_FTS_DDL = """
 CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(
     message_id UNINDEXED,
@@ -8,6 +10,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(
     body,
     body_normalized,
     sender_display,
-    tokenize = 'unicode61'
+    tokenize = 'trigram'
 );
 """

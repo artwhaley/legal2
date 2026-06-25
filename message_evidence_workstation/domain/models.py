@@ -191,3 +191,54 @@ class ProcessLogEntry:
     details_json: dict[str, Any] | None
     exception_type: str | None
     stack_trace: str | None
+
+
+@dataclass(slots=True)
+class PrintableArtifactGroup:
+    printable_artifact_group_id: int
+    dataset_id: int
+    name: str
+    sort_order: int
+    is_collapsed: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass(slots=True)
+class PrintableArtifact:
+    printable_artifact_id: int
+    dataset_id: int
+    group_id: int
+    title: str
+    exhibit_number: str
+    case_number: str
+    sort_order: int
+    created_at: str
+    updated_at: str
+
+
+@dataclass(slots=True)
+class PrintableArtifactEvidenceBlock:
+    printable_artifact_evidence_block_id: int
+    printable_artifact_id: int
+    evidence_block_id: int
+    sort_order: int
+    created_at: str
+
+
+@dataclass(slots=True)
+class PrintableArtifactBlockContext:
+    join: PrintableArtifactEvidenceBlock
+    evidence_block: EvidenceBlock
+    block_label: str
+    messages: list[Message]
+    source_thread: SourceThread | None
+    dataset_name: str
+
+
+@dataclass(slots=True)
+class PrintableArtifactContext:
+    artifact: PrintableArtifact
+    group_name: str
+    dataset_name: str
+    blocks: list[PrintableArtifactBlockContext]

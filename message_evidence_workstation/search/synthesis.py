@@ -8,6 +8,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import Any
 
+from message_evidence_workstation.llm.types import ModelTaskRole
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.nim.client import NimClient
 from message_evidence_workstation.nim.model_runs import run_nim_chat
@@ -19,6 +20,9 @@ from message_evidence_workstation.search.tool_runner import (
     SearchPlannerPlan,
     _extract_json_object,
 )
+
+# T25: internal task role for run_conversational_synthesis.
+TASK_ROLE = ModelTaskRole.WINDOWED_RESULT_MERGE
 
 MAX_GROUPS_FOR_SYNTHESIS = 25
 MAX_HITS_PER_GROUP = 10

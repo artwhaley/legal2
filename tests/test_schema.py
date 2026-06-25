@@ -39,10 +39,14 @@ def test_schema_creation_creates_core_tables(temp_conn: sqlite3.Connection) -> N
         "prompt_template",
         "model_run",
         "embedding_index_metadata",
+        "message_spellfix_term",
         "process_log",
         "workspace_metadata",
         "evidence_block",
         "evidence_block_highlight",
+        "printable_artifact_group",
+        "printable_artifact",
+        "printable_artifact_evidence_block",
     }
     assert expected.issubset(tables)
     assert get_schema_version(temp_conn) == SCHEMA_VERSION

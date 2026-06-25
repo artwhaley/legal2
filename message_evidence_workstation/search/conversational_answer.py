@@ -7,10 +7,10 @@ import sqlite3
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from message_evidence_workstation.config.settings import AnswerSettings, load_settings
+from message_evidence_workstation.config.settings import AnswerSettings, NimSettings, load_settings
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.embeddings.chunking import config_from_mapping
-from message_evidence_workstation.nim.client import NimClient
+from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.nim.model_context import resolve_model_context
 from message_evidence_workstation.nim.message_roles import build_whole_transcript_cache_messages
 from message_evidence_workstation.nim.model_runs import run_nim_chat
@@ -53,13 +53,10 @@ from message_evidence_workstation.search.window_planner import (
 ANSWER_MODE_WHOLE_TRANSCRIPT = "whole_transcript"
 ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN = "exhaustive_window_scan"
 ANSWER_MODE_SESSION_COVERAGE = "session_coverage"
-ANSWER_MODE_RETRIEVAL_FALLBACK = "retrieval_fallback"
 
-ANSWER_STRATEGY_AUTO = "auto"
 ANSWER_STRATEGY_WHOLE_TRANSCRIPT = "whole_transcript"
 ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN = "exhaustive_window_scan"
 ANSWER_STRATEGY_SESSION_COVERAGE = "session_coverage"
-ANSWER_STRATEGY_RETRIEVAL_FALLBACK = "retrieval_fallback"
 
 DEFAULT_WHOLE_TRANSCRIPT_MAX_CHARS = 200_000
 DEFAULT_MAX_INSPECTED_SESSIONS = 12
@@ -93,6 +90,18 @@ class CandidateEvidenceBlockDraft:
 
 
 @dataclass(slots=True)
+class AnswerRangeDraft:
+    title: str
+    summary: str
+    hit_message_id: str
+    start_message_id: str
+    end_message_id: str
+    source_thread_id: str = ""
+    date_description: str = ""
+    display_text: str = ""
+
+
+@dataclass(slots=True)
 class CoverageSummary:
     mode: str
     messages_considered: int
@@ -111,8 +120,7 @@ class AnswerBudget:
     context_window_tokens: int
     context_source: str
     safety_ratio: float
-    reserved_output_tokens: int
-    effective_reserved_output_tokens: int
+    max_output_tokens: int
     prompt_overhead_tokens: int
     usable_input_tokens: int
     transcript_tokens: int
@@ -128,38 +136,31 @@ def resolve_answer_budget(
     transcript: SerializedTranscript,
     answer_settings: AnswerSettings,
     model_id: str,
+    *,
+    nim_settings: NimSettings | None = None,
     provider_metadata: dict | None = None,
 ) -> AnswerBudget:
-    override = answer_settings.context_window_override_tokens
-    user_override = override if override > 0 else None
+    nim = nim_settings or NimSettings()
+    user_override = nim.context_window_tokens if nim.context_window_tokens > 0 else None
     model_context = resolve_model_context(
         model_id,
         provider_metadata=provider_metadata,
         user_override_tokens=user_override,
     )
-    safety_ratio = _clamp_safety_ratio(answer_settings.context_safety_ratio)
-    requested_output = max(1, answer_settings.reserved_output_tokens)
-    prompt_overhead = max(0, answer_settings.prompt_overhead_tokens)
-    usable_input, effective_output = compute_usable_input_tokens(
+    safety_ratio = _clamp_safety_ratio(nim.context_safety_ratio)
+    max_output_tokens = max(1, nim.max_output_tokens)
+    prompt_overhead = max(0, nim.prompt_overhead_tokens)
+    usable_input = compute_usable_input_tokens(
         context_window_tokens=model_context.context_window_tokens,
         safety_ratio=safety_ratio,
-        reserved_output_tokens=requested_output,
         prompt_overhead_tokens=prompt_overhead,
     )
     token_estimate = estimate_tokens(transcript.text, model_id)
     strategy = answer_settings.answer_strategy
-    if strategy == ANSWER_STRATEGY_RETRIEVAL_FALLBACK:
-        decision = ANSWER_MODE_RETRIEVAL_FALLBACK
-    elif strategy == ANSWER_STRATEGY_SESSION_COVERAGE:
+    if strategy == ANSWER_STRATEGY_SESSION_COVERAGE:
         decision = ANSWER_MODE_SESSION_COVERAGE
     elif strategy == ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN:
         decision = ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
-    elif strategy == ANSWER_STRATEGY_WHOLE_TRANSCRIPT:
-        decision = (
-            ANSWER_MODE_WHOLE_TRANSCRIPT
-            if token_estimate.estimated_tokens <= usable_input
-            else ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
-        )
     else:
         decision = (
             ANSWER_MODE_WHOLE_TRANSCRIPT
@@ -171,8 +172,7 @@ def resolve_answer_budget(
         context_window_tokens=model_context.context_window_tokens,
         context_source=model_context.source,
         safety_ratio=safety_ratio,
-        reserved_output_tokens=requested_output,
-        effective_reserved_output_tokens=effective_output,
+        max_output_tokens=max_output_tokens,
         prompt_overhead_tokens=prompt_overhead,
         usable_input_tokens=usable_input,
         transcript_tokens=token_estimate.estimated_tokens,
@@ -206,8 +206,7 @@ def log_answer_budget_resolved(
             "window_count": window_count,
             "target_tokens": target_tokens,
             "overlap_messages": overlap_messages,
-            "reserved_output_tokens": budget.reserved_output_tokens,
-            "effective_reserved_output_tokens": budget.effective_reserved_output_tokens,
+            "max_output_tokens": budget.max_output_tokens,
             "prompt_overhead_tokens": budget.prompt_overhead_tokens,
             "transcript_token_method": budget.transcript_token_method,
         },
@@ -223,6 +222,9 @@ class ConversationalAnswerResult:
     uncertainties: list[str]
     coverage_summary: CoverageSummary
     mode: str
+    answer_ranges: list[AnswerRangeDraft] = field(default_factory=list)
+    answer_summary: str = ""
+    answer_format: str = "detailed"
     removed_invalid_citation_ids: list[str] = field(default_factory=list)
     removed_invalid_block_ids: list[str] = field(default_factory=list)
 
@@ -232,6 +234,7 @@ def resolve_answer_mode(
     strategy: str,
     transcript: SerializedTranscript,
     answer_settings: AnswerSettings | None = None,
+    nim_settings: NimSettings | None = None,
     model_id: str = "",
     provider_metadata: dict | None = None,
     max_chars: int = DEFAULT_WHOLE_TRANSCRIPT_MAX_CHARS,
@@ -244,6 +247,7 @@ def resolve_answer_mode(
         transcript,
         settings,
         model_id=model_id or "unknown-model",
+        nim_settings=nim_settings,
         provider_metadata=provider_metadata,
     )
     return budget.decision
@@ -258,6 +262,32 @@ def build_dataset_transcript(
     transcript = serialize_messages(messages)
     transcript.source_thread_id = thread_ids[0] if len(thread_ids) == 1 else ""
     return transcript
+
+
+def _message_order_by_thread_from_lines(lines) -> dict[str, list[str]]:  # noqa: ANN001
+    order: dict[str, list[str]] = {}
+    for line in lines:
+        order.setdefault(line.source_thread_id, []).append(line.message_id)
+    return order
+
+
+def _message_order_by_thread_from_db(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+) -> dict[str, list[str]]:
+    rows = conn.execute(
+        """
+        SELECT source_thread_id, message_id
+        FROM message
+        WHERE dataset_id = ?
+        ORDER BY source_thread_id, sort_index
+        """,
+        (dataset_id,),
+    ).fetchall()
+    order: dict[str, list[str]] = {}
+    for row in rows:
+        order.setdefault(str(row["source_thread_id"]), []).append(str(row["message_id"]))
+    return order
 
 
 def build_whole_transcript_context_content(transcript: SerializedTranscript) -> str:
@@ -294,6 +324,105 @@ def _filter_valid_ids(ids: list[str], valid_ids: set[str]) -> tuple[list[str], l
         else:
             removed.append(message_id)
     return kept, removed
+
+
+def _thread_order(
+    message_order_by_thread: dict[str, list[str]] | None,
+    source_thread_id: str,
+) -> list[str]:
+    if message_order_by_thread is None:
+        return []
+    return message_order_by_thread.get(source_thread_id, [])
+
+
+def _context_boundary_ids(
+    ordered_ids: list[str],
+    *,
+    start_message_id: str,
+    end_message_id: str,
+    leading_count: int = 3,
+    trailing_count: int = 3,
+) -> tuple[str, str]:
+    if not ordered_ids or start_message_id not in ordered_ids or end_message_id not in ordered_ids:
+        return start_message_id, end_message_id
+    start_index = ordered_ids.index(start_message_id)
+    end_index = ordered_ids.index(end_message_id)
+    return (
+        ordered_ids[max(0, start_index - leading_count)],
+        ordered_ids[min(len(ordered_ids) - 1, end_index + trailing_count)],
+    )
+
+
+def _parse_answer_range(
+    raw: dict[str, Any],
+    *,
+    valid_ids: set[str],
+    message_thread_by_id: dict[str, str],
+    message_order_by_thread: dict[str, list[str]] | None,
+) -> tuple[AnswerRangeDraft | None, CandidateEvidenceBlockDraft | None, list[str]]:
+    removed: list[str] = []
+    hit_id = str(raw.get("hit_message_id", "")).strip()
+    start_id = str(raw.get("start_message_id", "")).strip()
+    end_id = str(raw.get("end_message_id", "")).strip()
+    for field_name, message_id in (
+        ("hit_message_id", hit_id),
+        ("start_message_id", start_id),
+        ("end_message_id", end_id),
+    ):
+        if not message_id:
+            return None, None, [f"missing:{field_name}"]
+        if message_id not in valid_ids:
+            removed.append(message_id)
+    if removed:
+        return None, None, removed
+
+    thread_id = message_thread_by_id.get(hit_id, "")
+    if not thread_id:
+        return None, None, [hit_id]
+    if message_thread_by_id.get(start_id) != thread_id or message_thread_by_id.get(end_id) != thread_id:
+        return None, None, [f"cross_thread:{start_id},{hit_id},{end_id}"]
+
+    ordered_ids = _thread_order(message_order_by_thread, thread_id)
+    if ordered_ids:
+        start_index = ordered_ids.index(start_id) if start_id in ordered_ids else -1
+        hit_index = ordered_ids.index(hit_id) if hit_id in ordered_ids else -1
+        end_index = ordered_ids.index(end_id) if end_id in ordered_ids else -1
+        if start_index < 0 or hit_index < 0 or end_index < 0:
+            return None, None, [f"missing_order:{start_id},{hit_id},{end_id}"]
+        if not (start_index <= hit_index <= end_index):
+            return None, None, [f"range_order:{start_id},{hit_id},{end_id}"]
+
+    title = str(raw.get("title", "")).strip() or "Evidence block"
+    summary = str(raw.get("summary", "")).strip()
+    date_description = str(raw.get("date_description", "")).strip()
+    display_text = str(raw.get("display_text", "")).strip()
+    answer_range = AnswerRangeDraft(
+        title=title,
+        summary=summary,
+        hit_message_id=hit_id,
+        start_message_id=start_id,
+        end_message_id=end_id,
+        source_thread_id=thread_id,
+        date_description=date_description,
+        display_text=display_text,
+    )
+    context_start_id, context_end_id = _context_boundary_ids(
+        ordered_ids,
+        start_message_id=start_id,
+        end_message_id=end_id,
+    )
+    candidate = CandidateEvidenceBlockDraft(
+        title=title,
+        summary=summary,
+        core_message_id=hit_id,
+        relevant_start_message_id=start_id,
+        relevant_end_message_id=end_id,
+        leading_context_start_message_id=context_start_id,
+        trailing_context_end_message_id=context_end_id,
+        highlighted_message_ids=[hit_id],
+        source_thread_id=thread_id,
+    )
+    return answer_range, candidate, []
 
 
 def _parse_candidate_block(
@@ -348,6 +477,7 @@ def parse_whole_transcript_answer_response(
     message_thread_by_id: dict[str, str],
     source_thread_ids: list[str],
     messages_considered: int,
+    message_order_by_thread: dict[str, list[str]] | None = None,
 ) -> ConversationalAnswerResult:
     try:
         payload = _extract_json_object(content)
@@ -367,6 +497,7 @@ def parse_whole_transcript_answer_response(
         source_thread_ids=source_thread_ids,
         messages_considered=messages_considered,
         mode=ANSWER_MODE_WHOLE_TRANSCRIPT,
+        message_order_by_thread=message_order_by_thread,
     )
 
 
@@ -381,6 +512,7 @@ def parse_coverage_session_answer_response(
     sessions_inspected: int,
     sessions_skipped: int,
     retrieval_assists: list[dict[str, Any]] | None = None,
+    message_order_by_thread: dict[str, list[str]] | None = None,
 ) -> ConversationalAnswerResult:
     try:
         payload = _extract_json_object(content)
@@ -404,6 +536,7 @@ def parse_coverage_session_answer_response(
         sessions_inspected=sessions_inspected,
         sessions_skipped=sessions_skipped,
         retrieval_assists=retrieval_assists,
+        message_order_by_thread=message_order_by_thread,
     )
 
 
@@ -420,6 +553,7 @@ def _parse_answer_payload(
     sessions_skipped: int = 0,
     retrieval_assists: list[dict[str, Any]] | None = None,
     allow_empty_answer: bool = False,
+    message_order_by_thread: dict[str, list[str]] | None = None,
 ) -> ConversationalAnswerResult:
     answer = str(payload.get("answer", "")).strip()
     if not answer and not allow_empty_answer:
@@ -433,22 +567,51 @@ def _parse_answer_payload(
         valid_message_ids,
     )
 
+    answer_ranges: list[AnswerRangeDraft] = []
     candidates: list[CandidateEvidenceBlockDraft] = []
     removed_block_ids: list[str] = []
-    blocks_raw = payload.get("candidate_evidence_blocks") or []
-    if not isinstance(blocks_raw, list):
-        blocks_raw = []
-    for item in blocks_raw:
+    ranges_raw = payload.get("answer_ranges") or []
+    if not isinstance(ranges_raw, list):
+        ranges_raw = []
+    for item in ranges_raw:
         if not isinstance(item, dict):
             continue
-        candidate, removed = _parse_candidate_block(
+        answer_range, candidate, removed = _parse_answer_range(
             item,
             valid_ids=valid_message_ids,
             message_thread_by_id=message_thread_by_id,
+            message_order_by_thread=message_order_by_thread,
         )
         removed_block_ids.extend(removed)
+        if answer_range is not None:
+            answer_ranges.append(answer_range)
         if candidate is not None:
             candidates.append(candidate)
+
+    blocks_raw = payload.get("candidate_evidence_blocks") or []
+    if not answer_ranges and isinstance(blocks_raw, list):
+        for item in blocks_raw:
+            if not isinstance(item, dict):
+                continue
+            candidate, removed = _parse_candidate_block(
+                item,
+                valid_ids=valid_message_ids,
+                message_thread_by_id=message_thread_by_id,
+            )
+            removed_block_ids.extend(removed)
+            if candidate is not None:
+                candidates.append(candidate)
+                answer_ranges.append(
+                    AnswerRangeDraft(
+                        title=candidate.title,
+                        summary=candidate.summary,
+                        hit_message_id=candidate.core_message_id,
+                        start_message_id=candidate.relevant_start_message_id,
+                        end_message_id=candidate.relevant_end_message_id,
+                        source_thread_id=candidate.source_thread_id,
+                        display_text=candidate.summary,
+                    )
+                )
 
     uncertainties_raw = payload.get("uncertainties") or []
     if not isinstance(uncertainties_raw, list):
@@ -487,6 +650,13 @@ def _parse_answer_payload(
     return ConversationalAnswerResult(
         answer=answer,
         cited_message_ids=cited_ids,
+        answer_ranges=answer_ranges,
+        answer_summary=str(payload.get("answer_summary", "")).strip() or answer,
+        answer_format=(
+            str(payload.get("answer_format", "detailed")).strip().lower()
+            if str(payload.get("answer_format", "detailed")).strip().lower() in {"detailed", "brief"}
+            else "detailed"
+        ),
         candidate_evidence_blocks=candidates,
         uncertainties=uncertainties,
         coverage_summary=coverage,
@@ -499,7 +669,7 @@ def _parse_answer_payload(
 def run_whole_transcript_answer(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     user_query: str,
     dataset_id: int,
@@ -522,7 +692,7 @@ def run_whole_transcript_answer(
     result = run_nim_chat(
         conn,
         logger,
-        client,
+        router,
         run_type=RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
         messages=messages,
         dataset_id=dataset_id,
@@ -534,6 +704,7 @@ def run_whole_transcript_answer(
         message_thread_by_id=message_thread_by_id,
         source_thread_ids=source_thread_ids,
         messages_considered=len(transcript.message_ids),
+        message_order_by_thread=_message_order_by_thread_from_lines(transcript.lines),
     )
     if parsed.removed_invalid_citation_ids or parsed.removed_invalid_block_ids:
         logger.warning(
@@ -603,7 +774,7 @@ def parse_session_classifications(
 def classify_sessions_for_query(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     user_query: str,
     dataset_id: int,
@@ -613,7 +784,7 @@ def classify_sessions_for_query(
     result = run_nim_chat(
         conn,
         logger,
-        client,
+        router,
         run_type=RUN_TYPE_SESSION_CLASSIFICATION,
         user_content=build_session_classification_user_content(user_query, sessions),
         dataset_id=dataset_id,
@@ -624,8 +795,6 @@ def classify_sessions_for_query(
 def _select_sessions_for_inspection(
     sessions: list[TranscriptSession],
     classifications: dict[str, str],
-    *,
-    max_inspected_sessions: int,
 ) -> tuple[list[TranscriptSession], list[TranscriptSession]]:
     relevant = [
         session
@@ -637,7 +806,7 @@ def _select_sessions_for_inspection(
         for session in sessions
         if classifications.get(session.session_id) == SESSION_CLASS_POSSIBLY_RELEVANT
     ]
-    inspected = (relevant + possibly)[: max(1, max_inspected_sessions)]
+    inspected = relevant + possibly
     inspected_ids = {session.session_id for session in inspected}
     skipped = [session for session in sessions if session.session_id not in inspected_ids]
     return inspected, skipped
@@ -742,9 +911,11 @@ def _compact_window_result_for_merge(window: dict[str, Any]) -> dict[str, Any]:
         "source_thread_id": window.get("source_thread_id"),
         "message_ids": list(window.get("message_ids", [])),
         "estimated_tokens": window.get("estimated_tokens"),
+        "answer_summary": window.get("answer_summary", ""),
+        "answer_format": window.get("answer_format", "detailed"),
         "answer": window.get("answer", ""),
         "cited_message_ids": list(window.get("cited_message_ids", [])),
-        "candidate_evidence_blocks": list(window.get("candidate_evidence_blocks", [])),
+        "answer_ranges": list(window.get("answer_ranges", [])),
         "uncertainties": list(window.get("uncertainties", [])),
     }
 
@@ -781,9 +952,11 @@ def _interim_window_from_answer(
         "source_thread_id": source_thread_id,
         "message_ids": message_ids,
         "estimated_tokens": 0,
+        "answer_summary": result.answer_summary,
+        "answer_format": result.answer_format,
         "answer": result.answer,
         "cited_message_ids": list(result.cited_message_ids),
-        "candidate_evidence_blocks": [asdict(candidate) for candidate in result.candidate_evidence_blocks],
+        "answer_ranges": [asdict(answer_range) for answer_range in result.answer_ranges],
         "uncertainties": list(result.uncertainties),
     }
 
@@ -791,7 +964,7 @@ def _interim_window_from_answer(
 def _run_bounded_exhaustive_window_merge(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     user_query: str,
     sessions: list[TranscriptSession],
@@ -806,6 +979,8 @@ def _run_bounded_exhaustive_window_merge(
     message_thread_by_id: dict[str, str],
     source_thread_ids: list[str],
 ) -> ConversationalAnswerResult:
+    message_order_by_thread = _message_order_by_thread_from_db(conn, dataset_id)
+
     def merge_batch(batch: list[dict[str, Any]], depth: int = 0) -> ConversationalAnswerResult:
         compact_batch = [_compact_window_result_for_merge(window) for window in batch]
         estimated_tokens = _estimate_merge_user_content_tokens(
@@ -865,7 +1040,7 @@ def _run_bounded_exhaustive_window_merge(
         merge = run_nim_chat(
             conn,
             logger,
-            client,
+            router,
             run_type=RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
             user_content=build_exhaustive_window_merge_user_content(
                 user_query,
@@ -890,6 +1065,7 @@ def _run_bounded_exhaustive_window_merge(
                 len(sessions) - len({window.get("session_id") for window in window_results}),
             ),
             retrieval_assists=retrieval_assists if depth == 0 else [],
+            message_order_by_thread=message_order_by_thread,
         )
 
     if not window_results:
@@ -900,8 +1076,10 @@ def _run_bounded_exhaustive_window_merge(
             json.dumps(
                 {
                     "answer": only.get("answer", ""),
+                    "answer_summary": only.get("answer_summary", ""),
+                    "answer_format": only.get("answer_format", "detailed"),
                     "cited_message_ids": only.get("cited_message_ids", []),
-                    "candidate_evidence_blocks": only.get("candidate_evidence_blocks", []),
+                    "answer_ranges": only.get("answer_ranges", []),
                     "uncertainties": only.get("uncertainties", []),
                 }
             ),
@@ -916,6 +1094,7 @@ def _run_bounded_exhaustive_window_merge(
                 len(sessions) - len({window.get("session_id") for window in window_results}),
             ),
             retrieval_assists=retrieval_assists,
+            message_order_by_thread=message_order_by_thread,
         )
     return merge_batch(window_results)
 
@@ -927,6 +1106,7 @@ def parse_exhaustive_window_scan_response(
     message_thread_by_id: dict[str, str],
     source_thread_ids: list[str],
     messages_considered: int,
+    message_order_by_thread: dict[str, list[str]] | None = None,
 ) -> ConversationalAnswerResult:
     try:
         payload = _extract_json_object(content)
@@ -947,6 +1127,7 @@ def parse_exhaustive_window_scan_response(
         messages_considered=messages_considered,
         mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
         allow_empty_answer=True,
+        message_order_by_thread=message_order_by_thread,
     )
 
 
@@ -961,6 +1142,7 @@ def parse_exhaustive_window_merge_response(
     sessions_inspected: int,
     sessions_skipped: int,
     retrieval_assists: list[dict[str, Any]] | None = None,
+    message_order_by_thread: dict[str, list[str]] | None = None,
 ) -> ConversationalAnswerResult:
     try:
         payload = _extract_json_object(content)
@@ -984,37 +1166,40 @@ def parse_exhaustive_window_merge_response(
         sessions_inspected=sessions_inspected,
         sessions_skipped=sessions_skipped,
         retrieval_assists=retrieval_assists,
+        message_order_by_thread=message_order_by_thread,
     )
 
 
 def run_exhaustive_window_scan_answer(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     user_query: str,
     dataset_id: int,
-    transcript_window_padding: int = DEFAULT_TRANSCRIPT_WINDOW_PADDING,
     session_gap_minutes: int = 120,
     deps: ToolRunnerDeps | None = None,
     answer_settings: AnswerSettings | None = None,
+    nim_settings: NimSettings | None = None,
     model_id: str | None = None,
     provider_metadata: dict | None = None,
     max_tokens: int | None = None,
 ) -> ConversationalAnswerResult:
     settings = answer_settings or load_settings().answer
-    selected_model = model_id or client.settings.model or "unknown-model"
+    app_settings = load_settings()
+    nim = nim_settings or app_settings.nim
+    selected_model = model_id or router.writing_model_id() or "unknown-model"
     budget = resolve_answer_budget(
         build_dataset_transcript(conn, dataset_id),
         settings,
         selected_model,
+        nim_settings=nim,
         provider_metadata=provider_metadata,
     )
-    window_target = min(settings.window_target_tokens, budget.usable_input_tokens)
     planned_windows = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
-        target_tokens=window_target,
+        target_tokens=budget.usable_input_tokens,
         overlap_messages=settings.window_overlap_messages,
         model_id=selected_model,
     )
@@ -1037,7 +1222,7 @@ def run_exhaustive_window_scan_answer(
         message="Built token-bounded transcript windows for exhaustive scan",
         details={
             "window_count": len(planned_windows),
-            "target_tokens": window_target,
+            "target_tokens": budget.usable_input_tokens,
             "overlap_messages": settings.window_overlap_messages,
             "sessions_considered": len(sessions),
             "windowing_mode": "token_bounded_thread",
@@ -1057,7 +1242,7 @@ def run_exhaustive_window_scan_answer(
         dataset_id=dataset_id,
     )
     token_budget = {
-        "window_target_tokens": settings.window_target_tokens,
+        "window_target_tokens": budget.usable_input_tokens,
         "context_window_tokens": budget.context_window_tokens,
         "context_source": budget.context_source,
         "safety_ratio": budget.safety_ratio,
@@ -1076,8 +1261,8 @@ def run_exhaustive_window_scan_answer(
     message_thread_by_id: dict[str, str] = {}
     source_thread_ids = sorted({session.source_thread_id for session in sessions})
     scan_uncertainties: list[str] = []
-    output_tokens = max_tokens if max_tokens is not None else budget.effective_reserved_output_tokens
-    merge_max_tokens = max(output_tokens, min(4096, budget.effective_reserved_output_tokens))
+    output_tokens = max_tokens if max_tokens is not None else budget.max_output_tokens
+    merge_max_tokens = output_tokens
 
     for window in planned_windows:
         session_valid_ids = set(window.message_ids)
@@ -1087,7 +1272,7 @@ def run_exhaustive_window_scan_answer(
         scan = run_nim_chat(
             conn,
             logger,
-            client,
+            router,
             run_type=RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
             user_content=build_exhaustive_window_scan_user_content(user_query, window=window),
             dataset_id=dataset_id,
@@ -1099,6 +1284,7 @@ def run_exhaustive_window_scan_answer(
             message_thread_by_id=session_thread_by_id,
             source_thread_ids=[window.source_thread_id],
             messages_considered=len(window.message_ids),
+            message_order_by_thread={window.source_thread_id: list(window.message_ids)},
         )
         valid_ids.update(window.message_ids)
         message_thread_by_id.update(session_thread_by_id)
@@ -1111,11 +1297,10 @@ def run_exhaustive_window_scan_answer(
                 "estimated_tokens": window.estimated_tokens,
                 "message_ids": window.message_ids,
                 "answer": parsed_scan.answer,
+                "answer_summary": parsed_scan.answer_summary,
+                "answer_format": parsed_scan.answer_format,
                 "cited_message_ids": parsed_scan.cited_message_ids,
-                "candidate_evidence_blocks": [
-                    asdict(candidate)
-                    for candidate in parsed_scan.candidate_evidence_blocks
-                ],
+                "answer_ranges": [asdict(answer_range) for answer_range in parsed_scan.answer_ranges],
                 "uncertainties": parsed_scan.uncertainties,
             }
         )
@@ -1123,7 +1308,7 @@ def run_exhaustive_window_scan_answer(
     parsed = _run_bounded_exhaustive_window_merge(
         conn,
         logger,
-        client,
+        router,
         user_query=user_query,
         sessions=sessions,
         window_results=window_results,
@@ -1146,12 +1331,10 @@ def run_exhaustive_window_scan_answer(
 def run_session_coverage_answer(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
-    client: NimClient,
+    router: ModelRouter,
     *,
     user_query: str,
     dataset_id: int,
-    max_inspected_sessions: int = DEFAULT_MAX_INSPECTED_SESSIONS,
-    transcript_window_padding: int = DEFAULT_TRANSCRIPT_WINDOW_PADDING,
     session_gap_minutes: int = 120,
     deps: ToolRunnerDeps | None = None,
     max_tokens: int | None = None,
@@ -1168,11 +1351,11 @@ def run_session_coverage_answer(
     )
     if not sessions:
         raise ConversationalAnswerParseError("No transcript sessions available for session-coverage mode")
-    sessions = ensure_session_summaries(conn, logger, client, dataset_id)
+    sessions = ensure_session_summaries(conn, logger, router, dataset_id)
     classifications, classification_uncertainties = classify_sessions_for_query(
         conn,
         logger,
-        client,
+        router,
         user_query=user_query,
         dataset_id=dataset_id,
         sessions=sessions,
@@ -1193,12 +1376,11 @@ def run_session_coverage_answer(
     inspected_sessions, skipped_sessions = _select_sessions_for_inspection(
         sessions,
         classifications,
-        max_inspected_sessions=max_inspected_sessions,
     )
     audit = run_coverage_audit(
         conn,
         logger,
-        client,
+        router,
         user_query=user_query,
         dataset_id=dataset_id,
         sessions=sessions,
@@ -1222,7 +1404,7 @@ def run_session_coverage_answer(
             conn,
             dataset_id,
             session,
-            padding=transcript_window_padding,
+            padding=DEFAULT_TRANSCRIPT_WINDOW_PADDING,
         )
         inspected_windows.append(
             {
@@ -1245,7 +1427,7 @@ def run_session_coverage_answer(
     result = run_nim_chat(
         conn,
         logger,
-        client,
+        router,
         run_type=RUN_TYPE_COVERAGE_SESSION_ANSWER,
         user_content=user_content,
         dataset_id=dataset_id,
@@ -1262,6 +1444,7 @@ def run_session_coverage_answer(
         sessions_inspected=len(inspected_sessions),
         sessions_skipped=len(skipped_sessions),
         retrieval_assists=retrieval_assists,
+        message_order_by_thread=_message_order_by_thread_from_db(conn, dataset_id),
     )
     parsed.uncertainties = (
         classification_uncertainties + assist_notes + audit.residual_uncertainties + parsed.uncertainties
