@@ -208,6 +208,47 @@ def test_metadata_save_reload(workspace) -> None:
     assert context.artifact.case_number == "CV-2024-001"
 
 
+def test_printable_context_uses_bounded_slot_fetch(workspace, monkeypatch) -> None:
+    conn, logger, dataset_id = workspace
+    from message_evidence_workstation.db import repositories
+
+    group = printable_artifacts.ensure_default_printable_artifact_group(conn, logger, dataset_id)
+    block_id = _create_block(conn, logger, dataset_id)
+    block = evidence_blocks.get_evidence_block(conn, block_id)
+    assert block is not None
+    block = evidence_blocks.update_evidence_block_slots(
+        conn,
+        logger,
+        evidence_block_id=block_id,
+        message_count=100,
+        context_start_slot=0,
+        relevant_start_slot=0,
+        relevant_end_slot=1,
+        context_end_slot=3,
+    )
+    artifact = printable_artifacts.create_printable_artifact_from_evidence_block(
+        conn,
+        logger,
+        dataset_id,
+        group.printable_artifact_group_id,
+        block.evidence_block_id,
+    )
+
+    list_calls = 0
+    original_list = repositories.list_messages_for_thread
+
+    def counting_list(*args, **kwargs):
+        nonlocal list_calls
+        list_calls += 1
+        return original_list(*args, **kwargs)
+
+    monkeypatch.setattr(repositories, "list_messages_for_thread", counting_list)
+    context = printable_artifacts.load_printable_artifact_context(conn, artifact.printable_artifact_id)
+    assert context is not None
+    assert len(context.blocks[0].messages) == 3
+    assert list_calls == 0
+
+
 def test_dataset_reload_clears_printable_artifacts(workspace) -> None:
     conn, logger, dataset_id = workspace
     group = printable_artifacts.ensure_default_printable_artifact_group(conn, logger, dataset_id)

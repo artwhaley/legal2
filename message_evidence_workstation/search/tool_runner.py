@@ -191,21 +191,30 @@ def parse_planner_plan(content: str) -> SearchPlannerPlan:
     )
 
 
-def _message_details(conn: sqlite3.Connection, dataset_id: int, message_id: str) -> dict[str, str]:
+def _message_details(conn: sqlite3.Connection, dataset_id: int, message_id: str) -> dict[str, str | int | None]:
     row = conn.execute(
         """
-        SELECT sender_display, timestamp, body
+        SELECT sender_display, timestamp, body, thread_ordinal, sort_index
         FROM message
         WHERE dataset_id = ? AND message_id = ?
         """,
         (dataset_id, message_id),
     ).fetchone()
     if row is None:
-        return {"sender_display": "", "timestamp": "", "body": ""}
+        return {
+            "sender_display": "",
+            "timestamp": "",
+            "body": "",
+            "thread_ordinal": None,
+            "sort_index": None,
+        }
+    thread_ordinal = row["thread_ordinal"]
     return {
         "sender_display": row["sender_display"],
         "timestamp": row["timestamp"],
         "body": row["body"],
+        "thread_ordinal": int(thread_ordinal) if thread_ordinal is not None else None,
+        "sort_index": int(row["sort_index"]),
     }
 
 
@@ -215,61 +224,30 @@ def _fts_to_hits(
     dataset_id: int,
     query: str,
 ) -> list[SearchHit]:
-    results = fts.search_messages(conn, logger, dataset_id, query)
+    results = fts.search_messages(conn, logger, dataset_id, query, limit=None)
     hits: list[SearchHit] = []
-    for fts_hit in results["exact"]:
+    for fts_hit in results["hits"]:
         details = _message_details(conn, dataset_id, fts_hit.message_id)
+        retrieval_method = {
+            "exact": "fts_exact",
+            "partial": "fts_partial",
+            "fuzzy": "spellfix_fuzzy",
+        }[fts_hit.match_type]
         hits.append(
             SearchHit(
                 message_id=fts_hit.message_id,
                 source_thread_id=fts_hit.source_thread_id,
-                match_type="exact",
-                retrieval_method="fts_exact",
+                match_type=fts_hit.match_type,
+                retrieval_method=retrieval_method,
                 query_text=query,
                 matched_term=query,
                 score=fts_hit.rank,
-                sender_display=details["sender_display"],
-                timestamp=details["timestamp"],
-                body=details["body"],
-                snippet=details["body"][:160],
-            )
-        )
-    for fts_hit in results["partial"]:
-        if any(existing.message_id == fts_hit.message_id for existing in hits):
-            continue
-        details = _message_details(conn, dataset_id, fts_hit.message_id)
-        hits.append(
-            SearchHit(
-                message_id=fts_hit.message_id,
-                source_thread_id=fts_hit.source_thread_id,
-                match_type="partial",
-                retrieval_method="fts_partial",
-                query_text=query,
-                matched_term=query,
-                score=fts_hit.rank,
-                sender_display=details["sender_display"],
-                timestamp=details["timestamp"],
-                body=details["body"],
-                snippet=details["body"][:160],
-            )
-        )
-    for fts_hit in results["fuzzy"]:
-        if any(existing.message_id == fts_hit.message_id for existing in hits):
-            continue
-        details = _message_details(conn, dataset_id, fts_hit.message_id)
-        hits.append(
-            SearchHit(
-                message_id=fts_hit.message_id,
-                source_thread_id=fts_hit.source_thread_id,
-                match_type="fuzzy",
-                retrieval_method="spellfix_fuzzy",
-                query_text=query,
-                matched_term=query,
-                score=fts_hit.rank,
-                sender_display=details["sender_display"],
-                timestamp=details["timestamp"],
-                body=details["body"],
-                snippet=details["body"][:160],
+                sender_display=str(details["sender_display"]),
+                timestamp=str(details["timestamp"]),
+                body=str(details["body"]),
+                snippet=str(details["body"])[:160],
+                thread_ordinal=details["thread_ordinal"],  # type: ignore[arg-type]
+                sort_index=details["sort_index"],  # type: ignore[arg-type]
             )
         )
     return fuse_hits(hits)
@@ -307,18 +285,29 @@ def _keyword_expansion_hits(
 
 
 def _messages_in_range(
-    messages: list[Message],
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
     start_message_id: str,
     end_message_id: str,
 ) -> list[Message]:
-    ids = [message.message_id for message in messages]
-    if start_message_id not in ids or end_message_id not in ids:
+    start_ordinal = repositories.message_ordinal(
+        conn, dataset_id, source_thread_id, start_message_id
+    )
+    end_ordinal = repositories.message_ordinal(
+        conn, dataset_id, source_thread_id, end_message_id
+    )
+    if start_ordinal is None or end_ordinal is None:
         return []
-    start_idx = ids.index(start_message_id)
-    end_idx = ids.index(end_message_id)
-    if start_idx > end_idx:
-        start_idx, end_idx = end_idx, start_idx
-    return messages[start_idx : end_idx + 1]
+    if start_ordinal > end_ordinal:
+        start_ordinal, end_ordinal = end_ordinal, start_ordinal
+    return repositories.fetch_messages_for_slot_range(
+        conn,
+        dataset_id,
+        source_thread_id,
+        start_ordinal,
+        end_ordinal + 1,
+    )
 
 
 def execute_tool_call(
@@ -330,7 +319,6 @@ def execute_tool_call(
     call: dict[str, Any],
     state: _RunnerState,
     deps: ToolRunnerDeps,
-    sort_index_by_message: dict[str, int],
 ) -> ToolCallResult:
     tool = str(call["tool"])
     started = time.perf_counter()
@@ -419,8 +407,10 @@ def execute_tool_call(
             max_messages = int(arguments.get("max_messages", 50))
             if not source_thread_id:
                 raise ValueError("read_source_thread requires source_thread_id")
-            messages = repositories.list_messages_for_thread(conn, dataset_id, source_thread_id)
-            selected = messages[:max_messages]
+            messages = repositories.fetch_messages_for_slot_range(
+                conn, dataset_id, source_thread_id, 0, max_messages
+            )
+            selected = messages
             result = ToolCallResult(
                 tool=tool,
                 arguments=arguments,
@@ -439,8 +429,13 @@ def execute_tool_call(
                 raise ValueError(
                     "read_message_range requires source_thread_id, start_message_id, end_message_id"
                 )
-            messages = repositories.list_messages_for_thread(conn, dataset_id, source_thread_id)
-            selected = _messages_in_range(messages, start_message_id, end_message_id)
+            selected = _messages_in_range(
+                conn,
+                dataset_id,
+                source_thread_id,
+                start_message_id,
+                end_message_id,
+            )
             if not selected:
                 raise ValueError("Message range not found in source thread")
             result = ToolCallResult(
@@ -456,7 +451,6 @@ def execute_tool_call(
         elif tool == "group_hits":
             groups = group_hits(
                 state.accumulated_hits,
-                sort_index_by_message=sort_index_by_message,
                 logger=logger,
                 dataset_id=dataset_id,
             )
@@ -513,7 +507,6 @@ def execute_full_search_harness(
     user_query: str,
     plan: SearchPlannerPlan,
     deps: ToolRunnerDeps,
-    sort_index_by_message: dict[str, int],
 ) -> ConversationalPlanExecution:
     """Run every retrieval method, fuse, then group. Recall-first; never skip a channel."""
     logger.info(
@@ -548,7 +541,6 @@ def execute_full_search_harness(
                 call={"tool": "fts", "query": fts_query},
                 state=state,
                 deps=deps,
-                sort_index_by_message=sort_index_by_message,
             )
         )
 
@@ -562,7 +554,6 @@ def execute_full_search_harness(
                 call={"tool": "keyword_expansion", "query": user_query},
                 state=state,
                 deps=deps,
-                sort_index_by_message=sort_index_by_message,
             )
         )
     else:
@@ -584,7 +575,6 @@ def execute_full_search_harness(
             call={"tool": "message_embedding", "query": user_query},
             state=state,
             deps=deps,
-            sort_index_by_message=sort_index_by_message,
         )
     )
     tool_results.append(
@@ -596,7 +586,6 @@ def execute_full_search_harness(
             call={"tool": "chunk_embedding", "query": user_query},
             state=state,
             deps=deps,
-            sort_index_by_message=sort_index_by_message,
         )
     )
 
@@ -610,7 +599,6 @@ def execute_full_search_harness(
                 call={"tool": "group_hits"},
                 state=state,
                 deps=deps,
-                sort_index_by_message=sort_index_by_message,
             )
         )
 
@@ -647,7 +635,6 @@ def execute_plan(
     user_query: str,
     plan: SearchPlannerPlan,
     deps: ToolRunnerDeps,
-    sort_index_by_message: dict[str, int],
 ) -> ConversationalPlanExecution:
     return execute_full_search_harness(
         conn,
@@ -656,7 +643,6 @@ def execute_plan(
         user_query=user_query,
         plan=plan,
         deps=deps,
-        sort_index_by_message=sort_index_by_message,
     )
 
 
@@ -698,7 +684,6 @@ def run_conversational_planner(
     user_query: str,
     dataset_id: int,
     deps: ToolRunnerDeps,
-    sort_index_by_message: dict[str, int],
 ) -> ConversationalPlanExecution:
     plan = fetch_conversational_plan(
         conn, logger, client, user_query=user_query, dataset_id=dataset_id
@@ -710,5 +695,4 @@ def run_conversational_planner(
         user_query=user_query,
         plan=plan,
         deps=deps,
-        sort_index_by_message=sort_index_by_message,
     )

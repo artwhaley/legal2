@@ -6,7 +6,7 @@ import threading
 from collections.abc import Callable
 from typing import TypeVar
 
-from PySide6.QtCore import QObject, QTimer, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot
 
 T = TypeVar("T")
 
@@ -40,14 +40,19 @@ def run_background(
     bridge = _JobBridge(parent)
 
     def on_bridge_success(result: object) -> None:
+        from message_evidence_workstation.ui.ui_callback_watchdog import run_ui_callback
+
         bridge.succeeded.disconnect(on_bridge_success)
         bridge.errored.disconnect(on_bridge_error)
-        on_success(result)  # type: ignore[arg-type]
+        run_ui_callback("background_tasks.on_success", lambda: on_success(result))  # type: ignore[arg-type]
 
     def on_bridge_error(exc: object) -> None:
+        from message_evidence_workstation.ui.ui_callback_watchdog import run_ui_callback
+
         bridge.succeeded.disconnect(on_bridge_success)
         bridge.errored.disconnect(on_bridge_error)
-        on_error(exc if isinstance(exc, BaseException) else RuntimeError(str(exc)))
+        resolved = exc if isinstance(exc, BaseException) else RuntimeError(str(exc))
+        run_ui_callback("background_tasks.on_error", lambda: on_error(resolved))
 
     bridge.succeeded.connect(on_bridge_success)
     bridge.errored.connect(on_bridge_error)
@@ -55,17 +60,9 @@ def run_background(
     def runner() -> None:
         try:
             result = fn()
-
-            def deliver_success(r: object = result) -> None:
-                bridge.accept_success(r)
-
-            QTimer.singleShot(0, parent, deliver_success)
+            bridge.succeeded.emit(result)
         except BaseException as exc:
-
-            def deliver_error(e: BaseException = exc) -> None:
-                bridge.accept_error(e)
-
-            QTimer.singleShot(0, parent, deliver_error)
+            bridge.errored.emit(exc)
 
     thread = threading.Thread(target=runner, name="mew-background", daemon=True)
     thread.start()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -344,6 +345,7 @@ def rebuild_dataset_sessions(
     gap_minutes: int = DEFAULT_SESSION_GAP_MINUTES,
     chunking_config: ChunkingConfig | None = None,
     use_semantic_chunks: bool = True,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> list[TranscriptSession]:
     sessions = build_sessions_for_dataset(
         conn,
@@ -353,6 +355,8 @@ def rebuild_dataset_sessions(
         use_semantic_chunks=use_semantic_chunks,
     )
     persist_sessions(conn, logger, dataset_id, sessions)
+    if progress_callback is not None:
+        progress_callback("sessions", len(sessions), len(sessions))
     return sessions
 
 

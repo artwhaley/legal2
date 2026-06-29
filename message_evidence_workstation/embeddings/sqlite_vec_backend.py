@@ -107,6 +107,175 @@ def _table_dimensions(conn: sqlite3.Connection, table_name: str) -> int | None:
         return None
 
 
+def _table_sql(conn: sqlite3.Connection, table_name: str) -> str:
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE name = ?",
+        (table_name,),
+    ).fetchone()
+    return str(row[0] or "") if row else ""
+
+
+def _vec_table_has_model_partition(conn: sqlite3.Connection, table_name: str) -> bool:
+    sql = _table_sql(conn, table_name).lower()
+    return "model_name" in sql and "partition key" in sql
+
+
+def count_message_vectors(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str | None = None,
+) -> int:
+    if not _table_exists(conn, MESSAGE_VEC_TABLE):
+        return 0
+    load_sqlite_vec(conn)
+    if model_name and _vec_table_has_model_partition(conn, MESSAGE_VEC_TABLE):
+        return int(
+            conn.execute(
+                f"SELECT COUNT(*) FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ? AND model_name = ?",
+                (dataset_id, model_name),
+            ).fetchone()[0]
+        )
+    return int(
+        conn.execute(
+            f"SELECT COUNT(*) FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
+            (dataset_id,),
+        ).fetchone()[0]
+    )
+
+
+def count_chunk_vectors(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str | None = None,
+) -> int:
+    if not _table_exists(conn, CHUNK_VEC_TABLE):
+        return 0
+    load_sqlite_vec(conn)
+    if model_name and _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE):
+        return int(
+            conn.execute(
+                f"SELECT COUNT(*) FROM {CHUNK_VEC_TABLE} WHERE dataset_id = ? AND model_name = ?",
+                (dataset_id, model_name),
+            ).fetchone()[0]
+        )
+    return int(
+        conn.execute(
+            f"SELECT COUNT(*) FROM {CHUNK_VEC_TABLE} WHERE dataset_id = ?",
+            (dataset_id,),
+        ).fetchone()[0]
+    )
+
+
+def _metadata_model_name(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    granularity: str,
+) -> str:
+    row = conn.execute(
+        """
+        SELECT model_name
+        FROM embedding_index_metadata
+        WHERE dataset_id = ? AND granularity = ?
+        ORDER BY embedding_index_id DESC
+        LIMIT 1
+        """,
+        (dataset_id, granularity),
+    ).fetchone()
+    return str(row["model_name"]) if row and row["model_name"] else "legacy"
+
+
+def migrate_legacy_vec_tables_to_partitions(conn: sqlite3.Connection, logger: Any) -> None:
+    """Rebuild pre-v11 vec tables with model_name partition keys."""
+    load_sqlite_vec(conn)
+    if _table_exists(conn, MESSAGE_VEC_TABLE) and not _vec_table_has_model_partition(
+        conn, MESSAGE_VEC_TABLE
+    ):
+        dimensions = _table_dimensions(conn, MESSAGE_VEC_TABLE)
+        if dimensions is None:
+            conn.execute(f"DROP TABLE IF EXISTS {MESSAGE_VEC_TABLE}")
+        else:
+            rows = conn.execute(
+                f"""
+                SELECT message_id, dataset_id, source_thread_id, embedding
+                FROM {MESSAGE_VEC_TABLE}
+                """
+            ).fetchall()
+            by_dataset: dict[int, list[tuple]] = {}
+            for row in rows:
+                by_dataset.setdefault(int(row["dataset_id"]), []).append(row)
+            conn.execute(f"DROP TABLE IF EXISTS {MESSAGE_VEC_TABLE}")
+            ensure_message_vec_table(conn, dimensions)
+            for dataset_id, dataset_rows in by_dataset.items():
+                model_name = _metadata_model_name(conn, dataset_id, "message")
+                payload = [
+                    (
+                        list(_deserialize_float32_vector(bytes(row["embedding"]))),
+                        str(row["message_id"]),
+                        dataset_id,
+                        str(row["source_thread_id"]),
+                    )
+                    for row in dataset_rows
+                ]
+                if payload:
+                    insert_message_vectors(conn, payload, model_name=model_name)
+            logger.info(
+                component="embeddings.sqlite_vec_backend",
+                operation="migrate_message_vec_partitions",
+                message="Migrated message embedding vec table to model partitions",
+                details={"row_count": len(rows), "dimensions": dimensions},
+            )
+
+    if _table_exists(conn, CHUNK_VEC_TABLE) and not _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE):
+        dimensions = _table_dimensions(conn, CHUNK_VEC_TABLE)
+        if dimensions is None:
+            conn.execute(f"DROP TABLE IF EXISTS {CHUNK_VEC_TABLE}")
+        else:
+            rows = conn.execute(
+                f"""
+                SELECT chunk_id, dataset_id, source_thread_id, embedding
+                FROM {CHUNK_VEC_TABLE}
+                """
+            ).fetchall()
+            by_dataset = {}
+            for row in rows:
+                by_dataset.setdefault(int(row["dataset_id"]), []).append(row)
+            conn.execute(f"DROP TABLE IF EXISTS {CHUNK_VEC_TABLE}")
+            ensure_chunk_vec_table(conn, dimensions)
+            for dataset_id, dataset_rows in by_dataset.items():
+                model_name = _metadata_model_name(conn, dataset_id, "chunk")
+                payload = [
+                    (
+                        list(_deserialize_float32_vector(bytes(row["embedding"]))),
+                        int(row["chunk_id"]),
+                        dataset_id,
+                        str(row["source_thread_id"]),
+                    )
+                    for row in dataset_rows
+                ]
+                if payload:
+                    insert_chunk_vectors(conn, payload, model_name=model_name)
+            logger.info(
+                component="embeddings.sqlite_vec_backend",
+                operation="migrate_chunk_vec_partitions",
+                message="Migrated chunk embedding vec table to model partitions",
+                details={"row_count": len(rows), "dimensions": dimensions},
+            )
+    conn.commit()
+
+
+def _deserialize_float32_vector(blob: bytes) -> tuple[float, ...]:
+    import struct
+
+    if not blob:
+        return ()
+    dimensions = len(blob) // 4
+    if dimensions <= 0:
+        return ()
+    return struct.unpack(f"<{dimensions}f", blob[: dimensions * 4])
+
+
 def ensure_message_vec_table(conn: sqlite3.Connection, dimensions: int) -> None:
     existing = _table_dimensions(conn, MESSAGE_VEC_TABLE)
     if existing is not None and existing != dimensions:
@@ -116,6 +285,7 @@ def ensure_message_vec_table(conn: sqlite3.Connection, dimensions: int) -> None:
             f"""
             CREATE VIRTUAL TABLE {MESSAGE_VEC_TABLE} USING vec0(
                 embedding FLOAT[{dimensions}],
+                model_name text partition key,
                 +message_id TEXT,
                 +dataset_id INTEGER,
                 +source_thread_id TEXT
@@ -134,6 +304,7 @@ def ensure_chunk_vec_table(conn: sqlite3.Connection, dimensions: int) -> None:
             f"""
             CREATE VIRTUAL TABLE {CHUNK_VEC_TABLE} USING vec0(
                 embedding FLOAT[{dimensions}],
+                model_name text partition key,
                 +chunk_id INTEGER,
                 +dataset_id INTEGER,
                 +source_thread_id TEXT
@@ -143,16 +314,39 @@ def ensure_chunk_vec_table(conn: sqlite3.Connection, dimensions: int) -> None:
     conn.commit()
 
 
-def clear_message_vectors(conn: sqlite3.Connection, dataset_id: int) -> None:
-    if _table_exists(conn, MESSAGE_VEC_TABLE):
+def clear_message_vectors(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str | None = None,
+) -> None:
+    if not _table_exists(conn, MESSAGE_VEC_TABLE):
+        return
+    if model_name and _vec_table_has_model_partition(conn, MESSAGE_VEC_TABLE):
+        conn.execute(
+            f"DELETE FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ? AND model_name = ?",
+            (dataset_id, model_name),
+        )
+    else:
         conn.execute(f"DELETE FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?", (dataset_id,))
-        conn.commit()
+    conn.commit()
 
 
-def clear_chunk_vectors(conn: sqlite3.Connection, dataset_id: int) -> None:
+def clear_chunk_vectors(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str | None = None,
+) -> None:
     ensure_chunk_metadata_schema(conn)
     if _table_exists(conn, CHUNK_VEC_TABLE):
-        conn.execute(f"DELETE FROM {CHUNK_VEC_TABLE} WHERE dataset_id = ?", (dataset_id,))
+        if model_name and _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE):
+            conn.execute(
+                f"DELETE FROM {CHUNK_VEC_TABLE} WHERE dataset_id = ? AND model_name = ?",
+                (dataset_id, model_name),
+            )
+        else:
+            conn.execute(f"DELETE FROM {CHUNK_VEC_TABLE} WHERE dataset_id = ?", (dataset_id,))
     conn.execute("DELETE FROM message_chunk WHERE dataset_id = ?", (dataset_id,))
     conn.commit()
 
@@ -160,8 +354,30 @@ def clear_chunk_vectors(conn: sqlite3.Connection, dataset_id: int) -> None:
 def insert_message_vectors(
     conn: sqlite3.Connection,
     rows: list[tuple[list[float], str, int, str]],
+    *,
+    model_name: str,
 ) -> None:
     sqlite_vec = _import_sqlite_vec()
+    has_partition = _vec_table_has_model_partition(conn, MESSAGE_VEC_TABLE)
+    if has_partition:
+        conn.executemany(
+            f"""
+            INSERT INTO {MESSAGE_VEC_TABLE} (
+                embedding, model_name, message_id, dataset_id, source_thread_id
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    sqlite_vec.serialize_float32(vector),
+                    model_name,
+                    message_id,
+                    dataset_id,
+                    source_thread_id,
+                )
+                for vector, message_id, dataset_id, source_thread_id in rows
+            ],
+        )
+        return
     conn.executemany(
         f"""
         INSERT INTO {MESSAGE_VEC_TABLE} (
@@ -178,8 +394,30 @@ def insert_message_vectors(
 def insert_chunk_vectors(
     conn: sqlite3.Connection,
     rows: list[tuple[list[float], int, int, str]],
+    *,
+    model_name: str,
 ) -> None:
     sqlite_vec = _import_sqlite_vec()
+    has_partition = _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE)
+    if has_partition:
+        conn.executemany(
+            f"""
+            INSERT INTO {CHUNK_VEC_TABLE} (
+                embedding, model_name, chunk_id, dataset_id, source_thread_id
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    sqlite_vec.serialize_float32(vector),
+                    model_name,
+                    chunk_id,
+                    dataset_id,
+                    source_thread_id,
+                )
+                for vector, chunk_id, dataset_id, source_thread_id in rows
+            ],
+        )
+        return
     conn.executemany(
         f"""
         INSERT INTO {CHUNK_VEC_TABLE} (
@@ -213,15 +451,19 @@ def search_message_vectors(
     started = time.perf_counter()
     # vec0 auxiliary columns cannot appear in KNN WHERE; oversample then filter.
     oversample = max(top_k * 10, 50)
+    partition_clause = " AND model_name = ?" if _vec_table_has_model_partition(conn, MESSAGE_VEC_TABLE) else ""
+    params: list[Any] = [sqlite_vec.serialize_float32(query_vector), oversample]
+    if partition_clause:
+        params.append(model_name)
     rows = conn.execute(
         f"""
         SELECT message_id, source_thread_id, distance, dataset_id
         FROM {MESSAGE_VEC_TABLE}
         WHERE embedding MATCH ?
-          AND k = ?
+          AND k = ?{partition_clause}
         ORDER BY distance
         """,
-        (sqlite_vec.serialize_float32(query_vector), oversample),
+        tuple(params),
     ).fetchall()
     rows = [row for row in rows if int(row["dataset_id"]) == dataset_id][:top_k]
     elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -269,16 +511,19 @@ def search_chunk_vectors(
     sqlite_vec = _import_sqlite_vec()
     started = time.perf_counter()
     oversample = max(top_k * 10, 50)
-    # vec0 KNN must not JOIN during MATCH — query the vector table, then resolve chunk metadata.
+    partition_clause = " AND model_name = ?" if _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE) else ""
+    params: list[Any] = [sqlite_vec.serialize_float32(query_vector), oversample]
+    if partition_clause:
+        params.append(model_name)
     rows = conn.execute(
         f"""
         SELECT chunk_id, source_thread_id, distance, dataset_id
         FROM {CHUNK_VEC_TABLE}
         WHERE embedding MATCH ?
-          AND k = ?
+          AND k = ?{partition_clause}
         ORDER BY distance
         """,
-        (sqlite_vec.serialize_float32(query_vector), oversample),
+        tuple(params),
     ).fetchall()
     rows = [row for row in rows if int(row["dataset_id"]) == dataset_id][:top_k]
     chunk_meta: dict[int, tuple[str, str]] = {}

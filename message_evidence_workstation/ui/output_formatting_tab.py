@@ -27,8 +27,9 @@ from message_evidence_workstation.db import printable_artifacts
 from message_evidence_workstation.domain.models import PrintableArtifactContext
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.output.block_labels import block_label_for_index
-from message_evidence_workstation.output.printable_preview import build_printable_preview
-from message_evidence_workstation.ui.printable_preview_widget import PrintablePreviewWidget
+from message_evidence_workstation.output.print_layout_render import QtLayoutMetrics
+from message_evidence_workstation.output.printable_preview import build_print_layout
+from message_evidence_workstation.ui.printable_preview_widget import PrintPreviewWidget
 from message_evidence_workstation.ui.sidebar import MIME_EVIDENCE_BLOCK
 
 ROLE_ITEM_ID = int(Qt.ItemDataRole.UserRole)
@@ -157,7 +158,7 @@ class OutputFormattingTab(QWidget):
         self._set_editor_enabled(False)
         left_layout.addWidget(editor, stretch=2)
 
-        self.preview = PrintablePreviewWidget()
+        self.preview = PrintPreviewWidget()
         splitter.addWidget(left)
         splitter.addWidget(self.preview)
         splitter.setStretchFactor(0, 2)
@@ -176,7 +177,7 @@ class OutputFormattingTab(QWidget):
         self._active_context = None
         self.artifact_tree.clear()
         self._clear_editor()
-        self.preview.set_preview_model(None)
+        self.preview.set_layout_document(None)
         if dataset_id is None:
             self.empty_label.show()
             return
@@ -338,7 +339,7 @@ class OutputFormattingTab(QWidget):
             self._active_artifact_id = None
             self._active_context = None
             self._clear_editor()
-            self.preview.set_preview_model(None)
+            self.preview.set_layout_document(None)
             return
         self._active_artifact_id = int(current.data(0, ROLE_ITEM_ID))
         self._load_active_artifact()
@@ -361,7 +362,7 @@ class OutputFormattingTab(QWidget):
         )
         if context is None:
             self._clear_editor()
-            self.preview.set_preview_model(None)
+            self.preview.set_layout_document(None)
             return
         self._active_context = context
         self.title_field.setText(context.artifact.title)
@@ -456,6 +457,6 @@ class OutputFormattingTab(QWidget):
                 self._active_artifact_id,
             )
         if context is None:
-            self.preview.set_preview_model(None)
+            self.preview.set_layout_document(None)
             return
-        self.preview.set_preview_model(build_printable_preview(context))
+        self.preview.set_layout_document(build_print_layout(context, metrics=QtLayoutMetrics()))

@@ -15,7 +15,6 @@ from message_evidence_workstation.domain.models import (
     PrintableArtifactGroup,
     SourceThread,
 )
-from message_evidence_workstation.domain.slots import message_ids_for_slot_range
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
 from message_evidence_workstation.output.block_labels import block_label_for_index
 
@@ -96,19 +95,13 @@ def _messages_for_evidence_block(
     conn: sqlite3.Connection,
     block: EvidenceBlock,
 ) -> list:
-    ordered = repositories.list_messages_for_thread(
+    return repositories.fetch_messages_for_slot_range(
         conn,
         block.dataset_id,
         block.source_thread_id,
-    )
-    ordered_ids = [message.message_id for message in ordered]
-    selected_ids = message_ids_for_slot_range(
-        ordered_ids,
         block.context_start_slot,
         block.context_end_slot,
     )
-    by_id = {message.message_id: message for message in ordered}
-    return [by_id[message_id] for message_id in selected_ids if message_id in by_id]
 
 
 def ensure_default_printable_artifact_group(

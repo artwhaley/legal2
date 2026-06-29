@@ -6,7 +6,7 @@ import re
 import sqlite3
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from message_evidence_workstation.logging_ui.process_log import ProcessLogger
@@ -154,6 +154,8 @@ def rebuild_spellfix_for_dataset(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
     dataset_id: int,
+    *,
+    progress_callback: Callable[[str, int, int], None] | None = None,
 ) -> int:
     ensure_spellfix_schema(conn)
     logger.info(
@@ -195,14 +197,17 @@ def rebuild_spellfix_for_dataset(
             (term, rank, dataset_id),
         )
     conn.commit()
+    term_count = len(term_messages)
+    if progress_callback is not None:
+        progress_callback("spellfix", term_count, term_count)
     logger.info(
         component="search.spellfix",
         operation="rebuild_complete",
         message="Spellfix vocabulary rebuild completed",
-        details={"dataset_id": dataset_id, "term_count": len(term_messages)},
+        details={"dataset_id": dataset_id, "term_count": term_count},
         dataset_id=dataset_id,
     )
-    return len(term_messages)
+    return term_count
 
 
 def expand_fuzzy_terms(

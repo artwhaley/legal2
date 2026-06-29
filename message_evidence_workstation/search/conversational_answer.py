@@ -22,6 +22,11 @@ from message_evidence_workstation.nim.prompts import (
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
     get_active_prompt,
 )
+from message_evidence_workstation.search.dataset_budget import (
+    DatasetBudgetStats,
+    compute_dataset_budget_stats,
+    estimate_transcript_tokens_from_stats,
+)
 from message_evidence_workstation.search.coverage_audit import run_coverage_audit
 from message_evidence_workstation.search.retrieval_assist import (
     collect_retrieval_assists,
@@ -58,8 +63,6 @@ ANSWER_STRATEGY_WHOLE_TRANSCRIPT = "whole_transcript"
 ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN = "exhaustive_window_scan"
 ANSWER_STRATEGY_SESSION_COVERAGE = "session_coverage"
 
-DEFAULT_WHOLE_TRANSCRIPT_MAX_CHARS = 200_000
-DEFAULT_MAX_INSPECTED_SESSIONS = 12
 DEFAULT_TRANSCRIPT_WINDOW_PADDING = 2
 
 SESSION_CLASS_RELEVANT = "relevant"
@@ -133,7 +136,7 @@ def _clamp_safety_ratio(value: float) -> float:
 
 
 def resolve_answer_budget(
-    transcript: SerializedTranscript,
+    stats: DatasetBudgetStats,
     answer_settings: AnswerSettings,
     model_id: str,
     *,
@@ -141,11 +144,10 @@ def resolve_answer_budget(
     provider_metadata: dict | None = None,
 ) -> AnswerBudget:
     nim = nim_settings or NimSettings()
-    user_override = nim.context_window_tokens if nim.context_window_tokens > 0 else None
     model_context = resolve_model_context(
         model_id,
+        context_window_tokens=nim.context_window_tokens,
         provider_metadata=provider_metadata,
-        user_override_tokens=user_override,
     )
     safety_ratio = _clamp_safety_ratio(nim.context_safety_ratio)
     max_output_tokens = max(1, nim.max_output_tokens)
@@ -154,8 +156,9 @@ def resolve_answer_budget(
         context_window_tokens=model_context.context_window_tokens,
         safety_ratio=safety_ratio,
         prompt_overhead_tokens=prompt_overhead,
+        max_output_tokens=max_output_tokens,
     )
-    token_estimate = estimate_tokens(transcript.text, model_id)
+    token_estimate = estimate_transcript_tokens_from_stats(stats)
     strategy = answer_settings.answer_strategy
     if strategy == ANSWER_STRATEGY_SESSION_COVERAGE:
         decision = ANSWER_MODE_SESSION_COVERAGE
@@ -187,29 +190,45 @@ def log_answer_budget_resolved(
     budget: AnswerBudget,
     dataset_id: int | None,
     strategy: str,
+    stats: DatasetBudgetStats | None = None,
     window_count: int = 0,
     target_tokens: int = 0,
     overlap_messages: int = 0,
 ) -> None:
+    details: dict[str, Any] = {
+        "model_id": budget.model_id,
+        "context_window_tokens": budget.context_window_tokens,
+        "context_source": budget.context_source,
+        "transcript_tokens": budget.transcript_tokens,
+        "usable_input_tokens": budget.usable_input_tokens,
+        "decision": budget.decision,
+        "strategy": strategy,
+        "window_count": window_count,
+        "target_tokens": target_tokens,
+        "overlap_messages": overlap_messages,
+        "max_output_tokens": budget.max_output_tokens,
+        "prompt_overhead_tokens": budget.prompt_overhead_tokens,
+        "transcript_token_method": budget.transcript_token_method,
+    }
+    if stats is not None:
+        token_estimate = estimate_transcript_tokens_from_stats(stats)
+        details.update(
+            {
+                "message_count": stats.message_count,
+                "thread_count": stats.thread_count,
+                "total_body_chars": stats.total_body_chars,
+                "total_body_normalized_chars": stats.total_body_normalized_chars,
+                "largest_thread_message_count": stats.largest_thread_message_count,
+                "estimator_safety_margin": token_estimate.safety_margin,
+                "message_overhead_chars": token_estimate.message_overhead_chars,
+                "thread_overhead_chars": token_estimate.thread_overhead_chars,
+            }
+        )
     logger.info(
         component="search.conversational_answer",
         operation="answer_budget_resolved",
         message="Resolved conversational answer token budget",
-        details={
-            "model_id": budget.model_id,
-            "context_window_tokens": budget.context_window_tokens,
-            "context_source": budget.context_source,
-            "transcript_tokens": budget.transcript_tokens,
-            "usable_input_tokens": budget.usable_input_tokens,
-            "decision": budget.decision,
-            "strategy": strategy,
-            "window_count": window_count,
-            "target_tokens": target_tokens,
-            "overlap_messages": overlap_messages,
-            "max_output_tokens": budget.max_output_tokens,
-            "prompt_overhead_tokens": budget.prompt_overhead_tokens,
-            "transcript_token_method": budget.transcript_token_method,
-        },
+        details=details,
         dataset_id=dataset_id,
     )
 
@@ -232,19 +251,17 @@ class ConversationalAnswerResult:
 def resolve_answer_mode(
     *,
     strategy: str,
-    transcript: SerializedTranscript,
+    stats: DatasetBudgetStats,
     answer_settings: AnswerSettings | None = None,
     nim_settings: NimSettings | None = None,
     model_id: str = "",
     provider_metadata: dict | None = None,
-    max_chars: int = DEFAULT_WHOLE_TRANSCRIPT_MAX_CHARS,
 ) -> str:
-    del max_chars  # retained for backward compatibility; auto no longer uses char limits
     settings = answer_settings or AnswerSettings(answer_strategy=strategy)
     if strategy != settings.answer_strategy:
         settings = AnswerSettings(**{**asdict(settings), "answer_strategy": strategy})
     budget = resolve_answer_budget(
-        transcript,
+        stats,
         settings,
         model_id=model_id or "unknown-model",
         nim_settings=nim_settings,
@@ -1190,7 +1207,7 @@ def run_exhaustive_window_scan_answer(
     nim = nim_settings or app_settings.nim
     selected_model = model_id or router.writing_model_id() or "unknown-model"
     budget = resolve_answer_budget(
-        build_dataset_transcript(conn, dataset_id),
+        compute_dataset_budget_stats(conn, dataset_id),
         settings,
         selected_model,
         nim_settings=nim,
@@ -1200,21 +1217,27 @@ def run_exhaustive_window_scan_answer(
         conn,
         dataset_id,
         target_tokens=budget.usable_input_tokens,
-        overlap_messages=settings.window_overlap_messages,
+        overlap_messages=nim.window_overlap_messages,
         model_id=selected_model,
     )
     if not planned_windows:
         raise ConversationalAnswerParseError("No transcript windows available for exhaustive window scan")
 
-    chunking_config = config_from_mapping(load_settings().chunking)
-    chunking_config.session_gap_hours = max(1, session_gap_minutes) / 60.0
-    sessions = rebuild_dataset_sessions(
-        conn,
-        logger,
-        dataset_id,
-        gap_minutes=session_gap_minutes,
-        chunking_config=chunking_config,
-        use_semantic_chunks=False,
+    sessions = list_sessions(conn, dataset_id)
+    per_call_input_budget = budget.usable_input_tokens
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_scan_preflight",
+        message="Exhaustive window scan pre-flight",
+        details={
+            "context_window_tokens": budget.context_window_tokens,
+            "per_call_input_budget": per_call_input_budget,
+            "planned_window_count": len(planned_windows),
+            "overlap_messages": nim.window_overlap_messages,
+            "estimated_llm_calls": len(planned_windows) + 1,
+            "model_id": selected_model,
+        },
+        dataset_id=dataset_id,
     )
     logger.info(
         component="search.conversational_answer",
@@ -1222,8 +1245,8 @@ def run_exhaustive_window_scan_answer(
         message="Built token-bounded transcript windows for exhaustive scan",
         details={
             "window_count": len(planned_windows),
-            "target_tokens": budget.usable_input_tokens,
-            "overlap_messages": settings.window_overlap_messages,
+            "target_tokens": per_call_input_budget,
+            "overlap_messages": nim.window_overlap_messages,
             "sessions_considered": len(sessions),
             "windowing_mode": "token_bounded_thread",
         },
@@ -1242,7 +1265,7 @@ def run_exhaustive_window_scan_answer(
         dataset_id=dataset_id,
     )
     token_budget = {
-        "window_target_tokens": budget.usable_input_tokens,
+        "window_target_tokens": per_call_input_budget,
         "context_window_tokens": budget.context_window_tokens,
         "context_source": budget.context_source,
         "safety_ratio": budget.safety_ratio,

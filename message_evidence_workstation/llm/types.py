@@ -20,7 +20,6 @@ class ModelTaskRole(str, Enum):
     WINDOWED_CONTEXT_SEARCH = "windowed_context_search"
     WINDOWED_RESULT_MERGE = "windowed_result_merge"
     FULL_CONTEXT_ANSWER = "full_context_answer"
-    RANGE_SUGGESTION = "range_suggestion"
     CONVERSATIONAL_CANDIDATE = "conversational_candidate"
     MODEL_TEST = "model_test"
     MODEL_LIST = "model_list"

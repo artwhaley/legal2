@@ -1,4 +1,8 @@
-"""Embedding vector search helpers."""
+"""Embedding vector search helpers.
+
+Embedding hits are top-K by vector similarity (selectivity-controlled ranking budget),
+not a completeness claim over all semantically related messages.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +16,7 @@ from message_evidence_workstation.embeddings.sqlite_vec_backend import (
     search_chunk_vectors,
     search_message_vectors,
 )
+from message_evidence_workstation.db.repositories import fetch_messages_by_ids
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search.result_models import SearchHit
 
@@ -109,16 +114,15 @@ def search_message_embeddings(
         top_k=top_k if top_k is not None else resolved_selectivity.top_k,
     )
     raw_hits = filter_vector_hits_by_selectivity(raw_hits, selectivity)
+    messages_by_id = fetch_messages_by_ids(
+        conn,
+        dataset_id,
+        [raw.message_id for raw in raw_hits],
+    )
     hits: list[SearchHit] = []
     for raw in raw_hits:
-        row = conn.execute(
-            """
-            SELECT sender_display, timestamp, body
-            FROM message WHERE dataset_id = ? AND message_id = ?
-            """,
-            (dataset_id, raw.message_id),
-        ).fetchone()
-        body = row["body"] if row else ""
+        message = messages_by_id.get(raw.message_id)
+        body = message.body if message else ""
         hits.append(
             SearchHit(
                 message_id=raw.message_id,
@@ -128,10 +132,12 @@ def search_message_embeddings(
                 query_text=query,
                 distance=raw.distance,
                 rank=raw.rank,
-                sender_display=row["sender_display"] if row else "",
-                timestamp=row["timestamp"] if row else "",
+                sender_display=message.sender_display if message else "",
+                timestamp=message.timestamp if message else "",
                 body=body,
                 snippet=body[:160],
+                thread_ordinal=message.thread_ordinal if message else None,
+                sort_index=message.sort_index if message else None,
             )
         )
     return hits
@@ -160,16 +166,15 @@ def search_chunk_embeddings(
         top_k=top_k if top_k is not None else resolved_selectivity.top_k,
     )
     raw_hits = filter_vector_hits_by_selectivity(raw_hits, selectivity)
+    messages_by_id = fetch_messages_by_ids(
+        conn,
+        dataset_id,
+        [raw.message_id for raw in raw_hits],
+    )
     hits: list[SearchHit] = []
     for raw in raw_hits:
-        row = conn.execute(
-            """
-            SELECT sender_display, timestamp, body
-            FROM message WHERE dataset_id = ? AND message_id = ?
-            """,
-            (dataset_id, raw.message_id),
-        ).fetchone()
-        body = row["body"] if row else ""
+        message = messages_by_id.get(raw.message_id)
+        body = message.body if message else ""
         snippet = body[:160]
         if raw.start_message_id and raw.end_message_id and raw.start_message_id != raw.end_message_id:
             snippet = f"chunk {raw.start_message_id}..{raw.end_message_id}: {snippet}"
@@ -182,11 +187,13 @@ def search_chunk_embeddings(
                 query_text=query,
                 distance=raw.distance,
                 rank=raw.rank,
-                sender_display=row["sender_display"] if row else "",
-                timestamp=row["timestamp"] if row else "",
+                sender_display=message.sender_display if message else "",
+                timestamp=message.timestamp if message else "",
                 body=body,
                 snippet=snippet,
                 chunk_id=raw.chunk_id,
+                thread_ordinal=message.thread_ordinal if message else None,
+                sort_index=message.sort_index if message else None,
             )
         )
     return hits

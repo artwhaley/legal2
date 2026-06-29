@@ -9,15 +9,48 @@ from __future__ import annotations
 
 import queue
 import threading
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, Signal
 
 from message_evidence_workstation.diagnostics.trace_log import trace
 from message_evidence_workstation.embeddings.adapters import EmbeddingAdapter, EmbeddingAdapterInfo
+
+
+class _EmbeddingDeliveryBridge(QObject):
+    """Marshals embedding worker results onto the parent QObject thread."""
+
+    succeeded = Signal(object, object, object)
+    errored = Signal(object, object, object)
+
+
+_delivery_bridges: weakref.WeakKeyDictionary[QObject, _EmbeddingDeliveryBridge] = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _delivery_bridge(parent: QObject) -> _EmbeddingDeliveryBridge:
+    bridge = _delivery_bridges.get(parent)
+    if bridge is None:
+        bridge = _EmbeddingDeliveryBridge(parent)
+        bridge.succeeded.connect(_handle_delivery_success)
+        bridge.errored.connect(_handle_delivery_error)
+        _delivery_bridges[parent] = bridge
+    return bridge
+
+
+def _handle_delivery_success(parent: QObject, callback: Callable[[Any], None], result: object) -> None:
+    _deliver_success(parent, callback, result)
+
+
+def _handle_delivery_error(
+    parent: QObject, callback: Callable[[BaseException], None], exc: BaseException
+) -> None:
+    _deliver_error(parent, callback, exc)
 
 
 @dataclass(slots=True)
@@ -43,7 +76,6 @@ class EmbeddingJobSpec:
     harness_user_query: str = ""
     harness_strategy_summary: str = ""
     harness_extra_queries: list[str] = field(default_factory=list)
-    sort_index_by_message: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -113,13 +145,14 @@ def _execute(spec: EmbeddingJobSpec) -> Any:
 
     conn = connect(spec.db_path)
     try:
-        logger = ProcessLogger(conn, log_bus=get_log_bus(), dataset_id=spec.dataset_id)
+        effective_dataset_id = spec.dataset_id if spec.dataset_id > 0 else None
+        logger = ProcessLogger(conn, log_bus=get_log_bus(), dataset_id=effective_dataset_id)
         logger.info(
             component="ui.embedding_worker",
             operation="job_start",
             message=f"Embedding job started: {spec.job_type}",
             details={"job_type": spec.job_type, "model_id": spec.model_id},
-            dataset_id=spec.dataset_id,
+            dataset_id=effective_dataset_id,
         )
         adapter, info = _ensure_adapter(spec.adapter_key, spec.model_id, logger)
         if spec.job_type == "load":
@@ -186,17 +219,21 @@ def _execute(spec: EmbeddingJobSpec) -> Any:
 
 
 def _deliver_success(parent: QObject, callback: Callable[[Any], None], result: Any) -> None:
+    from message_evidence_workstation.ui.ui_callback_watchdog import run_ui_callback
+
     trace("embedding_worker", "deliver_success_ui", result_type=type(result).__name__)
     try:
-        callback(result)
+        run_ui_callback("embedding_worker.on_success", lambda: callback(result))
     except BaseException as exc:
         trace("embedding_worker", "on_success_exception", error=str(exc))
 
 
 def _deliver_error(parent: QObject, callback: Callable[[BaseException], None], exc: BaseException) -> None:
+    from message_evidence_workstation.ui.ui_callback_watchdog import run_ui_callback
+
     trace("embedding_worker", "deliver_error_ui", error=str(exc))
     try:
-        callback(exc)
+        run_ui_callback("embedding_worker.on_error", lambda: callback(exc))
     except BaseException as callback_exc:
         trace("embedding_worker", "on_error_exception", error=str(callback_exc))
 
@@ -214,18 +251,10 @@ def _worker_loop() -> None:
             result = _execute(work.spec)
         except BaseException as exc:
             trace("embedding_worker", "run_job_exception", error=str(exc))
-            QTimer.singleShot(
-                0,
-                work.parent,
-                lambda w=work, e=exc: _deliver_error(w.parent, w.on_error, e),
-            )
+            _delivery_bridge(work.parent).errored.emit(work.parent, work.on_error, exc)
             continue
         trace("embedding_worker", "run_job_success", job_type=work.spec.job_type)
-        QTimer.singleShot(
-            0,
-            work.parent,
-            lambda w=work, r=result: _deliver_success(w.parent, w.on_success, r),
-        )
+        _delivery_bridge(work.parent).succeeded.emit(work.parent, work.on_success, result)
 
 
 def _ensure_worker_thread() -> None:

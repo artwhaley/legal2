@@ -70,3 +70,56 @@
 - [T60 - Remove Obsolete LLM Prompts](tickets/T60_remove_obsolete_llm_prompts.md)
 - [T62 - Embedding Resume Optimization](tickets/T62_embedding_resume_optimization.md)
 - [T63 - Pre Scale Hardening Regression](tickets/T63_pre_scale_hardening_regression.md)
+
+## Large dataset performance (see `05_large_dataset_performance_patch_spec.md`)
+
+**Orchestrator:** [large_dataset_performance_orchestrator.md](tickets/large_dataset_performance_orchestrator.md) - execute **T64 -> T72 in order**.
+
+- [T64 - Thread Ordinals and Indexed Transcript Access](tickets/T64_thread_ordinals_and_indexed_transcript_access.md)
+- [T65 - Transcript Virtualization Cleanup](tickets/T65_transcript_virtualization_cleanup.md)
+- [T66 - Remove Dataset-Wide UI Maps](tickets/T66_remove_dataset_wide_ui_maps.md)
+- [T67 - Background Search Worker and Cancel](tickets/T67_background_search_worker_and_cancel.md)
+- [T68 - Real SQL FTS Pagination](tickets/T68_real_sql_fts_pagination.md)
+- [T69 - Explicit Search Modes UI](tickets/T69_explicit_search_modes_ui.md)
+- [T70 - Expanded Keyword Mode Pagination](tickets/T70_expanded_keyword_mode_pagination.md)
+- [T71 - Embedding Modes and Background Integration](tickets/T71_embedding_modes_and_background_integration.md)
+- [T72 - Large Dataset Performance Regression](tickets/T72_large_dataset_performance_regression.md)
+
+## New transcript widget demonstrator (see `06_new_transcript_widget_spec.md`)
+
+**Orchestrator:** [new_transcript_widget_orchestrator.md](tickets/new_transcript_widget_orchestrator.md) - execute **T73 -> T80 in order**.
+
+- [T73 - Parallel New Transcript Tab Shell](tickets/T73_parallel_new_transcript_tab_shell.md)
+- [T74 - Document Backed Transcript Surface](tickets/T74_document_backed_transcript_surface.md)
+- [T75 - Transcript Navigation and Demo Controls](tickets/T75_transcript_navigation_and_demo_controls.md)
+- [T76 - Evidence Block Creation and Reveal](tickets/T76_evidence_block_creation_and_reveal.md)
+- [T77 - Document Annotation Overlays](tickets/T77_document_annotation_overlays.md)
+- [T78 - Boundary Drag and Overlay Persistence](tickets/T78_boundary_drag_and_overlay_persistence.md)
+- [T79 - Hit Message and Highlight Editing](tickets/T79_hit_message_and_highlight_editing.md)
+- [T80 - New Transcript Widget Regression](tickets/T80_new_transcript_widget_regression.md)
+
+## Home startup and smart embeddings (see `07_home_startup_and_embeddings_spec.md`)
+
+**Orchestrator:** [home_startup_embeddings_orchestrator.md](tickets/home_startup_embeddings_orchestrator.md) — execute **T81 → T87 in order**.
+
+- [T81 - Embedding Completion Hang Fix](tickets/T81_embedding_completion_hang_fix.md)
+- [T82 - Home Cold-Start Tab](tickets/T82_home_cold_start_tab.md)
+- [T83 - Background Embedding Pipeline](tickets/T83_background_embedding_pipeline.md)
+- [T84 - Per-Model Vec Partition Key](tickets/T84_per_model_vec_partition_key.md)
+- [T85 - Embedding Progress Status Bar](tickets/T85_embedding_progress_status_bar.md)
+- [T86 - Embedding Search Readiness Gating](tickets/T86_embedding_search_readiness_gating.md)
+- [T87 - Home Startup and Embeddings Regression](tickets/T87_home_startup_embeddings_regression.md)
+
+## Virtual transcript widget (see `08_virtual_transcript_widget_spec.md`)
+
+**Orchestrator:** [virtual_transcript_widget_orchestrator.md](tickets/virtual_transcript_widget_orchestrator.md) - execute **T88 -> T96 in order**.
+
+- [T88 - Virtual Transcript Third Tab Shell](tickets/T88_virtual_transcript_third_tab_shell.md)
+- [T89 - Virtual Transcript SQL Model](tickets/T89_virtual_transcript_sql_model.md)
+- [T90 - Virtual Transcript Height Index](tickets/T90_virtual_transcript_height_index.md)
+- [T91 - Virtual Transcript Visible Renderer](tickets/T91_virtual_transcript_visible_renderer.md)
+- [T92 - Virtual Transcript Scroll and Jump](tickets/T92_virtual_transcript_scroll_and_jump.md)
+- [T93 - Virtual Transcript Annotation Painting](tickets/T93_virtual_transcript_annotation_painting.md)
+- [T94 - Virtual Transcript Annotation Editing](tickets/T94_virtual_transcript_annotation_editing.md)
+- [T95 - Virtual Transcript Demo Controls](tickets/T95_virtual_transcript_demo_controls.md)
+- [T96 - Virtual Transcript Regression and Handoff](tickets/T96_virtual_transcript_regression_and_handoff.md)

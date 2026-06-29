@@ -2,13 +2,15 @@
 
 import json
 import os
+import time
 from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QMimeData, QPoint, Qt
 from PySide6.QtWidgets import QApplication
 
-from message_evidence_workstation.app_bootstrap import bootstrap_app
+from message_evidence_workstation.app_bootstrap import StartupLoadOptions, bootstrap_app
+from message_evidence_workstation.dataset_load_pipeline import DatasetLoadRequest, run_import_pipeline
 from message_evidence_workstation.db import evidence_blocks
 from message_evidence_workstation.db import repositories
 from message_evidence_workstation.domain.constants import UNCATEGORIZED_CATEGORY_NAME
@@ -32,6 +34,19 @@ def qapp():
     if app is None:
         app = QApplication([])
     return app
+
+
+def _run_simple_search_and_wait(tab: SimpleSearchTab, qapp: QApplication) -> None:
+    tab._run_search()
+    deadline = time.perf_counter() + 5.0
+    while time.perf_counter() < deadline:
+        qapp.processEvents()
+        if tab.results_list.count() > 0:
+            return
+        status = tab.status_label.text().casefold()
+        if "failed" in status or "cancelled" in status:
+            return
+        time.sleep(0.01)
 
 
 def _search_group(title: str = "Allergy form") -> GroupedSearchResult:
@@ -62,15 +77,54 @@ def _find_top_level_item(sidebar: Sidebar, label: str):
     return None
 
 
-def test_settings_model_routing_controls_present(tmp_path, qapp, monkeypatch) -> None:
+FIXTURE_DATASET = Path(__file__).parent / "fixtures" / "sample_dataset"
+
+
+def _bootstrap_ui_context(tmp_path, monkeypatch):
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
     context = bootstrap_app()
+    result = run_import_pipeline(
+        context.conn,
+        context.logger,
+        DatasetLoadRequest(
+            dataset_path=FIXTURE_DATASET,
+            skip_import_if_existing=False,
+            skip_embedding=True,
+        ),
+    )
+    assert result.dataset_id is not None
+    context.dataset_id = result.dataset_id
+    context.logger.dataset_id = result.dataset_id
+    return context
+
+
+def _main_window_for_context(context, qapp=None) -> MainWindow:
     window = MainWindow(context)
+    if context.dataset_id is not None:
+        window._activate_dataset(context.dataset_id, embedding_available=False)
+        if qapp is not None:
+            qapp.processEvents()
+    return window
+
+
+def _loaded_transcript_tab(context) -> TranscriptWidgetTab:
+    tab = TranscriptWidgetTab(context.conn, context.logger)
+    tab.set_dataset(context.dataset_id)
+    tab.ensure_thread_loaded()
+    return tab
+
+
+def test_settings_model_routing_controls_present(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     tab = window.settings_tab
     assert tab.google_api_key is not None
     assert UserFacingModelRole.EXPANSION in tab.role_provider
@@ -104,11 +158,10 @@ def test_settings_model_refresh_preserves_saved_writing_model(tmp_path, qapp, mo
 
     monkeypatch.setenv("MEW_WORKSPACE_DIR", str(tmp_path))
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
     settings = load_settings()
     routing = settings.model_routing
     assert routing is not None
@@ -117,8 +170,8 @@ def test_settings_model_refresh_preserves_saved_writing_model(tmp_path, qapp, mo
     routing.writing.api_key = "google-test-key"
     save_settings(settings)
 
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     tab = window.settings_tab
     tab._models_by_provider[PROVIDER_GOOGLE] = [
         ModelInfo(id="gemini-2.0-flash"),
@@ -139,11 +192,10 @@ def test_settings_tab_initializes_without_budget_readout_race(tmp_path, qapp, mo
 
     monkeypatch.setenv("MEW_WORKSPACE_DIR", str(tmp_path))
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
     settings = load_settings()
     assert settings.model_routing is not None
     settings.model_routing.expansion.provider = PROVIDER_GOOGLE
@@ -154,25 +206,26 @@ def test_settings_tab_initializes_without_budget_readout_race(tmp_path, qapp, mo
     settings.model_routing.writing.model = "gemma-4-31b-it"
     save_settings(settings)
 
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
 
     assert window.settings_tab.context_budget_readout.text()
 
 
 def test_main_window_with_dataset(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     assert window.sidebar.thread_combo.count() == 1
-    assert window.tabs.count() == 5
-    assert window.tabs.tabText(3) == "Setup / Settings"
-    assert window.tabs.tabText(4) == "Transcript Widget"
+    assert window.tabs.count() == 8
+    assert window.tabs.tabText(1) == "Setup / Settings"
+    assert window.tabs.tabText(5) == "Transcript Widget"
+    assert window.tabs.tabText(6) == "New Transcript Widget"
+    assert window.tabs.tabText(7) == "Virtual Transcript Widget"
     assert 2 <= window.settings_tab.chunk_desired_average.value() <= 20
     assert window.settings_tab.chunk_session_gap_hours.value() > 0.0
     assert window.settings_tab.chunk_max_chars.value() >= 100
@@ -181,15 +234,71 @@ def test_main_window_with_dataset(tmp_path, qapp, monkeypatch) -> None:
     assert window.simple_search_tab.embedding_selectivity_label.text() == "Balanced"
 
 
+def test_main_window_includes_parallel_new_transcript_tab(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+
+    labels = [window.tabs.tabText(index) for index in range(window.tabs.count())]
+    assert "Transcript Widget" in labels
+    assert "New Transcript Widget" in labels
+    assert "Virtual Transcript Widget" in labels
+    assert window.tabs.isTabEnabled(window.new_transcript_index)
+    assert window.tabs.isTabEnabled(window.virtual_transcript_index)
+
+
+def test_new_transcript_tab_receives_dataset_activation(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    tab = window.new_transcript_widget_tab
+    window.tabs.setCurrentWidget(tab)
+    tab.ensure_document_loaded()
+    qapp.processEvents()
+
+    assert tab.dataset_id == context.dataset_id
+    assert tab.thread_combo.count() == 1
+    assert tab.transcript_widget.source_thread_id == "thread_001"
+    assert tab.transcript_widget.message_count == 100
+    assert "Messages: 100" in tab.status_label.text()
+
+
+def test_virtual_transcript_tab_receives_dataset_activation(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    tab = window.virtual_transcript_widget_tab
+    window.tabs.setCurrentWidget(tab)
+    tab.ensure_thread_loaded()
+    qapp.processEvents()
+
+    assert tab.dataset_id == context.dataset_id
+    assert tab.thread_combo.count() == 1
+    assert tab.transcript_widget.source_thread_id == "thread_001"
+    assert tab.transcript_widget.message_count == 100
+    assert "Messages: 100" in tab.status_label.text()
+
+
 def test_settings_context_budget_readout_present(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     readout = window.settings_tab.context_budget_readout.text()
     assert "Selected answer model" in readout
     assert "Context window tokens" in readout
@@ -210,11 +319,7 @@ def test_settings_loads_api_token_defaults(tmp_path, monkeypatch) -> None:
 
 def test_sidebar_category_tree_shows_names_and_child_evidence_blocks(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
     messages = repositories.list_messages_for_thread(context.conn, context.dataset_id, "thread_001")
     block = evidence_blocks.create_evidence_block(
@@ -254,11 +359,7 @@ def test_sidebar_category_tree_shows_names_and_child_evidence_blocks(tmp_path, q
 
 def test_sidebar_search_drop_uses_target_category(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
     repositories.set_category_collapsed(context.conn, context.logger, category.category_id, True)
     sidebar = Sidebar(context.conn, context.logger)
@@ -283,11 +384,7 @@ def test_sidebar_search_drop_uses_target_category(tmp_path, qapp, monkeypatch) -
 
 def test_sidebar_search_drop_without_category_reveals_uncategorized(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     category = evidence_blocks.ensure_uncategorized_category(context.conn, context.logger, context.dataset_id)
     repositories.set_category_collapsed(context.conn, context.logger, category.category_id, True)
     sidebar = Sidebar(context.conn, context.logger)
@@ -305,11 +402,7 @@ def test_sidebar_search_drop_without_category_reveals_uncategorized(tmp_path, qa
 
 def test_sidebar_blank_area_drop_defaults_to_uncategorized(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     sidebar = Sidebar(context.conn, context.logger)
     sidebar.set_dataset(context.dataset_id)
     mime = QMimeData()
@@ -353,16 +446,11 @@ def test_sidebar_blank_area_drop_defaults_to_uncategorized(tmp_path, qapp, monke
 
 def test_simple_search_shows_transcript_for_selected_group(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     tab = SimpleSearchTab(context.conn, context.logger, db_path=context.db_path)
     tab.set_dataset(context.dataset_id)
     tab.search_box.setText("allergy")
-    tab._run_search()
-    qapp.processEvents()
+    _run_simple_search_and_wait(tab, qapp)
 
     assert tab.results_splitter.count() == 2
     assert tab.results_list.count() >= 1
@@ -372,18 +460,48 @@ def test_simple_search_shows_transcript_for_selected_group(tmp_path, qapp, monke
     assert tab.transcript_widget._source_thread_id == "thread_001"
 
 
+def test_simple_search_shows_pagination_when_hits_exceed_page_size(tmp_path, qapp, monkeypatch) -> None:
+    from dataclasses import replace
+
+    from message_evidence_workstation.config.settings import SearchSettings, load_settings
+
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    base_settings = load_settings()
+    paged_settings = replace(base_settings, search=SearchSettings(fts_page_size=1))
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.simple_search_tab.load_settings",
+        lambda: paged_settings,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    tab = SimpleSearchTab(context.conn, context.logger, db_path=context.db_path)
+    tab.set_dataset(context.dataset_id)
+    tab.search_box.setText("the")
+    _run_simple_search_and_wait(tab, qapp)
+
+    assert tab._fts_total_count > 1
+    assert tab.fts_next_button.isEnabled()
+    assert not tab.fts_prev_button.isEnabled()
+    assert "Showing 1" in tab.fts_page_label.text()
+    assert f"of {tab._fts_total_count:,}" in tab.fts_page_label.text()
+
+    tab.fts_next_button.click()
+    deadline = time.perf_counter() + 5.0
+    while time.perf_counter() < deadline:
+        qapp.processEvents()
+        if "Showing 2" in tab.fts_page_label.text():
+            break
+        time.sleep(0.01)
+    assert tab.fts_prev_button.isEnabled()
+    assert "Showing 2" in tab.fts_page_label.text()
+
+
 def test_simple_search_double_click_creates_uncategorized_block(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     tab = SimpleSearchTab(context.conn, context.logger, db_path=context.db_path)
     tab.set_dataset(context.dataset_id)
     tab.search_box.setText("allergy")
-    tab._run_search()
-    qapp.processEvents()
+    _run_simple_search_and_wait(tab, qapp)
 
     before = evidence_blocks.list_evidence_blocks(context.conn, context.dataset_id)
     tab.results_list.itemDoubleClicked.emit(tab.results_list.item(0))
@@ -403,13 +521,12 @@ def test_conversational_answer_stream_persists_and_drives_transcript_and_block_c
     tmp_path, qapp, monkeypatch
 ) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     tab = window.conversational_tab
     answer = ConversationalAnswerResult(
         answer="Medical care appears in the allergy-form exchange.",
@@ -470,16 +587,11 @@ def test_conversational_answer_stream_persists_and_drives_transcript_and_block_c
 
 def test_simple_search_add_evidence_block_uses_viewport_center(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
     tab = SimpleSearchTab(context.conn, context.logger, db_path=context.db_path)
     tab.set_dataset(context.dataset_id)
     tab.search_box.setText("allergy")
-    tab._run_search()
-    qapp.processEvents()
+    _run_simple_search_and_wait(tab, qapp)
 
     tab.transcript_widget.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
     before = evidence_blocks.list_evidence_blocks(
@@ -501,13 +613,12 @@ def test_simple_search_add_evidence_block_uses_viewport_center(tmp_path, qapp, m
 
 def test_search_drop_reveals_block_in_simple_search_transcript(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
 
     block = window.sidebar.handle_search_drop(_search_group("Drop into school"), category_id=category.category_id)
@@ -525,13 +636,12 @@ def test_search_drop_reveals_block_in_simple_search_transcript(tmp_path, qapp, m
 
 def test_search_drop_blank_area_reveals_in_simple_search(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     mime = QMimeData()
     mime.setData(
         MIME_SEARCH_RESULT,
@@ -570,18 +680,16 @@ def test_search_drop_blank_area_reveals_in_simple_search(tmp_path, qapp, monkeyp
 
 def test_simple_search_block_creation_stays_on_simple_search_tab(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     window.tabs.setCurrentWidget(window.simple_search_tab)
     tab = window.simple_search_tab
     tab.search_box.setText("allergy")
-    tab._run_search()
-    qapp.processEvents()
+    _run_simple_search_and_wait(tab, qapp)
 
     tab.transcript_widget.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
     tab.add_evidence_block_button.click()
@@ -592,13 +700,8 @@ def test_simple_search_block_creation_stays_on_simple_search_tab(tmp_path, qapp,
 
 def test_transcript_widget_tab_loads_thread_without_default_block(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
-    tab = TranscriptWidgetTab(context.conn, context.logger)
-    tab.set_dataset(context.dataset_id)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    tab = _loaded_transcript_tab(context)
 
     assert tab.transcript_surface is not None
     assert tab.new_block_button.isEnabled()
@@ -615,13 +718,8 @@ def test_transcript_widget_tab_loads_thread_without_default_block(tmp_path, qapp
 
 def test_transcript_widget_new_block_uses_viewport_center(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
-    tab = TranscriptWidgetTab(context.conn, context.logger)
-    tab.set_dataset(context.dataset_id)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    tab = _loaded_transcript_tab(context)
 
     before = evidence_blocks.list_evidence_blocks(
         context.conn,
@@ -648,13 +746,8 @@ def test_transcript_widget_new_block_uses_viewport_center(tmp_path, qapp, monkey
 
 def test_new_evidence_block_preserves_existing_block_slots(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
-    )
-    context = bootstrap_app()
-    tab = TranscriptWidgetTab(context.conn, context.logger)
-    tab.set_dataset(context.dataset_id)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    tab = _loaded_transcript_tab(context)
 
     tab._create_evidence_block_from_view()
     qapp.processEvents()
@@ -687,13 +780,14 @@ def test_new_evidence_block_preserves_existing_block_slots(tmp_path, qapp, monke
 
 def test_transcript_new_block_updates_sidebar(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    qapp.processEvents()
+    window.transcript_widget_tab.ensure_thread_loaded()
 
     def _count_evidence_block_items() -> int:
         total = 0
@@ -715,13 +809,12 @@ def test_transcript_new_block_updates_sidebar(tmp_path, qapp, monkeypatch) -> No
 
 def test_source_thread_selection_opens_transcript_widget(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     window.tabs.setCurrentWidget(window.simple_search_tab)
     window._on_source_thread_selected("thread_001", "Sample thread")
     qapp.processEvents()
@@ -731,13 +824,12 @@ def test_source_thread_selection_opens_transcript_widget(tmp_path, qapp, monkeyp
 
 def test_sidebar_evidence_block_click_does_not_navigate_tabs(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     category = evidence_blocks.ensure_uncategorized_category(
         context.conn,
         context.logger,
@@ -771,13 +863,12 @@ def test_sidebar_evidence_block_click_does_not_navigate_tabs(tmp_path, qapp, mon
 
 def test_output_formatting_tab_initializes_tree(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     tab = window.output_formatting_tab
     assert tab.artifact_tree.topLevelItemCount() >= 1
     assert tab.artifact_tree.topLevelItem(0).data(0, int(Qt.ItemDataRole.UserRole) + 1) == "group"
@@ -785,13 +876,12 @@ def test_output_formatting_tab_initializes_tree(tmp_path, qapp, monkeypatch) -> 
 
 def test_output_formatting_drop_on_group_creates_artifact(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
     messages = repositories.list_messages_for_thread(context.conn, context.dataset_id, "thread_001")
     block = evidence_blocks.create_evidence_block(
@@ -822,13 +912,12 @@ def test_output_formatting_drop_on_group_creates_artifact(tmp_path, qapp, monkey
 
 def test_output_formatting_append_same_block_twice(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     category = evidence_blocks.ensure_uncategorized_category(
         context.conn, context.logger, context.dataset_id
     )
@@ -858,42 +947,27 @@ def test_output_formatting_append_same_block_twice(tmp_path, qapp, monkeypatch) 
 
 
 def test_output_formatting_preview_pagination_controls(tmp_path, qapp, monkeypatch) -> None:
-    from message_evidence_workstation.output.printable_preview import LINES_PER_PAGE, PrintablePreviewPage, PreviewContentLine
-    from message_evidence_workstation.output.printable_preview import PrintablePreviewModel
+    from message_evidence_workstation.output.print_layout import TightPageMetrics, build_print_layout
 
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
-    monkeypatch.setenv(
-        "MEW_DATASET_PATH",
-        str(Path(__file__).parent / "fixtures" / "sample_dataset"),
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
     )
-    monkeypatch.setattr(SettingsTab, "start_embedding_model_preload", lambda self: None)
-    context = bootstrap_app()
-    window = MainWindow(context)
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
     tab = window.output_formatting_tab
-    lines = [PreviewContentLine(kind="message_body", text=f"line {index}") for index in range(LINES_PER_PAGE + 5)]
-    lines[LINES_PER_PAGE] = PreviewContentLine(kind="message_body", text="<b>literal & text</b>")
-    model = PrintablePreviewModel(
-        title="Long exhibit",
-        exhibit_number="1",
-        case_number="2",
-        block_sections=[],
-        provenance_entries=[],
-        pages=[
-            PrintablePreviewPage(page_number=1, lines=lines[:LINES_PER_PAGE]),
-            PrintablePreviewPage(page_number=2, lines=lines[LINES_PER_PAGE:]),
-        ],
-        footer_exhibit="1",
-        footer_case="2",
-    )
-    tab.preview.set_preview_model(model)
+    body = " ".join(["word"] * 400)
+    from tests.test_printable_preview import _long_body_context
+
+    model = build_print_layout(_long_body_context(body), metrics=TightPageMetrics())
+    tab.preview.set_layout_document(model)
     qapp.processEvents()
+    assert len(model.pages) > 1
     assert tab.preview.next_button.isEnabled()
     assert not tab.preview.prev_button.isEnabled()
     tab.preview.show_next_page()
     qapp.processEvents()
     assert tab.preview.prev_button.isEnabled()
-    assert tab.preview.page_label.text() == "2 / 2"
-    assert not tab.preview.title_label.isHidden()
-    assert tab.preview.title_label.text() == "Long exhibit"
-    assert "&lt;b&gt;literal &amp; text&lt;/b&gt;" in tab.preview.body_label.text()
+    assert tab.preview.page_label.text() == f"2 / {len(model.pages)}"
 

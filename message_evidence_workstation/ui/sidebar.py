@@ -358,19 +358,12 @@ class Sidebar(QWidget):
     ) -> EvidenceBlock | None:
         if self.dataset_id is None or not group.hits:
             return None
-        messages = repositories.list_messages_for_thread(
-            self.conn,
-            self.dataset_id,
-            group.source_thread_id,
-        )
-        ordered_ids = [message.message_id for message in messages]
         if group.relevant_start_message_id and group.relevant_end_message_id:
             block = evidence_blocks.create_evidence_block_from_conversational_candidate(
                 self.conn,
                 self.logger,
                 dataset_id=self.dataset_id,
                 source_thread_id=group.source_thread_id,
-                ordered_message_ids=ordered_ids,
                 title=group.title or group.snippet or group.primary_hit_message_id,
                 summary=group.summary or group.snippet,
                 core_message_id=group.primary_hit_message_id,
@@ -393,7 +386,6 @@ class Sidebar(QWidget):
                 source_thread_id=group.source_thread_id,
                 primary_hit_message_id=group.primary_hit_message_id,
                 title=group.title or group.snippet or group.primary_hit_message_id,
-                ordered_message_ids=ordered_ids,
                 category_id=category_id,
             )
         self.logger.info(

@@ -36,6 +36,7 @@ class NimSettings:
     prompt_overhead_tokens: int = 1500
     timeout_seconds: float = 600.0
     streaming: bool = False
+    window_overlap_messages: int = 2
 
 
 @dataclass
@@ -46,12 +47,18 @@ class TranscriptSettings:
 @dataclass
 class AnswerSettings:
     answer_strategy: str = DEFAULT_ANSWER_STRATEGY
-    whole_transcript_max_chars: int = 200_000
     session_gap_minutes: int = 120
-    max_inspected_sessions: int = 12
-    transcript_window_padding: int = 2
-    window_target_tokens: int = 12000
-    window_overlap_messages: int = 2
+
+
+_LEGACY_ANSWER_ARCHAIC_KEYS = frozenset(
+    {
+        "whole_transcript_max_chars",
+        "max_inspected_sessions",
+        "transcript_window_padding",
+        "window_target_tokens",
+        "window_overlap_messages",
+    }
+)
 
 
 _LEGACY_ANSWER_TOKEN_KEYS = frozenset(
@@ -84,12 +91,18 @@ class ModelRoutingSettings:
 
 
 @dataclass
+class SearchSettings:
+    fts_page_size: int = 200
+
+
+@dataclass
 class AppSettings:
     nim: NimSettings
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chunking: dict = field(default_factory=dict)
     answer: AnswerSettings = field(default_factory=AnswerSettings)
     transcript: TranscriptSettings = field(default_factory=TranscriptSettings)
+    search: SearchSettings = field(default_factory=SearchSettings)
     model_metadata: dict[str, dict] = field(default_factory=dict)
     model_routing: ModelRoutingSettings | None = None
 
@@ -114,12 +127,17 @@ def _migrate_answer_token_fields_to_nim(nim: NimSettings, answer_data: dict) -> 
     if reserved > nim.max_output_tokens:
         nim = replace(nim, max_output_tokens=reserved)
         changed = True
+    if "window_overlap_messages" in answer_data:
+        nim = replace(nim, window_overlap_messages=int(answer_data["window_overlap_messages"]))
+        changed = True
     return nim, changed
 
 
 def _normalize_answer_settings(data: dict) -> AnswerSettings:
     merged = {**asdict(AnswerSettings()), **data}
     for key in _LEGACY_ANSWER_TOKEN_KEYS:
+        merged.pop(key, None)
+    for key in _LEGACY_ANSWER_ARCHAIC_KEYS:
         merged.pop(key, None)
     strategy = str(merged.get("answer_strategy", DEFAULT_ANSWER_STRATEGY))
     if strategy in LEGACY_ANSWER_STRATEGIES:
@@ -281,11 +299,14 @@ def load_settings() -> AppSettings:
         chunking=data.get("chunking", {}),
         answer=_normalize_answer_settings(data.get("answer", {})),
         transcript=TranscriptSettings(**{**asdict(TranscriptSettings()), **data.get("transcript", {})}),
+        search=SearchSettings(**{**asdict(SearchSettings()), **data.get("search", {})}),
         model_metadata=model_metadata,
         model_routing=routing,
     )
     should_save = bumped_timeout or bumped_output_tokens or migrated_tokens
     if any(key in answer_data for key in _LEGACY_ANSWER_TOKEN_KEYS):
+        should_save = True
+    if any(key in answer_data for key in _LEGACY_ANSWER_ARCHAIC_KEYS):
         should_save = True
     if str(answer_data.get("answer_strategy", "")) in LEGACY_ANSWER_STRATEGIES:
         should_save = True
@@ -310,6 +331,7 @@ def save_settings(settings: AppSettings) -> None:
         "chunking": settings.chunking or {},
         "answer": asdict(settings.answer),
         "transcript": asdict(settings.transcript),
+        "search": asdict(settings.search),
         "model_metadata": settings.model_metadata or {},
         "model_routing": {
             "expansion": asdict(routing.expansion),

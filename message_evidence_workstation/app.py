@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
-from message_evidence_workstation.app_bootstrap import bootstrap_app
+from message_evidence_workstation.app_bootstrap import StartupLoadOptions, bootstrap_app
 from message_evidence_workstation.diagnostics.trace_log import install_diagnostics, trace
 from message_evidence_workstation.ui.main_window import MainWindow
 
@@ -17,9 +17,10 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Message Evidence Workstation")
 
-    dataset_path = None
-    db_path = None
+    dataset_path: Path | None = None
+    db_path: Path | None = None
     reload_dataset = False
+    with_embedding = False
     args = sys.argv[1:]
     index = 0
     while index < len(args):
@@ -40,15 +41,24 @@ def main() -> int:
             reload_dataset = True
             index += 1
             continue
+        if arg == "--with-embedding":
+            with_embedding = True
+            index += 1
+            continue
         index += 1
 
-    context = bootstrap_app(
-        db_path=db_path,
-        dataset_path=dataset_path,
-        reload_dataset=reload_dataset,
-    )
-    window = MainWindow(context)
+    startup_load = None
+    if dataset_path is not None:
+        startup_load = StartupLoadOptions(
+            dataset_path=dataset_path,
+            reload=reload_dataset,
+            skip_embedding=not with_embedding,
+        )
+
+    context = bootstrap_app(db_path=db_path, startup_load=startup_load)
+    window = MainWindow(context, startup_load=startup_load)
     window.show()
+    app.processEvents()
     trace("app", "exec_begin")
     code = app.exec()
     trace("app", "exec_end", exit_code=code)

@@ -91,6 +91,25 @@ def test_empty_body_is_replaced_with_placeholder() -> None:
     assert "(empty message)" in transcript.text
 
 
+def test_load_dataset_messages_preserves_source_metadata(transcript_db) -> None:
+    conn, dataset_id = transcript_db
+    conn.execute(
+        """
+        UPDATE message
+        SET source_metadata_json = ?
+        WHERE dataset_id = ? AND message_id = 'msg_001'
+        """,
+        ('{"sha256":"abc","source_path":"/donor/messages/1.json"}', dataset_id),
+    )
+    conn.commit()
+    messages = load_dataset_messages(conn, dataset_id)
+    first = next(message for message in messages if message.message_id == "msg_001")
+    assert first.source_metadata_json["sha256"] == "abc"
+    transcript = serialize_messages([first])
+    assert "sha256" not in transcript.text
+    assert "/donor/messages/1.json" not in transcript.text
+
+
 def test_multi_day_fixture_transcript_is_chronological(transcript_db) -> None:
     conn, dataset_id = transcript_db
     messages = load_dataset_messages(conn, dataset_id)

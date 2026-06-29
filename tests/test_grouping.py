@@ -11,6 +11,7 @@ def _hit(
     thread: str = "thread_001",
     match_type: str = "exact",
     timestamp: str = "2024-01-01T10:00:00+00:00",
+    thread_ordinal: int | None = None,
 ) -> SearchHit:
     return SearchHit(
         message_id=message_id,
@@ -19,6 +20,7 @@ def _hit(
         retrieval_method="fts_exact",
         query_text="q",
         timestamp=timestamp,
+        thread_ordinal=thread_ordinal,
     )
 
 
@@ -32,27 +34,23 @@ def test_deduplicate_exact_over_partial() -> None:
 
 
 def test_group_by_message_distance() -> None:
-    sort_index = {"msg_a": 1, "msg_b": 3, "msg_c": 20}
     groups = group_hits(
         [
-            _hit("msg_a", timestamp="2024-01-01T10:00:00+00:00"),
-            _hit("msg_b", timestamp="2024-01-01T10:01:00+00:00"),
-            _hit("msg_c", timestamp="2024-02-01T10:00:00+00:00"),
+            _hit("msg_a", timestamp="2024-01-01T10:00:00+00:00", thread_ordinal=1),
+            _hit("msg_b", timestamp="2024-01-01T10:01:00+00:00", thread_ordinal=3),
+            _hit("msg_c", timestamp="2024-02-01T10:00:00+00:00", thread_ordinal=20),
         ],
-        sort_index_by_message=sort_index,
     )
     assert len(groups) == 2
     assert {hit.message_id for hit in groups[0].hits} == {"msg_a", "msg_b"}
 
 
 def test_group_by_time_distance() -> None:
-    sort_index = {"msg_a": 1, "msg_b": 100}
     groups = group_hits(
         [
-            _hit("msg_a", timestamp="2024-01-01T10:00:00+00:00"),
-            _hit("msg_b", timestamp="2024-01-01T10:20:00+00:00"),
+            _hit("msg_a", timestamp="2024-01-01T10:00:00+00:00", thread_ordinal=1),
+            _hit("msg_b", timestamp="2024-01-01T10:20:00+00:00", thread_ordinal=100),
         ],
-        sort_index_by_message=sort_index,
     )
     assert len(groups) == 1
     assert len(groups[0].hits) == 2

@@ -108,3 +108,29 @@ def test_default_model_routing_copies_connection_defaults() -> None:
     assert routing.expansion.model == ""
     assert routing.writing.temperature == 0.3
     assert routing.expansion.api_base_url == nim.api_base_url
+
+
+def test_answer_settings_migration_strips_archaic_keys(isolated_settings) -> None:
+    path = settings_path()
+    path.write_text(
+        json.dumps(
+            {
+                "nim": {"api_base_url": "https://integrate.api.nvidia.com/v1"},
+                "answer": {
+                    "answer_strategy": "whole_transcript",
+                    "whole_transcript_max_chars": 200_000,
+                    "max_inspected_sessions": 12,
+                    "transcript_window_padding": 2,
+                    "window_target_tokens": 12000,
+                    "window_overlap_messages": 5,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    settings = load_settings()
+    assert settings.nim.window_overlap_messages == 5
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert "whole_transcript_max_chars" not in saved["answer"]
+    assert "window_overlap_messages" not in saved["answer"]
+    assert saved["nim"]["window_overlap_messages"] == 5

@@ -47,6 +47,8 @@ class TranscriptWidgetTab(QWidget):
         self.transcript_widget = EvidenceBlockTranscriptWidget(conn, logger, self)
         self.transcript_widget.evidence_block_created.connect(self.evidence_block_created.emit)
         layout.addWidget(self.transcript_widget, stretch=1)
+        self._pending_thread_id: str | None = None
+        self._thread_loaded = False
 
     @property
     def transcript_surface(self):
@@ -58,6 +60,8 @@ class TranscriptWidgetTab(QWidget):
 
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
+        self._thread_loaded = False
+        self._pending_thread_id = None
         self.transcript_widget.set_dataset(dataset_id)
         self.thread_combo.blockSignals(True)
         self.thread_combo.clear()
@@ -72,16 +76,38 @@ class TranscriptWidgetTab(QWidget):
             self.thread_combo.addItem(label, thread.source_thread_id)
         self.thread_combo.blockSignals(False)
         if threads:
+            self._pending_thread_id = threads[0].source_thread_id
             self.thread_combo.setCurrentIndex(0)
-            self.transcript_widget.load_source_thread(threads[0].source_thread_id)
             self.new_block_button.setEnabled(True)
+            if self.isVisible():
+                self.ensure_thread_loaded()
         else:
             self.new_block_button.setEnabled(False)
+
+    def ensure_thread_loaded(self) -> None:
+        if self.dataset_id is None or self._thread_loaded:
+            return
+        thread_id = self._pending_thread_id
+        if thread_id is None:
+            thread_id = self.thread_combo.currentData(Qt.ItemDataRole.UserRole)
+        if not isinstance(thread_id, str):
+            return
+        self.transcript_widget.load_source_thread(thread_id)
+        self._thread_loaded = True
+        self._pending_thread_id = thread_id
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self.ensure_thread_loaded()
 
     def select_source_thread(self, source_thread_id: str) -> None:
         index = self.thread_combo.findData(source_thread_id, role=Qt.ItemDataRole.UserRole)
         if index >= 0:
             self.thread_combo.setCurrentIndex(index)
+        self._pending_thread_id = source_thread_id
+        self._thread_loaded = False
+        if self.isVisible():
+            self.ensure_thread_loaded()
 
     def select_evidence_block(self, evidence_block_id: int) -> None:
         self.transcript_widget.select_evidence_block(evidence_block_id)

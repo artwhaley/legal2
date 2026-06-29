@@ -22,6 +22,8 @@ class SearchHit:
     body: str = ""
     snippet: str = ""
     chunk_id: int | None = None
+    thread_ordinal: int | None = None
+    sort_index: int | None = None
     extra_methods: set[str] = field(default_factory=set)
 
 

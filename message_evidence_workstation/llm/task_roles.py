@@ -13,7 +13,6 @@ from message_evidence_workstation.nim.prompts import (
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     RUN_TYPE_KEYWORD_EXPANSION,
-    RUN_TYPE_RANGE_SUGGESTION,
     RUN_TYPE_SESSION_CLASSIFICATION,
     RUN_TYPE_SESSION_SUMMARY,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
@@ -37,11 +36,8 @@ class LlmCallSite:
 # Prompt run_type strings (model_run.run_type) -> internal task role.
 RUN_TYPE_TO_TASK_ROLE: dict[str, ModelTaskRole] = {
     RUN_TYPE_KEYWORD_EXPANSION: ModelTaskRole.SEARCH_EXPANSION,
-    # Planner analyzes query intent for retrieval; not keyword expansion. Maps to
-    # research until a dedicated planner role is added (see AMBIGUOUS_CALL_NOTES).
     RUN_TYPE_CONVERSATIONAL_PLANNER: ModelTaskRole.FULL_CONTEXT_SEARCH,
     RUN_TYPE_CONVERSATIONAL_SYNTHESIS: ModelTaskRole.WINDOWED_RESULT_MERGE,
-    RUN_TYPE_RANGE_SUGGESTION: ModelTaskRole.RANGE_SUGGESTION,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER: ModelTaskRole.FULL_CONTEXT_ANSWER,
     RUN_TYPE_COVERAGE_SESSION_ANSWER: ModelTaskRole.FULL_CONTEXT_ANSWER,
     RUN_TYPE_COVERAGE_AUDIT: ModelTaskRole.FULL_CONTEXT_SEARCH,
@@ -57,7 +53,6 @@ TASK_ROLE_TO_USER_FACING_ROLE: dict[ModelTaskRole, UserFacingModelRole | None] =
     ModelTaskRole.WINDOWED_CONTEXT_SEARCH: UserFacingModelRole.RESEARCH,
     ModelTaskRole.WINDOWED_RESULT_MERGE: UserFacingModelRole.WRITING,
     ModelTaskRole.FULL_CONTEXT_ANSWER: UserFacingModelRole.WRITING,
-    ModelTaskRole.RANGE_SUGGESTION: UserFacingModelRole.WRITING,
     ModelTaskRole.CONVERSATIONAL_CANDIDATE: UserFacingModelRole.WRITING,
     ModelTaskRole.MODEL_TEST: None,
     ModelTaskRole.MODEL_LIST: None,
@@ -74,14 +69,6 @@ LLM_CALL_SITES: tuple[LlmCallSite, ...] = (
     ),
     LlmCallSite(
         "search.tool_runner",
-        "fetch_conversational_plan",
-        ModelTaskRole.FULL_CONTEXT_SEARCH,
-        "workflow",
-        run_type=RUN_TYPE_CONVERSATIONAL_PLANNER,
-        notes="REMOVED by T25B (retrieval fallback path). Inventory retained until code deletion.",
-    ),
-    LlmCallSite(
-        "search.tool_runner",
         "_keyword_expansion_hits",
         ModelTaskRole.SEARCH_EXPANSION,
         "workflow",
@@ -94,14 +81,6 @@ LLM_CALL_SITES: tuple[LlmCallSite, ...] = (
         ModelTaskRole.FULL_CONTEXT_SEARCH,
         "workflow",
         run_type=RUN_TYPE_CONVERSATIONAL_PLANNER,
-    ),
-    LlmCallSite(
-        "search.synthesis",
-        "run_conversational_synthesis",
-        ModelTaskRole.WINDOWED_RESULT_MERGE,
-        "workflow",
-        run_type=RUN_TYPE_CONVERSATIONAL_SYNTHESIS,
-        notes="REMOVED by T25B (retrieval fallback path). Inventory retained until code deletion.",
     ),
     LlmCallSite(
         "search.conversational_answer",
@@ -154,14 +133,6 @@ LLM_CALL_SITES: tuple[LlmCallSite, ...] = (
         run_type=RUN_TYPE_SESSION_SUMMARY,
     ),
     LlmCallSite(
-        "search.range_suggestion",
-        "run_range_suggestion",
-        ModelTaskRole.RANGE_SUGGESTION,
-        "workflow",
-        run_type=RUN_TYPE_RANGE_SUGGESTION,
-        notes="OBSOLETE — awaiting removal (T25B). Do not router-migrate.",
-    ),
-    LlmCallSite(
         "ui.settings_tab",
         "SettingsTab._refresh_models",
         ModelTaskRole.MODEL_LIST,
@@ -185,14 +156,6 @@ LLM_CALL_SITES: tuple[LlmCallSite, ...] = (
     ),
     LlmCallSite(
         "ui.conversational_tab",
-        "ConversationalTab._run_synthesis",
-        ModelTaskRole.WINDOWED_RESULT_MERGE,
-        "workflow",
-        run_type=RUN_TYPE_CONVERSATIONAL_SYNTHESIS,
-        notes="REMOVED by T25B.",
-    ),
-    LlmCallSite(
-        "ui.conversational_tab",
         "ConversationalTab._run_whole_transcript_answer",
         ModelTaskRole.FULL_CONTEXT_ANSWER,
         "workflow",
@@ -213,22 +176,6 @@ LLM_CALL_SITES: tuple[LlmCallSite, ...] = (
         run_type=RUN_TYPE_COVERAGE_SESSION_ANSWER,
     ),
     LlmCallSite(
-        "ui.conversational_tab",
-        "ConversationalTab._run_retrieval_fallback",
-        ModelTaskRole.FULL_CONTEXT_SEARCH,
-        "workflow",
-        run_type=RUN_TYPE_CONVERSATIONAL_PLANNER,
-        notes="REMOVED by T25B.",
-    ),
-    LlmCallSite(
-        "ui.output_formatting_tab",
-        "OutputFormattingTab._request_range_suggestion",
-        ModelTaskRole.RANGE_SUGGESTION,
-        "workflow",
-        run_type=RUN_TYPE_RANGE_SUGGESTION,
-        notes="OBSOLETE — awaiting removal (T25B).",
-    ),
-    LlmCallSite(
         "ui.embedding_worker",
         "_run_embedding_job",
         ModelTaskRole.SEARCH_EXPANSION,
@@ -243,15 +190,6 @@ AMBIGUOUS_CALL_NOTES: dict[str, str] = {
         "session_summary, session_classification, and coverage_audit are confirmed "
         "research-model work (UserFacingModelRole.RESEARCH). They run only inside "
         "explicit session_coverage answer mode."
-    ),
-    "range_suggestion_obsolete": (
-        "evidence_range_suggestion / range_suggestion is obsolete Output Formatting "
-        "dead code. Do not router-migrate; remove in T25B cleanup."
-    ),
-    "retrieval_fallback_removed": (
-        "conversational_search_planner and conversational_search_synthesis are removed "
-        "with retrieval_fallback in T25B. The app must not quietly degrade to "
-        "lower-recall retrieval synthesis."
     ),
 }
 

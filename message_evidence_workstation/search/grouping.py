@@ -32,11 +32,19 @@ def _within_time_window(left: str, right: str) -> bool:
     return delta <= TIME_DISTANCE_MINUTES
 
 
-def _should_group(left: SearchHit, right: SearchHit, sort_index_by_message: dict[str, int]) -> bool:
+def _position_for_hit(hit: SearchHit) -> int | None:
+    if hit.thread_ordinal is not None:
+        return hit.thread_ordinal
+    if hit.sort_index is not None:
+        return hit.sort_index
+    return None
+
+
+def _should_group(left: SearchHit, right: SearchHit) -> bool:
     if left.source_thread_id != right.source_thread_id:
         return False
-    left_idx = sort_index_by_message.get(left.message_id)
-    right_idx = sort_index_by_message.get(right.message_id)
+    left_idx = _position_for_hit(left)
+    right_idx = _position_for_hit(right)
     if left_idx is not None and right_idx is not None:
         if abs(left_idx - right_idx) <= MESSAGE_DISTANCE_THRESHOLD:
             return True
@@ -48,7 +56,6 @@ def _should_group(left: SearchHit, right: SearchHit, sort_index_by_message: dict
 def group_hits(
     hits: list[SearchHit],
     *,
-    sort_index_by_message: dict[str, int],
     logger: ProcessLogger | None = None,
     dataset_id: int | None = None,
 ) -> list[GroupedSearchResult]:
@@ -57,7 +64,7 @@ def group_hits(
     for hit in ordered:
         placed = False
         for group in groups:
-            if any(_should_group(existing, hit, sort_index_by_message) for existing in group):
+            if any(_should_group(existing, hit) for existing in group):
                 group.append(hit)
                 placed = True
                 if logger is not None:

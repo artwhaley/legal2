@@ -29,7 +29,7 @@ from message_evidence_workstation.ui import settings_tab
 def test_model_task_role_enum_values() -> None:
     assert ModelTaskRole.SEARCH_EXPANSION.value == "search_expansion"
     assert ModelTaskRole.MODEL_TEST.value == "model_test"
-    assert len(ModelTaskRole) == 9
+    assert len(ModelTaskRole) == 8
 
 
 def test_all_prompt_run_types_have_task_role_mapping() -> None:

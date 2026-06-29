@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 RUN_TYPE_KEYWORD_EXPANSION = "keyword_expansion"
 RUN_TYPE_CONVERSATIONAL_PLANNER = "conversational_search_planner"
 RUN_TYPE_CONVERSATIONAL_SYNTHESIS = "conversational_search_synthesis"
-RUN_TYPE_RANGE_SUGGESTION = "evidence_range_suggestion"
 RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER = "whole_transcript_answer"
 RUN_TYPE_COVERAGE_SESSION_ANSWER = "coverage_session_answer"
 RUN_TYPE_COVERAGE_AUDIT = "coverage_audit"
@@ -24,8 +23,6 @@ RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE = "exhaustive_window_merge"
 
 ALL_RUN_TYPES = (
     RUN_TYPE_KEYWORD_EXPANSION,
-    RUN_TYPE_CONVERSATIONAL_PLANNER,
-    RUN_TYPE_CONVERSATIONAL_SYNTHESIS,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
     RUN_TYPE_COVERAGE_SESSION_ANSWER,
     RUN_TYPE_COVERAGE_AUDIT,
@@ -86,33 +83,6 @@ DEFAULT_PROMPT_BODIES: dict[str, str] = {
         "Prefer names, alternate spellings, concrete nouns, events, places, and plain-language synonyms. "
         "Do not add broad legal concepts unless the query itself uses them. "
         "No explanations and no nested JSON strings inside the terms array."
-    ),
-    RUN_TYPE_CONVERSATIONAL_PLANNER: (
-        f"{LEGAL_EVIDENCE_POLICY} "
-        "Task: help formulate additional search phrasing for a message-evidence dataset. "
-        "Python ALWAYS runs the retrieval harness (FTS, keyword expansion, message embeddings, "
-        "chunk embeddings, fusion, grouping). You do NOT choose which tools run. "
-        "Return JSON only:\n"
-        '{"strategy_summary": "plain-language search approach for the user", '
-        '"extra_search_queries": ["optional extra FTS terms or phrases"]}\n'
-        "extra_search_queries is optional; add alternate spellings, concrete synonyms, names, "
-        "events, locations, and related factual terms that might appear in messages. "
-        "strategy_summary should explain coverage intent, not claim results were found. "
-        "Do not return tool_calls."
-    ),
-    RUN_TYPE_CONVERSATIONAL_SYNTHESIS: (
-        f"{LEGAL_EVIDENCE_POLICY} "
-        "Task: synthesize retrieved message-evidence search results for a legal reviewer. "
-        "You receive JSON with user_query, planner_strategy_summary, retrieval_summary, "
-        "and candidate_groups (each has group_id, source_thread_id, hits, snippets). "
-        "Return JSON only:\n"
-        '{"answer": "plain-language answer grounded in the supplied groups", '
-        '"strategy_summary": "brief recap of the search approach", '
-        '"candidate_conversations": [{"group_id": "...", "title": "...", '
-        '"explanation": "why this group matters", "confidence": "high|medium|low"}]}\n'
-        "Only use group_id values from candidate_groups. Prefer recall over brevity: include every "
-        "material candidate group, not only examples. Explain contradictions or weak support in the "
-        "answer and confidence fields. If retrieved groups do not answer the question, say so clearly."
     ),
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER: (
         f"{LEGAL_EVIDENCE_POLICY} "

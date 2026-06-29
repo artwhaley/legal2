@@ -34,12 +34,7 @@ def tool_db(tmp_path):
     logger = ProcessLogger(conn)
     initialize_schema(conn, logger)
     dataset_id = load_normalized_dataset(conn, logger, FIXTURE_DIR)
-    rows = conn.execute(
-        "SELECT message_id, sort_index FROM message WHERE dataset_id = ?",
-        (dataset_id,),
-    ).fetchall()
-    sort_index = {row["message_id"]: row["sort_index"] for row in rows}
-    return conn, logger, dataset_id, sort_index
+    return conn, logger, dataset_id
 
 
 def test_parse_valid_plan() -> None:
@@ -91,7 +86,7 @@ def _tools_run(execution) -> list[str]:
 
 
 def test_full_harness_always_runs_all_retrieval_methods(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     plan = SearchPlannerPlan(strategy_summary="Recall-first harness")
     execution = execute_full_search_harness(
         conn,
@@ -100,7 +95,6 @@ def test_full_harness_always_runs_all_retrieval_methods(tool_db) -> None:
         user_query="allergy",
         plan=plan,
         deps=ToolRunnerDeps(),
-        sort_index_by_message=sort_index,
     )
     tools = _tools_run(execution)
     assert tools.count("fts") >= 1
@@ -111,7 +105,7 @@ def test_full_harness_always_runs_all_retrieval_methods(tool_db) -> None:
 
 
 def test_execute_fts_and_group_tools(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     plan = SearchPlannerPlan(
         strategy_summary="FTS then group",
         extra_search_queries=["allergy"],
@@ -123,7 +117,6 @@ def test_execute_fts_and_group_tools(tool_db) -> None:
         user_query="allergy",
         plan=plan,
         deps=ToolRunnerDeps(),
-        sort_index_by_message=sort_index,
     )
     fts_results = [item for item in execution.tool_results if item.tool == "fts"]
     assert fts_results and all(item.success for item in fts_results)
@@ -135,7 +128,7 @@ def test_execute_fts_and_group_tools(tool_db) -> None:
 
 
 def test_execute_fts_multi_token_planner_query(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     plan = SearchPlannerPlan(
         strategy_summary="Planner-style multi-word FTS",
         extra_search_queries=["allergies allergic allergy"],
@@ -147,7 +140,6 @@ def test_execute_fts_multi_token_planner_query(tool_db) -> None:
         user_query="allergies",
         plan=plan,
         deps=ToolRunnerDeps(),
-        sort_index_by_message=sort_index,
     )
     fts_results = [item for item in execution.tool_results if item.tool == "fts"]
     assert fts_results and all(item.success for item in fts_results)
@@ -156,7 +148,7 @@ def test_execute_fts_multi_token_planner_query(tool_db) -> None:
 
 
 def test_embedding_tool_failure_is_visible(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     plan = SearchPlannerPlan(strategy_summary="Try vectors without adapter")
     execution = execute_plan(
         conn,
@@ -165,7 +157,6 @@ def test_embedding_tool_failure_is_visible(tool_db) -> None:
         user_query="allergy",
         plan=plan,
         deps=ToolRunnerDeps(),
-        sort_index_by_message=sort_index,
     )
     embedding_results = [
         item
@@ -178,7 +169,7 @@ def test_embedding_tool_failure_is_visible(tool_db) -> None:
 
 
 def test_read_message_range_tool(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     state = _RunnerState()
     result = execute_tool_call(
         conn,
@@ -193,14 +184,13 @@ def test_read_message_range_tool(tool_db) -> None:
         },
         state=state,
         deps=ToolRunnerDeps(),
-        sort_index_by_message=sort_index,
     )
     assert result.success
     assert result.message_count == 2
 
 
 def test_mock_planner_output_executes_tools(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     adapter = FakeEmbeddingAdapter(model_name="fake-conv", dimensions=8)
     info = adapter.load()
     build_message_embedding_index(
@@ -223,14 +213,13 @@ def test_mock_planner_output_executes_tools(tool_db) -> None:
             embedding_adapter=adapter,
             embedding_model_name="fake-conv",
         ),
-        sort_index_by_message=sort_index,
     )
     assert any(item.tool == "message_embedding" and item.success for item in execution.tool_results)
     assert execution.grouped_results or execution.accumulated_hits
 
 
 def test_run_conversational_planner_with_mock_nim(tool_db) -> None:
-    conn, logger, dataset_id, sort_index = tool_db
+    conn, logger, dataset_id = tool_db
     from message_evidence_workstation.nim.client import NimChatResult
     from message_evidence_workstation.search.tool_runner import run_conversational_planner
 
@@ -255,7 +244,6 @@ def test_run_conversational_planner_with_mock_nim(tool_db) -> None:
             user_query="allergy forms",
             dataset_id=dataset_id,
             deps=ToolRunnerDeps(),
-            sort_index_by_message=sort_index,
         )
     assert execution.plan.strategy_summary == "From NIM"
     fts_results = [item for item in execution.tool_results if item.tool == "fts"]

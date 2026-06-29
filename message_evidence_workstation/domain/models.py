@@ -45,6 +45,7 @@ class Message:
     attachment_summary: str
     sort_index: int
     source_metadata_json: dict[str, Any]
+    thread_ordinal: int | None = None
 
 
 @dataclass(slots=True)
@@ -107,49 +108,6 @@ class EvidenceBlock:
 
 
 @dataclass(slots=True)
-class WorkstationConversation:
-    workstation_conversation_id: int
-    dataset_id: int
-    category_id: int
-    source_thread_id: str
-    primary_hit_message_id: str
-    title: str
-    user_notes: str
-    status: str
-    created_by: str
-    created_at: str
-    updated_at: str
-
-
-@dataclass(slots=True)
-class ConversationHit:
-    conversation_hit_id: int
-    workstation_conversation_id: int
-    message_id: str
-    retrieval_method: str
-    query_text: str
-    matched_term: str
-    score: float | None
-    rank: int | None
-    distance: float | None
-    explanation: str
-    metadata_json: dict[str, Any]
-
-
-@dataclass(slots=True)
-class ConversationRange:
-    conversation_range_id: int
-    workstation_conversation_id: int
-    lead_in_start_message_id: str | None
-    relevant_start_message_id: str | None
-    relevant_end_message_id: str | None
-    lead_out_end_message_id: str | None
-    llm_suggested_json: dict[str, Any]
-    user_modified: bool
-    locked: bool
-
-
-@dataclass(slots=True)
 class ModelRunSummary:
     model_run_id: int
     dataset_id: int | None
@@ -162,21 +120,6 @@ class ModelRunSummary:
     latency_ms: int | None
     error_type: str | None
     error_message: str | None
-
-
-@dataclass(slots=True)
-class OutputConversationContext:
-    conversation: WorkstationConversation
-    category_name: str
-    thread_display_title: str
-    source_platform: str
-    messages: list[Message]
-    hits: list[ConversationHit]
-    hit_message_ids: set[str]
-    conversation_range: ConversationRange | None = None
-    highlight_overrides: dict[str, str] | None = None
-    display_states: dict[str, str] | None = None
-    boundary_labels: dict[str, str] | None = None
 
 
 @dataclass(slots=True)

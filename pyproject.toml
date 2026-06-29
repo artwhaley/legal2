@@ -29,3 +29,7 @@ message_evidence_workstation = ["native/*.dll", "native/*.so", "native/*.dylib"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "-m 'not scale'"
+markers = [
+    "scale: performance or large-fixture tests (run with -m scale)",
+]

@@ -1,4 +1,4 @@
-"""Printable artifact preview model — layout, pagination, and provenance."""
+"""Printable artifact preview model — provenance helpers and layout entry point."""
 
 from __future__ import annotations
 
@@ -8,8 +8,20 @@ from typing import Any
 from message_evidence_workstation.domain.models import PrintableArtifactBlockContext, PrintableArtifactContext
 from message_evidence_workstation.output.block_labels import block_label_for_index
 
-LINES_PER_PAGE = 32
-WRAP_WIDTH = 72
+__all__ = [
+    "PrintableBlockProvenance",
+    "PreviewMessageEntry",
+    "PreviewBlockSection",
+    "PreviewProvenanceEntry",
+    "PrintLayoutDocument",
+    "PrintLayoutPage",
+    "PrintLayoutItem",
+    "build_block_provenance",
+    "format_block_provenance",
+    "build_print_layout",
+    "build_printable_preview",
+    "refresh_block_labels",
+]
 
 
 @dataclass(slots=True)
@@ -37,47 +49,6 @@ class PreviewBlockSection:
 class PreviewProvenanceEntry:
     label: str
     text: str
-
-
-@dataclass(slots=True)
-class PreviewContentLine:
-    kind: str
-    text: str
-
-
-@dataclass(slots=True)
-class PrintablePreviewPage:
-    page_number: int
-    lines: list[PreviewContentLine]
-
-
-@dataclass(slots=True)
-class PrintablePreviewModel:
-    title: str
-    exhibit_number: str
-    case_number: str
-    block_sections: list[PreviewBlockSection]
-    provenance_entries: list[PreviewProvenanceEntry]
-    pages: list[PrintablePreviewPage]
-    footer_exhibit: str
-    footer_case: str
-
-
-def _wrap_text(text: str, width: int = WRAP_WIDTH) -> list[str]:
-    words = text.split()
-    if not words:
-        return [""]
-    lines: list[str] = []
-    current = words[0]
-    for word in words[1:]:
-        candidate = f"{current} {word}"
-        if len(candidate) <= width:
-            current = candidate
-        else:
-            lines.append(current)
-            current = word
-    lines.append(current)
-    return lines
 
 
 def _stringify_metadata_value(value: Any) -> str | None:
@@ -166,8 +137,6 @@ def build_block_provenance(context_block: PrintableArtifactBlockContext) -> Prin
     if context_block.dataset_name:
         _append_if_present(entries, "dataset_name", context_block.dataset_name)
 
-    # TODO: import_batch / source_file tables when donor import schema adds them.
-
     return PrintableBlockProvenance(entries=entries)
 
 
@@ -178,92 +147,24 @@ def format_block_provenance(label: str, provenance: PrintableBlockProvenance) ->
     return f"Block {label}: " + "; ".join(parts)
 
 
-def _build_content_lines(context: PrintableArtifactContext) -> list[PreviewContentLine]:
-    lines: list[PreviewContentLine] = []
-    title = context.artifact.title.strip() or "Untitled exhibit"
-    lines.append(PreviewContentLine(kind="title", text=title))
-    lines.append(PreviewContentLine(kind="blank", text=""))
+def build_print_layout(context: PrintableArtifactContext, metrics=None):
+    from message_evidence_workstation.output.print_layout import build_print_layout as _build
 
-    for block_context in context.blocks:
-        label = block_context.block_label
-        lines.append(PreviewContentLine(kind="block_label", text=f"Block {label}"))
-        block_title = block_context.evidence_block.title.strip()
-        if block_title:
-            lines.append(PreviewContentLine(kind="block_title", text=block_title))
-        for message in block_context.messages:
-            meta = f"{message.sender_display or message.sender_id} · {message.timestamp}"
-            lines.append(PreviewContentLine(kind="message_meta", text=meta))
-            for wrapped in _wrap_text(message.body):
-                lines.append(PreviewContentLine(kind="message_body", text=wrapped))
-            lines.append(PreviewContentLine(kind="blank", text=""))
-
-    if context.blocks:
-        lines.append(PreviewContentLine(kind="provenance_header", text="Provenance"))
-        for block_context in context.blocks:
-            provenance = build_block_provenance(block_context)
-            ledger_line = format_block_provenance(block_context.block_label, provenance)
-            for wrapped in _wrap_text(ledger_line, width=WRAP_WIDTH):
-                lines.append(PreviewContentLine(kind="provenance_entry", text=wrapped))
-
-    return lines
+    return _build(context, metrics=metrics)
 
 
-def _paginate_lines(content_lines: list[PreviewContentLine]) -> list[PrintablePreviewPage]:
-    if not content_lines:
-        return [PrintablePreviewPage(page_number=1, lines=[])]
-    pages: list[PrintablePreviewPage] = []
-    page_lines: list[PreviewContentLine] = []
-    for line in content_lines:
-        page_lines.append(line)
-        if len(page_lines) >= LINES_PER_PAGE:
-            pages.append(PrintablePreviewPage(page_number=len(pages) + 1, lines=page_lines))
-            page_lines = []
-    if page_lines:
-        pages.append(PrintablePreviewPage(page_number=len(pages) + 1, lines=page_lines))
-    return pages
-
-
-def build_printable_preview(context: PrintableArtifactContext) -> PrintablePreviewModel:
-    block_sections: list[PreviewBlockSection] = []
-    for block_context in context.blocks:
-        block_sections.append(
-            PreviewBlockSection(
-                label=block_context.block_label,
-                title=block_context.evidence_block.title,
-                messages=[
-                    PreviewMessageEntry(
-                        sender=message.sender_display or message.sender_id,
-                        timestamp=message.timestamp,
-                        body=message.body,
-                    )
-                    for message in block_context.messages
-                ],
-            )
-        )
-    provenance_entries = [
-        PreviewProvenanceEntry(
-            label=block_context.block_label,
-            text=format_block_provenance(
-                block_context.block_label,
-                build_block_provenance(block_context),
-            ),
-        )
-        for block_context in context.blocks
-    ]
-    content_lines = _build_content_lines(context)
-    pages = _paginate_lines(content_lines)
-    return PrintablePreviewModel(
-        title=context.artifact.title.strip() or "Untitled exhibit",
-        exhibit_number=context.artifact.exhibit_number,
-        case_number=context.artifact.case_number,
-        block_sections=block_sections,
-        provenance_entries=provenance_entries,
-        pages=pages,
-        footer_exhibit=context.artifact.exhibit_number,
-        footer_case=context.artifact.case_number,
-    )
+def build_printable_preview(context: PrintableArtifactContext):
+    return build_print_layout(context)
 
 
 def refresh_block_labels(blocks: list[PrintableArtifactBlockContext]) -> None:
     for index, block in enumerate(blocks):
         block.block_label = block_label_for_index(index)
+
+
+def __getattr__(name: str):
+    if name in {"PrintLayoutDocument", "PrintLayoutPage", "PrintLayoutItem"}:
+        from message_evidence_workstation.output import print_layout as module
+
+        return getattr(module, name)
+    raise AttributeError(name)

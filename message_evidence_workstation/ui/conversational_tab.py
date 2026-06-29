@@ -41,6 +41,7 @@ from message_evidence_workstation.nim.client import (
     nim_error_log_details,
     nim_error_user_message,
 )
+from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
     ANSWER_MODE_SESSION_COVERAGE,
@@ -129,7 +130,6 @@ class ConversationalTab(QWidget):
         self.logger = logger
         self.db_path = db_path
         self.dataset_id: int | None = None
-        self._sort_index_by_message: dict[str, int] = {}
         self._request_generation = 0
         self._conversation_results: list[ConversationResultEntry] = []
         self._last_query_text = ""
@@ -140,6 +140,15 @@ class ConversationalTab(QWidget):
 
         self.status_label = QLabel("Load a dataset to search.")
         layout.addWidget(self.status_label)
+
+        self.embedding_warning_label = QLabel(
+            "Conversational interface relies on message embeddings for thoroughness verification "
+            "on some searches. Responses may be degraded until embeddings are completely calculated."
+        )
+        self.embedding_warning_label.setWordWrap(True)
+        self.embedding_warning_label.setStyleSheet("color: #8a6d3b;")
+        self.embedding_warning_label.hide()
+        layout.addWidget(self.embedding_warning_label)
 
         splitter = QSplitter(Qt.Orientation.Vertical)
         stream_panel = QWidget()
@@ -184,7 +193,6 @@ class ConversationalTab(QWidget):
 
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
-        self._sort_index_by_message = {}
         self._conversation_results = []
         self._last_query_text = ""
         self._clear_stream()
@@ -193,13 +201,31 @@ class ConversationalTab(QWidget):
             self.status_label.setText("Load a dataset to search.")
             self.send_button.setEnabled(False)
             return
-        rows = self.conn.execute(
-            "SELECT message_id, sort_index FROM message WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchall()
-        self._sort_index_by_message = {row["message_id"]: row["sort_index"] for row in rows}
         self.status_label.setText("Ready. Configure NIM in Setup / Settings.")
         self.send_button.setEnabled(True)
+
+    def update_embedding_gating(self, state) -> None:
+        from message_evidence_workstation.domain.embedding_state import EmbeddingState
+
+        if not isinstance(state, EmbeddingState):
+            return
+        if state.message_incomplete:
+            if state.message_total > 0:
+                self.embedding_warning_label.setText(
+                    "Conversational interface relies on message embeddings for thoroughness "
+                    f"verification on some searches. Message embeddings: "
+                    f"{state.message_progress}/{state.message_total}. "
+                    "Responses may be degraded until embeddings are completely calculated."
+                )
+            else:
+                self.embedding_warning_label.setText(
+                    "Conversational interface relies on message embeddings for thoroughness "
+                    "verification on some searches. Responses may be degraded until embeddings "
+                    "are completely calculated."
+                )
+            self.embedding_warning_label.show()
+        else:
+            self.embedding_warning_label.hide()
 
     def set_category_refresh_handler(self, handler: Callable[[], None]) -> None:
         self._category_refresh_handler = handler
@@ -376,33 +402,56 @@ class ConversationalTab(QWidget):
             )
         return groups
 
-    def _thread_order(self, source_thread_id: str) -> list[str]:
-        if self.dataset_id is None:
-            return []
-        rows = self.conn.execute(
-            """
-            SELECT message_id
-            FROM message
-            WHERE dataset_id = ? AND source_thread_id = ?
-            ORDER BY sort_index
-            """,
-            (self.dataset_id, source_thread_id),
-        ).fetchall()
-        return [str(row["message_id"]) for row in rows]
-
     def _context_start_for_range(self, answer_range: AnswerRangeDraft) -> str:
-        ordered_ids = self._thread_order(answer_range.source_thread_id)
-        if answer_range.start_message_id not in ordered_ids:
+        from message_evidence_workstation.db.repositories import message_ids_for_ordinal_range, message_ordinal
+
+        if self.dataset_id is None:
             return answer_range.start_message_id
-        start_index = ordered_ids.index(answer_range.start_message_id)
-        return ordered_ids[max(0, start_index - 3)]
+        start_ordinal = message_ordinal(
+            self.conn,
+            self.dataset_id,
+            answer_range.source_thread_id,
+            answer_range.start_message_id,
+        )
+        if start_ordinal is None:
+            return answer_range.start_message_id
+        context_ordinal = max(0, start_ordinal - 3)
+        ids = message_ids_for_ordinal_range(
+            self.conn,
+            self.dataset_id,
+            answer_range.source_thread_id,
+            context_ordinal,
+            context_ordinal + 1,
+        )
+        return ids[0] if ids else answer_range.start_message_id
 
     def _context_end_for_range(self, answer_range: AnswerRangeDraft) -> str:
-        ordered_ids = self._thread_order(answer_range.source_thread_id)
-        if answer_range.end_message_id not in ordered_ids:
+        from message_evidence_workstation.db.repositories import message_ids_for_ordinal_range, message_ordinal, thread_message_count
+
+        if self.dataset_id is None:
             return answer_range.end_message_id
-        end_index = ordered_ids.index(answer_range.end_message_id)
-        return ordered_ids[min(len(ordered_ids) - 1, end_index + 3)]
+        end_ordinal = message_ordinal(
+            self.conn,
+            self.dataset_id,
+            answer_range.source_thread_id,
+            answer_range.end_message_id,
+        )
+        if end_ordinal is None:
+            return answer_range.end_message_id
+        message_count = thread_message_count(
+            self.conn,
+            self.dataset_id,
+            answer_range.source_thread_id,
+        )
+        context_ordinal = min(max(message_count - 1, 0), end_ordinal + 3)
+        ids = message_ids_for_ordinal_range(
+            self.conn,
+            self.dataset_id,
+            answer_range.source_thread_id,
+            context_ordinal,
+            context_ordinal + 1,
+        )
+        return ids[0] if ids else answer_range.end_message_id
 
     def _navigate_to_entry(
         self,
@@ -471,6 +520,11 @@ class ConversationalTab(QWidget):
                 "Writing model not configured — open Setup / Settings and assign a Writing model."
             )
             return
+        if settings.nim.context_window_tokens <= 0:
+            self.status_label.setText(
+                "Model context window must be set before using conversational features."
+            )
+            return
 
         self._last_query_text = query
         self.query_input.clear()
@@ -486,9 +540,9 @@ class ConversationalTab(QWidget):
         writing_model = resolve_role_model(settings, UserFacingModelRole.WRITING)
         provider_metadata = settings.model_metadata.get(writing_model, {})
 
-        transcript = build_dataset_transcript(self.conn, dataset_id)
+        stats = compute_dataset_budget_stats(self.conn, dataset_id)
         budget = resolve_answer_budget(
-            transcript,
+            stats,
             answer_settings,
             writing_model or "unknown-model",
             nim_settings=settings.nim,
@@ -499,8 +553,9 @@ class ConversationalTab(QWidget):
             budget=budget,
             dataset_id=dataset_id,
             strategy=answer_settings.answer_strategy,
-            target_tokens=answer_settings.window_target_tokens,
-            overlap_messages=answer_settings.window_overlap_messages,
+            stats=stats,
+            target_tokens=budget.usable_input_tokens,
+            overlap_messages=settings.nim.window_overlap_messages,
         )
         if budget.decision == ANSWER_MODE_WHOLE_TRANSCRIPT:
             if (
@@ -607,17 +662,7 @@ class ConversationalTab(QWidget):
         continuation: Callable[[], None],
     ) -> None:
         from message_evidence_workstation.embeddings.chunking import message_vector_count
-
-        message_count = int(
-            self.conn.execute(
-                "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
-                (dataset_id,),
-            ).fetchone()[0]
-        )
-        vector_count = message_vector_count(self.conn, dataset_id)
-        if vector_count >= message_count:
-            continuation()
-            return
+        from message_evidence_workstation.embeddings.model_registry import get_model_spec
 
         embedding_model = load_settings().embedding_model
         spec = get_model_spec(embedding_model)
@@ -626,6 +671,17 @@ class ConversationalTab(QWidget):
                 "Cannot build message embeddings automatically: unknown embedding model."
             )
             self.send_button.setEnabled(True)
+            return
+
+        message_count = int(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
+                (dataset_id,),
+            ).fetchone()[0]
+        )
+        vector_count = message_vector_count(self.conn, dataset_id, spec.model_name)
+        if vector_count >= message_count:
+            continuation()
             return
 
         self.status_label.setText(

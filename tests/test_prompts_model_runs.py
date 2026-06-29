@@ -11,8 +11,8 @@ from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from tests.router_helpers import router_with_role_models
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import (
+    ALL_RUN_TYPES,
     DEFAULT_PROMPT_BODIES,
-    RUN_TYPE_CONVERSATIONAL_PLANNER,
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
     RUN_TYPE_SESSION_CLASSIFICATION,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
@@ -48,7 +48,6 @@ def test_default_prompts_are_legal_evidence_hardened() -> None:
     assert "clickable answer_ranges" in DEFAULT_PROMPT_BODIES[RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER]
     assert "display_text should be short hover text" in DEFAULT_PROMPT_BODIES[RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER]
     assert "candidate_evidence_blocks" not in DEFAULT_PROMPT_BODIES[RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER]
-    assert "Do not return tool_calls" in DEFAULT_PROMPT_BODIES[RUN_TYPE_CONVERSATIONAL_PLANNER]
     assert "Err toward possibly_relevant" in DEFAULT_PROMPT_BODIES[RUN_TYPE_SESSION_CLASSIFICATION]
     assert "do not drop minority" in DEFAULT_PROMPT_BODIES[RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE]
     assert "candidate_evidence_blocks" not in DEFAULT_PROMPT_BODIES[RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE]
@@ -63,6 +62,23 @@ def test_seed_default_prompts_does_not_overwrite_active_versions(db) -> None:
     row = get_active_prompt(conn, RUN_TYPE_KEYWORD_EXPANSION)
     assert row is not None
     assert row["body"] == "workspace-specific prompt"
+
+
+def test_obsolete_prompts_not_seeded(db) -> None:
+    conn, logger = db
+    seed_default_prompts(conn, logger)
+    for run_type in (
+        "evidence_range_suggestion",
+        "conversational_search_planner",
+        "conversational_search_synthesis",
+    ):
+        assert get_active_prompt(conn, run_type) is None
+
+
+def test_seed_list_matches_active_features() -> None:
+    assert "evidence_range_suggestion" not in ALL_RUN_TYPES
+    assert "conversational_search_planner" not in ALL_RUN_TYPES
+    assert "conversational_search_synthesis" not in ALL_RUN_TYPES
 
 
 def test_prompt_version_update(db) -> None:

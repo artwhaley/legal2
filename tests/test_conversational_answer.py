@@ -45,6 +45,10 @@ from message_evidence_workstation.search.conversational_answer import (
     run_exhaustive_window_scan_answer,
     run_whole_transcript_answer,
 )
+from message_evidence_workstation.search.dataset_budget import (
+    DatasetBudgetStats,
+    compute_dataset_budget_stats,
+)
 from message_evidence_workstation.search.transcript import serialize_thread_transcript
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
@@ -61,34 +65,32 @@ def answer_db(tmp_path):
 
 def test_resolve_answer_budget_ignores_provider_metadata_without_user_setting(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
-    budget = resolve_answer_budget(
-        transcript,
-        settings,
-        "nvidia/nemotron-mini-4b-instruct",
-        nim_settings=NimSettings(),
-        provider_metadata={"context_length": 4096},
-    )
-    assert budget.context_source == "default"
-    assert budget.context_window_tokens == 8192
+    with pytest.raises(Exception):
+        resolve_answer_budget(
+            stats,
+            settings,
+            "nvidia/nemotron-mini-4b-instruct",
+            nim_settings=NimSettings(),
+            provider_metadata={"context_length": 4096},
+        )
 
 
 def test_resolve_answer_budget_unknown_default_uses_conservative_window(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
-    budget = resolve_answer_budget(transcript, settings, "vendor/unknown-model")
-    assert budget.context_source == "default"
-    assert budget.context_window_tokens == 8192
+    with pytest.raises(Exception):
+        resolve_answer_budget(stats, settings, "vendor/unknown-model")
 
 
 def test_resolve_answer_budget_whole_transcript_selects_whole_when_tokens_fit(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     budget = resolve_answer_budget(
-        transcript,
+        stats,
         settings,
         "test-model",
         nim_settings=NimSettings(context_window_tokens=1_000_000),
@@ -98,20 +100,20 @@ def test_resolve_answer_budget_whole_transcript_selects_whole_when_tokens_fit(an
 
 def test_resolve_answer_budget_whole_transcript_selects_exhaustive_when_tokens_do_not_fit(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     nim = NimSettings(context_window_tokens=500, max_output_tokens=100, prompt_overhead_tokens=100)
-    budget = resolve_answer_budget(transcript, settings, "test-model", nim_settings=nim)
+    budget = resolve_answer_budget(stats, settings, "test-model", nim_settings=nim)
     assert budget.decision == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
 
 
 def test_resolve_answer_mode_whole_transcript_selects_whole_when_fits(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     mode = resolve_answer_mode(
         strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
-        transcript=transcript,
+        stats=stats,
         answer_settings=settings,
         nim_settings=NimSettings(context_window_tokens=1_000_000),
         model_id="test-model",
@@ -121,12 +123,12 @@ def test_resolve_answer_mode_whole_transcript_selects_whole_when_fits(answer_db)
 
 def test_resolve_answer_mode_whole_transcript_selects_exhaustive_when_too_large(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     nim = NimSettings(context_window_tokens=500, max_output_tokens=100, prompt_overhead_tokens=100)
     mode = resolve_answer_mode(
         strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
-        transcript=transcript,
+        stats=stats,
         answer_settings=settings,
         nim_settings=nim,
         model_id="test-model",
@@ -136,28 +138,27 @@ def test_resolve_answer_mode_whole_transcript_selects_exhaustive_when_too_large(
 
 def test_char_limit_no_longer_controls_whole_transcript(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     mode = resolve_answer_mode(
         strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
-        transcript=transcript,
+        stats=stats,
         answer_settings=settings,
         nim_settings=NimSettings(context_window_tokens=1_000_000),
         model_id="test-model",
-        max_chars=10,
     )
     assert mode == ANSWER_MODE_WHOLE_TRANSCRIPT
 
 
 def test_resolve_answer_mode_explicit_strategies_still_work(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings()
     nim = NimSettings(context_window_tokens=1_000_000)
     assert (
         resolve_answer_mode(
             strategy=ANSWER_STRATEGY_SESSION_COVERAGE,
-            transcript=transcript,
+            stats=stats,
             answer_settings=settings,
             nim_settings=nim,
             model_id="test-model",
@@ -167,7 +168,7 @@ def test_resolve_answer_mode_explicit_strategies_still_work(answer_db) -> None:
     assert (
         resolve_answer_mode(
             strategy=ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
-            transcript=transcript,
+            stats=stats,
             answer_settings=settings,
             nim_settings=nim,
             model_id="test-model",
@@ -184,19 +185,36 @@ def test_legacy_answer_strategies_normalize_to_whole_transcript() -> None:
 
 def test_resolve_answer_budget_never_returns_retrieval_fallback(answer_db) -> None:
     conn, _, dataset_id = answer_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     for strategy in (
         ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
         ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
         ANSWER_STRATEGY_SESSION_COVERAGE,
     ):
         budget = resolve_answer_budget(
-            transcript,
+            stats,
             AnswerSettings(answer_strategy=strategy),
             "test-model",
             nim_settings=NimSettings(context_window_tokens=1_000_000),
         )
         assert budget.decision != "retrieval_fallback"
+
+
+def test_resolve_answer_budget_huge_stats_select_exhaustive_scan() -> None:
+    huge = DatasetBudgetStats(
+        message_count=1_000_000,
+        thread_count=10_000,
+        total_body_chars=40_000_000,
+        total_body_normalized_chars=40_000_000,
+        largest_thread_message_count=50_000,
+    )
+    budget = resolve_answer_budget(
+        huge,
+        AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT),
+        "test-model",
+        nim_settings=NimSettings(context_window_tokens=128_000),
+    )
+    assert budget.decision == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
 
 
 def test_build_whole_transcript_user_content_includes_full_transcript(answer_db) -> None:
@@ -624,8 +642,12 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
         RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     )
 
-    answer_settings = AnswerSettings(window_overlap_messages=2)
-    nim_settings = NimSettings(context_window_tokens=1_000_000, max_output_tokens=4096)
+    answer_settings = AnswerSettings()
+    nim_settings = NimSettings(
+        context_window_tokens=1_000_000,
+        max_output_tokens=4096,
+        window_overlap_messages=2,
+    )
     calls: list[tuple[str, dict, dict]] = []
     scan_count = 0
 
@@ -774,10 +796,10 @@ def test_answer_budget_log_written(answer_db) -> None:
     conn, logger, dataset_id = answer_db
     from message_evidence_workstation.search.conversational_answer import log_answer_budget_resolved
 
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT)
     budget = resolve_answer_budget(
-        transcript,
+        stats,
         settings,
         "test-model",
         nim_settings=NimSettings(context_window_tokens=1_000_000),
@@ -787,6 +809,7 @@ def test_answer_budget_log_written(answer_db) -> None:
         budget=budget,
         dataset_id=dataset_id,
         strategy=settings.answer_strategy,
+        stats=stats,
     )
     row = conn.execute(
         "SELECT operation FROM process_log WHERE operation = 'answer_budget_resolved' ORDER BY process_log_id DESC LIMIT 1"

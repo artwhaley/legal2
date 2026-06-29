@@ -30,11 +30,18 @@ def default_db_path() -> Path:
     return default_workspace_path()
 
 
+def project_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
 def default_dataset_path() -> Path | None:
     override = os.environ.get("MEW_DATASET_PATH")
     if override:
         return Path(override)
-    bundled = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "sample_dataset"
+    donor = project_root() / "donor_datasets" / "julie_kramer"
+    if (donor / "dataset.json").is_file():
+        return donor
+    bundled = project_root() / "tests" / "fixtures" / "sample_dataset"
     if bundled.is_dir():
         return bundled
     return None

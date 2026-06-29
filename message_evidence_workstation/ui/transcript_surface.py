@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
-from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, QPoint, QRect, QSize, Qt, Signal, Slot
+from PySide6.QtCore import QAbstractListModel, QModelIndex, QObject, QPoint, QRect, QSize, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QMouseEvent, QPainter, QPainterPath, QPen, QWheelEvent
 from PySide6.QtWidgets import (
     QAbstractScrollArea,
@@ -25,11 +25,14 @@ from message_evidence_workstation.domain.constants import (
 )
 from message_evidence_workstation.domain.models import EvidenceBlock, Message
 from message_evidence_workstation.domain.slots import default_slots_for_hit_index
+from message_evidence_workstation.ui.transcript_data_source import TranscriptDataSource
 from message_evidence_workstation.ui.transcript_display import (
     build_sender_participant_map,
     format_timestamp_label,
     normalize_speaker_tints,
 )
+
+WINDOW_OVERSCAN = 75
 
 ENTRY_SEPARATOR = "separator"
 ENTRY_MESSAGE = "message"
@@ -117,6 +120,11 @@ class EvidenceTranscriptModel(QAbstractListModel):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
+        self._data_source: TranscriptDataSource | None = None
+        self._thread_id: str | None = None
+        self._total_count: int = 0
+        self._window_start: int = 0
+        self._participant_map: dict[str, int] = {}
         self._messages: list[TranscriptMessage] = []
         self._overlays: list[BlockOverlay] = []
         self._active_block_id: int | None = None
@@ -125,9 +133,10 @@ class EvidenceTranscriptModel(QAbstractListModel):
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
         if parent.isValid():
             return 0
-        if not self._messages:
+        total = self.message_count()
+        if total <= 0:
             return 0
-        return (len(self._messages) * 2) + 1
+        return (total * 2) + 1
 
     def data(self, index: QModelIndex, role: int = int(Qt.ItemDataRole.DisplayRole)) -> object:
         if not index.isValid() or not (0 <= index.row() < self.rowCount()):
@@ -149,7 +158,10 @@ class EvidenceTranscriptModel(QAbstractListModel):
                 return self._boundary_strength(BOUNDARY_RELEVANT_END, slot_index)
             return None
 
-        message = self._messages[self._message_index_for_visual_row(visual_row)]
+        message_index = self._message_index_for_visual_row(visual_row)
+        message = self._message_at(message_index)
+        if message is None:
+            return None
         if role == int(Qt.ItemDataRole.DisplayRole):
             return f"{message.sender_display}: {message.body}"
         if role == self.EntryKindRole:
@@ -202,36 +214,64 @@ class EvidenceTranscriptModel(QAbstractListModel):
         return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
     def load_messages(self, messages: list[Message]) -> None:
-        participant_map = build_sender_participant_map(messages)
-        transcript_messages: list[TranscriptMessage] = []
-        for message in messages:
-            sender_key = (message.sender_id or message.sender_display or "").strip()
-            timestamp_label = format_timestamp_label(message.timestamp)
-            transcript_messages.append(
-                TranscriptMessage(
-                    message_id=message.message_id,
-                    timestamp=message.timestamp,
-                    friendly_date=timestamp_label,
-                    friendly_time=timestamp_label,
-                    timestamp_label=timestamp_label,
-                    sender_id=sender_key,
-                    sender_display=message.sender_display,
-                    participant_index=participant_map.get(sender_key, 0),
-                    body=message.body,
-                    attachment_summary=message.attachment_summary,
-                    has_attachment=message.has_attachment,
-                )
-            )
         self.beginResetModel()
-        self._messages = transcript_messages
+        self._data_source = None
+        self._thread_id = None
+        self._participant_map = build_sender_participant_map(messages)
+        self._messages = self._messages_to_transcript(messages, self._participant_map)
+        self._total_count = len(self._messages)
+        self._window_start = 0
         self._overlays = []
         self._active_block_id = None
-        if transcript_messages:
-            self._draft_slots = default_slots_for_hit_index(len(transcript_messages), 0)
+        if self._messages:
+            self._draft_slots = default_slots_for_hit_index(self._total_count, 0)
         else:
             self._draft_slots = (0, 0, 0, 0)
         self.endResetModel()
         self.state_changed.emit()
+
+    def load_thread_virtualized(
+        self,
+        data_source: TranscriptDataSource,
+        thread_id: str,
+        blocks: list[EvidenceBlock],
+        *,
+        active_block_id: int | None = None,
+    ) -> None:
+        del active_block_id
+        self.beginResetModel()
+        self._data_source = data_source
+        self._thread_id = thread_id
+        self._total_count = data_source.message_count(thread_id)
+        self._participant_map = data_source.fetch_participant_map(thread_id)
+        self._window_start = 0
+        self._messages = []
+        self._overlays = [
+            BlockOverlay(
+                evidence_block_id=block.evidence_block_id,
+                context_start_slot=block.context_start_slot,
+                relevant_start_slot=block.relevant_start_slot,
+                relevant_end_slot=block.relevant_end_slot,
+                context_end_slot=block.context_end_slot,
+                core_hit_message_id=block.core_hit_message_id,
+                highlighted_message_ids=block.highlighted_message_ids,
+                is_active=False,
+            )
+            for block in blocks
+        ]
+        self._active_block_id = None
+        if self._total_count > 0:
+            self._ensure_window(0, min(self._total_count - 1, WINDOW_OVERSCAN * 2))
+            self._draft_slots = default_slots_for_hit_index(self._total_count, 0)
+        else:
+            self._draft_slots = (0, 0, 0, 0)
+        self.endResetModel()
+        self.state_changed.emit()
+
+    def ensure_window(self, first_index: int, last_index: int) -> None:
+        if self._data_source is None or self._thread_id is None or self._total_count <= 0:
+            return
+        self._ensure_window(first_index, last_index)
 
     def load_thread_blocks(
         self,
@@ -277,14 +317,14 @@ class EvidenceTranscriptModel(QAbstractListModel):
                 is_active=False,
             )
         )
-        self._emit_all_separator_changes()
+        self._emit_separator_changes_bounded()
         self.state_changed.emit()
 
     def set_active_block(self, evidence_block_id: int | None) -> None:
         self._active_block_id = evidence_block_id
         for overlay in self._overlays:
             overlay.is_active = overlay.evidence_block_id == evidence_block_id
-        self._emit_all_separator_changes()
+        self._emit_separator_changes_bounded()
         self.state_changed.emit()
 
     def active_block_id(self) -> int | None:
@@ -308,15 +348,27 @@ class EvidenceTranscriptModel(QAbstractListModel):
         return sorted(overlay.highlighted_message_ids)
 
     def message_count(self) -> int:
+        if self._data_source is not None:
+            return self._total_count
         return len(self._messages)
 
     def ordered_message_ids(self) -> list[str]:
+        if self._data_source is not None and self._thread_id is not None:
+            return self._data_source.ordered_message_ids(self._thread_id)
         return [message.message_id for message in self._messages]
 
+    def message_index_for_message_id(self, message_id: str) -> int | None:
+        if self._data_source is not None and self._thread_id is not None:
+            return self._data_source.message_index_for_id(self._thread_id, message_id)
+        try:
+            return self.ordered_message_ids().index(message_id)
+        except ValueError:
+            return None
+
     def message_preview_at(self, message_index: int) -> str:
-        if not (0 <= message_index < len(self._messages)):
+        message = self._message_at(message_index)
+        if message is None:
             return ""
-        message = self._messages[message_index]
         return message.body or message.message_id
 
     def block_overlays(self) -> list[BlockOverlay]:
@@ -364,9 +416,9 @@ class EvidenceTranscriptModel(QAbstractListModel):
         if self._is_separator_row(visual_row):
             return
         message_index = self._message_index_for_visual_row(visual_row)
-        if not (0 <= message_index < len(self._messages)):
+        message = self._message_at(message_index)
+        if message is None:
             return
-        message = self._messages[message_index]
         message.highlighted = not message.highlighted
         overlay = self._active_overlay()
         if overlay is not None:
@@ -385,20 +437,20 @@ class EvidenceTranscriptModel(QAbstractListModel):
         if self._is_separator_row(visual_row):
             return
         message_index = self._message_index_for_visual_row(visual_row)
-        if not (0 <= message_index < len(self._messages)):
+        message = self._message_at(message_index)
+        if message is None:
             return
-        message = self._messages[message_index]
         overlay = self._active_overlay()
         if overlay is None:
             return
         overlay.core_hit_message_id = message.message_id
         self._apply_overlay_state_to_messages()
-        self._emit_all_message_changes()
+        self._emit_loaded_window_message_changes()
         self.state_changed.emit()
 
     @Slot(int, str, int)
     def move_boundary_for_block(self, evidence_block_id: int, boundary_name: str, slot_index: int) -> None:
-        if not (0 <= slot_index <= len(self._messages)):
+        if not (0 <= slot_index <= self.message_count()):
             return
         overlay = self.overlay_by_id(evidence_block_id)
         if overlay is None:
@@ -435,7 +487,7 @@ class EvidenceTranscriptModel(QAbstractListModel):
 
     @Slot(str, int)
     def move_boundary(self, boundary_name: str, slot_index: int) -> None:
-        if not (0 <= slot_index <= len(self._messages)):
+        if not (0 <= slot_index <= self.message_count()):
             return
         overlay = self._active_overlay()
         if overlay is None:
@@ -500,7 +552,7 @@ class EvidenceTranscriptModel(QAbstractListModel):
         if boundary_name == BOUNDARY_RELEVANT_START and slot_index < slots[BOUNDARY_CONTEXT_START]:
             slots[BOUNDARY_CONTEXT_START] = max(0, slot_index - 1)
         elif boundary_name == BOUNDARY_RELEVANT_END and slot_index > slots[BOUNDARY_CONTEXT_END]:
-            slots[BOUNDARY_CONTEXT_END] = min(len(self._messages), slot_index + 1)
+            slots[BOUNDARY_CONTEXT_END] = min(self.message_count(), slot_index + 1)
         resolved = (
             slots[BOUNDARY_CONTEXT_START],
             slots[BOUNDARY_RELEVANT_START],
@@ -518,10 +570,8 @@ class EvidenceTranscriptModel(QAbstractListModel):
         relevant_end: int,
         context_end: int,
     ) -> bool:
-        upper = len(self._messages)
-        return (
-            0 <= context_start <= relevant_start <= relevant_end <= context_end <= upper
-        )
+        upper = self.message_count()
+        return 0 <= context_start <= relevant_start <= relevant_end <= context_end <= upper
 
     def _active_overlay(self) -> BlockOverlay | None:
         for overlay in self._overlays:
@@ -554,6 +604,43 @@ class EvidenceTranscriptModel(QAbstractListModel):
                 return BOUNDARY_ACTIVE
         return ""
 
+    def loaded_message_range(self) -> tuple[int, int]:
+        return self._window_start, self._window_start + len(self._messages)
+
+    def _overlay_boundary_slots(self) -> set[int]:
+        slots: set[int] = set()
+        for overlay in self._overlays:
+            slots.update(
+                (
+                    overlay.context_start_slot,
+                    overlay.relevant_start_slot,
+                    overlay.relevant_end_slot,
+                    overlay.context_end_slot,
+                )
+            )
+        return slots
+
+    def _emit_separator_changes_bounded(self, extra_slots: set[int] | None = None) -> None:
+        slots_to_emit = self._overlay_boundary_slots()
+        if extra_slots:
+            slots_to_emit.update(extra_slots)
+        window_start, window_end = self.loaded_message_range()
+        first_slot = max(0, window_start - WINDOW_OVERSCAN)
+        last_slot = min(self.message_count(), window_end + WINDOW_OVERSCAN)
+        for slot_index in range(first_slot, last_slot + 1):
+            slots_to_emit.add(slot_index)
+        for slot_index in sorted(slots_to_emit):
+            self._emit_separator_change(slot_index)
+
+    def _emit_loaded_window_message_changes(self) -> None:
+        if not self._messages:
+            return
+        first_visual_row = (self._window_start * 2) + 1
+        last_visual_row = ((self._window_start + len(self._messages) - 1) * 2) + 1
+        first = self.index(first_visual_row, 0)
+        last = self.index(last_visual_row, 0)
+        self.dataChanged.emit(first, last, [self.HighlightedRole, self.CoreHitRole])
+
     def _emit_separator_change(self, slot_index: int) -> None:
         if slot_index < 0:
             return
@@ -570,30 +657,94 @@ class EvidenceTranscriptModel(QAbstractListModel):
             ],
         )
 
-    def _emit_all_separator_changes(self) -> None:
-        for slot_index in range(len(self._messages) + 1):
-            self._emit_separator_change(slot_index)
-
-    def _emit_all_message_changes(self) -> None:
-        if not self._messages:
-            return
-        first = self.index(1, 0)
-        last = self.index(self.rowCount() - 1, 0)
-        self.dataChanged.emit(first, last, [self.HighlightedRole, self.CoreHitRole])
-
     def _slot_label(self, slot_index: int) -> str:
         if slot_index < 0:
             return "-"
-        if slot_index == 0 and self._messages:
-            return f"before {self._messages[0].message_id}"
-        if slot_index == len(self._messages) and self._messages:
-            return f"after {self._messages[-1].message_id}"
-        if 0 < slot_index < len(self._messages):
-            return (
-                f"between {self._messages[slot_index - 1].message_id} / "
-                f"{self._messages[slot_index].message_id}"
-            )
+        total = self.message_count()
+        if total <= 0:
+            return "-"
+        if self._data_source is not None:
+            if slot_index == 0:
+                return "before first message"
+            if slot_index == total:
+                return "after last message"
+            return f"between messages {slot_index} / {slot_index + 1}"
+        if slot_index == 0:
+            first = self._message_at(0)
+            return f"before {first.message_id}" if first is not None else "-"
+        if slot_index == total:
+            last = self._message_at(total - 1)
+            return f"after {last.message_id}" if last is not None else "-"
+        if 0 < slot_index < total:
+            before = self._message_at(slot_index - 1)
+            after = self._message_at(slot_index)
+            if before is not None and after is not None:
+                return f"between {before.message_id} / {after.message_id}"
         return "-"
+
+    def _messages_to_transcript(
+        self,
+        messages: list[Message],
+        participant_map: dict[str, int],
+    ) -> list[TranscriptMessage]:
+        transcript_messages: list[TranscriptMessage] = []
+        for message in messages:
+            sender_key = (message.sender_id or message.sender_display or "").strip()
+            timestamp_label = format_timestamp_label(message.timestamp)
+            transcript_messages.append(
+                TranscriptMessage(
+                    message_id=message.message_id,
+                    timestamp=message.timestamp,
+                    friendly_date=timestamp_label,
+                    friendly_time=timestamp_label,
+                    timestamp_label=timestamp_label,
+                    sender_id=sender_key,
+                    sender_display=message.sender_display,
+                    participant_index=participant_map.get(sender_key, 0),
+                    body=message.body,
+                    attachment_summary=message.attachment_summary,
+                    has_attachment=message.has_attachment,
+                )
+            )
+        return transcript_messages
+
+    def _window_covers(self, first_index: int, last_index: int) -> bool:
+        if not self._messages:
+            return False
+        window_end = self._window_start + len(self._messages)
+        return self._window_start <= first_index and window_end >= (last_index + 1)
+
+    def _ensure_window(self, first_index: int, last_index: int) -> None:
+        if self._data_source is None or self._thread_id is None or self._total_count <= 0:
+            return
+        first_index = max(0, first_index)
+        last_index = min(self._total_count - 1, last_index)
+        if first_index > last_index:
+            return
+        padded_first = max(0, first_index - WINDOW_OVERSCAN)
+        padded_last = min(self._total_count - 1, last_index + WINDOW_OVERSCAN)
+        if self._window_covers(padded_first, padded_last):
+            return
+        fetch_count = padded_last - padded_first + 1
+        raw_messages = self._data_source.fetch_messages(self._thread_id, padded_first, fetch_count)
+        self._window_start = padded_first
+        self._messages = self._messages_to_transcript(raw_messages, self._participant_map)
+        self._apply_overlay_state_to_messages()
+        self.layoutChanged.emit()
+
+    def _message_at(self, message_index: int) -> TranscriptMessage | None:
+        if not (0 <= message_index < self.message_count()):
+            return None
+        if self._data_source is not None:
+            if not self._window_covers(message_index, message_index):
+                self._ensure_window(message_index, message_index)
+            local_index = message_index - self._window_start
+            if 0 <= local_index < len(self._messages):
+                return self._messages[local_index]
+            return None
+        if 0 <= message_index < len(self._messages):
+            return self._messages[message_index]
+        return None
 
     @staticmethod
     def _is_separator_row(visual_row: int) -> bool:
@@ -923,6 +1074,8 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
     min_message_height = 38
     row_padding_y = 10
     message_font_size_delta = 2
+    layout_overscan_rows = 30
+    measured_height_cache_max = 400
 
     def __init__(
         self,
@@ -934,15 +1087,34 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         super().__init__(parent)
         self._model = model
         self._speaker_tints = normalize_speaker_tints(speaker_tints)
-        self._separator_y: list[int] = []
+        self._default_row_height = self.min_message_height + 20
+        self._measured_heights: dict[int, int] = {}
         self._drag_target: tuple[str, int] | None = None
+        self._in_reflow = False
+        self._layout_change_pending = False
+        self._reflow_queued = False
         self.setMouseTracking(True)
         self.setStyleSheet("QAbstractScrollArea { border: none; background: #d8d0c2; }")
-        self.verticalScrollBar().valueChanged.connect(lambda _value: self.viewport().update())
-        self._model.modelReset.connect(self._reflow)
+        self.verticalScrollBar().valueChanged.connect(self._on_scroll_changed)
+        self._model.modelReset.connect(self._on_model_reset)
+        self._model.layoutChanged.connect(self._on_layout_changed)
         self._model.dataChanged.connect(self._on_model_changed)
         self._model.state_changed.connect(self._reflow_and_repaint)
         self._reflow()
+
+    def _on_model_reset(self) -> None:
+        self._measured_heights.clear()
+        self._reflow()
+
+    def _on_layout_changed(self) -> None:
+        if self._in_reflow:
+            self._layout_change_pending = True
+            return
+        self._reflow_and_repaint()
+
+    def _on_scroll_changed(self, _value: int) -> None:
+        self._sync_visible_window()
+        self.viewport().update()
 
     def set_speaker_tints(self, tints: list[str]) -> None:
         self._speaker_tints = normalize_speaker_tints(tints)
@@ -986,20 +1158,23 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         painter.restore()
 
     def viewport_center_message_index(self) -> int | None:
-        if self._message_count() <= 0 or not self._separator_y:
+        if self._message_count() <= 0:
             return None
         scroll_y = self.verticalScrollBar().value()
         center_screen = self.header_height + (self.viewport().height() - self.header_height) // 2
         return self._nearest_message_index_for_y(self._screen_to_doc_y(center_screen, scroll_y))
 
     def scroll_to_message_index(self, message_index: int) -> None:
-        if not self._separator_y or not (0 <= message_index < self._message_count()):
+        if not (0 <= message_index < self._message_count()):
             return
-        top = self._separator_y[message_index]
-        bottom = self._separator_y[message_index + 1]
+        self._model.ensure_window(message_index, message_index)
+        top = self._y_at(message_index)
+        bottom = self._y_at(message_index + 1)
         center = (top + bottom) // 2
         content_height = max(1, self.viewport().height() - self.header_height)
         self.verticalScrollBar().setValue(max(0, center - content_height // 2))
+        self._cache_measured_height(message_index, self._message_height(message_index))
+        self._reflow()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if event.position().y() < self.header_height:
@@ -1054,21 +1229,51 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
     def _reflow_and_repaint(self) -> None:
         self._reflow()
 
+    def _queue_reflow(self) -> None:
+        if self._reflow_queued:
+            return
+        self._reflow_queued = True
+
+        def run() -> None:
+            self._reflow_queued = False
+            self._reflow()
+
+        QTimer.singleShot(0, self, run)
+
     def _on_model_changed(self, _top_left: QModelIndex, _bottom_right: QModelIndex, _roles: list[int]) -> None:
         self.viewport().update()
 
     def _reflow(self) -> None:
-        y = self.top_margin
-        self._separator_y = [y]
-        for message_index in range(self._message_count()):
-            y += self._message_height(message_index)
-            self._separator_y.append(y)
-        total_height = y + self.bottom_margin
-        scrollbar = self.verticalScrollBar()
-        scrollbar.setSingleStep(max(24, self.min_message_height // 2))
-        scrollbar.setPageStep(max(1, self.viewport().height() - self.header_height))
-        scrollbar.setRange(0, max(0, total_height - (self.viewport().height() - self.header_height)))
-        self.viewport().update()
+        if self._in_reflow:
+            self._layout_change_pending = True
+            return
+        self._in_reflow = True
+        self._layout_change_pending = False
+        try:
+            total_height = self._document_height()
+            scrollbar = self.verticalScrollBar()
+            scrollbar.setSingleStep(max(24, self.min_message_height // 2))
+            scrollbar.setPageStep(max(1, self.viewport().height() - self.header_height))
+            scrollbar.setRange(0, max(0, total_height - (self.viewport().height() - self.header_height)))
+            self._sync_visible_window()
+            self.viewport().update()
+        finally:
+            self._in_reflow = False
+        if self._layout_change_pending:
+            self._layout_change_pending = False
+            self._queue_reflow()
+
+    def _sync_visible_window(self) -> None:
+        if self._message_count() <= 0:
+            return
+        scroll_y = self.verticalScrollBar().value()
+        viewport_height = max(1, self.viewport().height() - self.header_height)
+        first = self._slot_for_doc_y(scroll_y)
+        last = self._slot_for_doc_y(scroll_y + viewport_height)
+        overscan = self.layout_overscan_rows
+        self._model.ensure_window(max(0, first - overscan), min(self._message_count() - 1, last + overscan))
+        for message_index in range(max(0, first - 2), min(self._message_count(), last + 3)):
+            self._cache_measured_height(message_index, self._message_height(message_index))
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         scrollbar = self.verticalScrollBar()
@@ -1180,10 +1385,10 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         end_slot: int,
         color: QColor,
     ) -> None:
-        if end_slot <= start_slot or not self._separator_y:
+        if end_slot <= start_slot or self._message_count() <= 0:
             return
-        top = self._doc_to_screen(self._separator_y[start_slot], scroll_y)
-        bottom = self._doc_to_screen(self._separator_y[end_slot], scroll_y)
+        top = self._doc_to_screen(self._y_at(start_slot), scroll_y)
+        bottom = self._doc_to_screen(self._y_at(end_slot), scroll_y)
         region_rect = QRect(
             self._sender_left(),
             top,
@@ -1213,9 +1418,16 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         return BLOCK_ZONE_NONE
 
     def _paint_messages(self, painter: QPainter, scroll_y: int, viewport_rect: QRect) -> None:
-        for message_index in range(self._message_count()):
-            top = self._doc_to_screen(self._separator_y[message_index], scroll_y)
-            bottom = self._doc_to_screen(self._separator_y[message_index + 1], scroll_y)
+        if self._message_count() <= 0:
+            return
+        first = max(0, self._slot_for_doc_y(scroll_y) - 2)
+        last = min(
+            self._message_count() - 1,
+            self._slot_for_doc_y(scroll_y + max(1, viewport_rect.height() - self.header_height)) + 2,
+        )
+        for message_index in range(first, last + 1):
+            top = self._doc_to_screen(self._y_at(message_index), scroll_y)
+            bottom = self._doc_to_screen(self._y_at(message_index + 1), scroll_y)
             screen_rect = QRect(0, top, viewport_rect.width(), bottom - top)
             if not screen_rect.intersects(viewport_rect.adjusted(0, self.header_height - 60, 0, 60)):
                 continue
@@ -1254,8 +1466,13 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         left = self._table_left()
         right = viewport_rect.width() - self.paper_margin - self.page_padding
         painter.setPen(QPen(QColor("#ddd3c3"), 1))
-        for y in self._separator_y:
-            screen_y = self._doc_to_screen(y, scroll_y)
+        total = self._message_count()
+        if total <= 0:
+            return
+        first = max(0, self._slot_for_doc_y(scroll_y) - 1)
+        last = min(total, self._slot_for_doc_y(scroll_y + max(1, viewport_rect.height() - self.header_height)) + 2)
+        for slot_index in range(first, last + 1):
+            screen_y = self._doc_to_screen(self._y_at(slot_index), scroll_y)
             if self.header_height - 4 <= screen_y <= viewport_rect.height() + 4:
                 painter.drawLine(left, screen_y, right, screen_y)
 
@@ -1275,9 +1492,9 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         for overlay in self._model.block_overlays():
             for boundary_name, base_color in boundaries:
                 slot_index = slot_values[boundary_name](overlay)
-                if not (0 <= slot_index < len(self._separator_y)):
+                if not (0 <= slot_index <= self._message_count()):
                     continue
-                screen_y = self._doc_to_screen(self._separator_y[slot_index], scroll_y)
+                screen_y = self._doc_to_screen(self._y_at(slot_index), scroll_y)
                 if not (self.header_height - 12 <= screen_y <= viewport_rect.height() + 12):
                     continue
                 color = QColor(base_color)
@@ -1308,8 +1525,8 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
 
     def _paint_message_text(self, painter: QPainter, message_index: int, scroll_y: int, zone: str) -> None:
         index = self._message_model_index(message_index)
-        top = self._doc_to_screen(self._separator_y[message_index], scroll_y)
-        bottom = self._doc_to_screen(self._separator_y[message_index + 1], scroll_y)
+        top = self._doc_to_screen(self._y_at(message_index), scroll_y)
+        bottom = self._doc_to_screen(self._y_at(message_index + 1), scroll_y)
         row_height = bottom - top
         sender = str(index.data(EvidenceTranscriptModel.SenderRole) or "")
         body = str(index.data(EvidenceTranscriptModel.BodyRole) or "")
@@ -1429,35 +1646,38 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         for overlay in reversed(self._model.block_overlays()):
             for boundary_name in boundary_order:
                 slot_index = slot_values[boundary_name](overlay)
-                if not (0 <= slot_index < len(self._separator_y)):
+                if not (0 <= slot_index <= self._message_count()):
                     continue
                 handle_rect = self._boundary_handle_rect(slot_index, boundary_name)
                 if handle_rect.adjusted(-4, -6, 4, 6).contains(doc_point):
                     return boundary_name, overlay.evidence_block_id
-                if abs(doc_point.y() - self._separator_y[slot_index]) <= 5 and doc_point.x() >= handle_rect.right():
+                if abs(doc_point.y() - self._y_at(slot_index)) <= 5 and doc_point.x() >= handle_rect.right():
                     return boundary_name, overlay.evidence_block_id
         return None
 
     def _message_index_at_point(self, point: QPoint) -> int | None:
         doc_y = self._screen_to_doc_y(point.y(), self.verticalScrollBar().value())
-        for message_index in range(self._message_count()):
-            if self._separator_y[message_index] <= doc_y <= self._separator_y[message_index + 1]:
-                return message_index
+        message_index = self._slot_for_doc_y(doc_y)
+        if not (0 <= message_index < self._message_count()):
+            return None
+        if self._y_at(message_index) <= doc_y <= self._y_at(message_index + 1):
+            return message_index
         return None
 
     def _nearest_slot_for_y(self, y: int) -> int:
-        if not self._separator_y:
-            return 0
-        return min(range(len(self._separator_y)), key=lambda slot_index: abs(self._separator_y[slot_index] - y))
+        return self._slot_for_doc_y(y)
 
     def _nearest_message_index_for_y(self, y: int) -> int:
         if self._message_count() <= 0:
             return 0
-        best_index = 0
+        approx = self._slot_for_doc_y(y)
+        best_index = max(0, min(self._message_count() - 1, approx))
         best_distance = float("inf")
-        for message_index in range(self._message_count()):
-            top = self._separator_y[message_index]
-            bottom = self._separator_y[message_index + 1]
+        search_lo = max(0, approx - 5)
+        search_hi = min(self._message_count() - 1, approx + 5)
+        for message_index in range(search_lo, search_hi + 1):
+            top = self._y_at(message_index)
+            bottom = self._y_at(message_index + 1)
             center = (top + bottom) / 2
             distance = abs(center - y)
             if distance < best_distance:
@@ -1469,15 +1689,15 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         lane = BOUNDARY_LANE_CONTEXT
         if boundary_name in (BOUNDARY_RELEVANT_START, BOUNDARY_RELEVANT_END):
             lane = BOUNDARY_LANE_RELEVANT
-        y = self._separator_y[slot_index] - (self.handle_size // 2)
+        y = self._y_at(slot_index) - (self.handle_size // 2)
         x = self.paper_margin + lane
         return QRect(x, y, self.handle_size, self.handle_size)
 
     def _control_icon_rect(self, message_index: int, overlay_index: int, column_left: int) -> QRect:
         overlays = self._model.overlays_for_relevant_message(message_index)
         slot_width = self._control_column_width() / max(1, len(overlays))
-        row_top = self._separator_y[message_index]
-        row_bottom = self._separator_y[message_index + 1]
+        row_top = self._y_at(message_index)
+        row_bottom = self._y_at(message_index + 1)
         row_height = row_bottom - row_top
         top = row_top + max(0, (row_height - self.control_icon_size) // 2)
         x = int(column_left + (overlay_index * slot_width) + ((slot_width - self.control_icon_size) / 2))
@@ -1505,10 +1725,15 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         return self._control_icon_rect(message_index, overlay_index, self._highlight_left())
 
     def _message_height(self, message_index: int) -> int:
+        window_start, window_end = self._model.loaded_message_range()
+        if not (window_start <= message_index < window_end):
+            return self._default_row_height
         index = self._message_model_index(message_index)
         body_width = self._message_body_width()
         body = str(index.data(EvidenceTranscriptModel.BodyRole) or "")
         attachment = str(index.data(EvidenceTranscriptModel.AttachmentRole) or "")
+        if not body and not attachment and index.data(EvidenceTranscriptModel.MessageIdRole) is None:
+            return self._default_row_height
         use_bold = self._message_block_zone(message_index) == BLOCK_ZONE_RELEVANT
         message_font = self._message_font(bold=use_bold)
         body_height = QFontMetrics(message_font).boundingRect(
@@ -1523,9 +1748,54 @@ class Gen2TranscriptSurfaceWidget(QAbstractScrollArea):
         )
 
     def _document_height(self) -> int:
-        if not self._separator_y:
+        total = self._message_count()
+        if total <= 0:
             return self.viewport().height()
-        return self._separator_y[-1] + self.bottom_margin
+        return self._y_at(total) + self.bottom_margin
+
+    def _row_height(self, message_index: int) -> int:
+        return self._measured_heights.get(message_index, self._default_row_height)
+
+    def _cache_measured_height(self, message_index: int, height: int) -> None:
+        if message_index in self._measured_heights and self._measured_heights[message_index] == height:
+            return
+        self._measured_heights[message_index] = height
+        if len(self._measured_heights) > self.measured_height_cache_max:
+            oldest = next(iter(self._measured_heights))
+            del self._measured_heights[oldest]
+
+    def _height_adjustment_before(self, slot_index: int) -> int:
+        adjustment = 0
+        for index, height in self._measured_heights.items():
+            if index < slot_index:
+                adjustment += height - self._default_row_height
+        return adjustment
+
+    def _y_at(self, slot_index: int) -> int:
+        if slot_index <= 0:
+            return self.top_margin
+        total = self._message_count()
+        slot_index = min(slot_index, total)
+        return self.top_margin + (slot_index * self._default_row_height) + self._height_adjustment_before(slot_index)
+
+    def _slot_for_doc_y(self, doc_y: int) -> int:
+        if self._message_count() <= 0:
+            return 0
+        adjusted = max(0, doc_y - self.top_margin)
+        approx = adjusted // self._default_row_height
+        approx = max(0, min(self._message_count(), approx))
+        lo = max(0, approx - 8)
+        hi = min(self._message_count(), approx + 8)
+        best_slot = lo
+        best_distance = float("inf")
+        for slot_index in range(lo, hi + 1):
+            distance = abs(self._y_at(slot_index) - doc_y)
+            if distance < best_distance:
+                best_distance = distance
+                best_slot = slot_index
+        if doc_y >= self._y_at(self._message_count()):
+            return self._message_count()
+        return max(0, min(self._message_count() - 1, best_slot))
 
     def _message_count(self) -> int:
         row_count = self._model.rowCount()
@@ -1543,13 +1813,11 @@ def build_transcript_model_for_thread(
     source_thread_id: str,
     *,
     active_block_id: int | None = None,
-) -> tuple[EvidenceTranscriptModel, list[Message]]:
-    messages = repositories.list_messages_for_thread(conn, dataset_id, source_thread_id)
-    blocks = evidence_blocks.list_evidence_blocks(
-        conn,
-        dataset_id,
-        source_thread_id=source_thread_id,
-    )
+) -> EvidenceTranscriptModel:
+    from message_evidence_workstation.ui.transcript_data_source import SqlTranscriptDataSource
+
+    data_source = SqlTranscriptDataSource(conn, dataset_id)
+    blocks = data_source.fetch_evidence_blocks(source_thread_id)
     model = EvidenceTranscriptModel()
-    model.load_thread_blocks(messages, blocks, active_block_id=active_block_id)
-    return model, messages
+    model.load_thread_virtualized(data_source, source_thread_id, blocks, active_block_id=active_block_id)
+    return model

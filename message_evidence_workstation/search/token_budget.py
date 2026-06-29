@@ -18,9 +18,10 @@ def compute_usable_input_tokens(
     context_window_tokens: int,
     safety_ratio: float,
     prompt_overhead_tokens: int,
+    max_output_tokens: int = 0,
 ) -> int:
     """Return usable input tokens for transcript budgeting."""
-    base = context_window_tokens - max(0, prompt_overhead_tokens)
+    base = context_window_tokens - max(0, prompt_overhead_tokens) - max(0, max_output_tokens)
     usable = math.floor(base * safety_ratio)
     return max(256, usable)
 

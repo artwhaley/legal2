@@ -13,6 +13,7 @@ from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
 from tests.router_helpers import router_with_role_models
 from message_evidence_workstation.nim.client import NimChatResult
 from message_evidence_workstation.search.conversational_answer import (
@@ -46,11 +47,11 @@ def eval_db(tmp_path):
 
 def test_whole_transcript_mode_selected_for_sample_fixture(eval_db) -> None:
     conn, _, dataset_id = eval_db
-    transcript = build_dataset_transcript(conn, dataset_id)
+    stats = compute_dataset_budget_stats(conn, dataset_id)
     settings = AnswerSettings()
     mode = resolve_answer_mode(
         strategy="auto",
-        transcript=transcript,
+        stats=stats,
         answer_settings=settings,
         nim_settings=NimSettings(context_window_tokens=500_000),
     )

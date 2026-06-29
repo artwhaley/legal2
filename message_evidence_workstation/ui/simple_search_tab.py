@@ -6,10 +6,10 @@ import json
 import sqlite3
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, Qt, QTimer, Signal
+from PySide6.QtCore import QMimeData, Qt, Signal
 from PySide6.QtGui import QColor, QDrag
 from PySide6.QtWidgets import (
-    QCheckBox,
+    QComboBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -26,22 +26,20 @@ from PySide6.QtWidgets import (
 from message_evidence_workstation.config.settings import is_role_configured, load_settings
 from message_evidence_workstation.llm.types import UserFacingModelRole
 from message_evidence_workstation.db import repositories
-from message_evidence_workstation.db.connection import connect
-from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.nim.client import NimClientError, nim_error_user_message
 from message_evidence_workstation.search import fts
-from message_evidence_workstation.search.embedding_search import (
-    EmbeddingIndexNotReadyError,
-    search_chunk_embeddings,
-    search_message_embeddings,
-)
-from message_evidence_workstation.search.fusion import fuse_hits
+from message_evidence_workstation.search.embedding_search import EmbeddingIndexNotReadyError
 from message_evidence_workstation.search.grouping import group_hits
-from message_evidence_workstation.search.keyword_expansion import expand_keywords
-from message_evidence_workstation.search.result_models import GroupedSearchResult, SearchHit
-from message_evidence_workstation.ui.background_tasks import run_background
+from message_evidence_workstation.search.result_models import GroupedSearchResult
+from message_evidence_workstation.search.search_modes import SEARCH_MODE_LABELS, SearchMode
 from message_evidence_workstation.ui.evidence_block_transcript_widget import EvidenceBlockTranscriptWidget
+from message_evidence_workstation.ui.search_worker import (
+    SearchCancellationToken,
+    SearchJobResult,
+    SearchJobSpec,
+    run_search_job_background,
+)
 
 MIME_SEARCH_RESULT = "application/x-mew-search-result"
 MATCH_COLORS = {
@@ -85,37 +83,47 @@ class SimpleSearchTab(QWidget):
         self.db_path = db_path
         self.dataset_id: int | None = None
         self._groups: list[GroupedSearchResult] = []
-        self._sort_index_by_message: dict[str, int] = {}
+        self._vector_groups: list[GroupedSearchResult] = []
         self._thread_titles_by_id: dict[str, str] = {}
         self._active_chips: list[str] = []
         self._last_expansion_query = ""
-        self._expansion_generation = 0
-        self._vector_search_generation = 0
+        self._search_generation = 0
+        self._search_cancel_token: SearchCancellationToken | None = None
+        self._search_thread = None
         self._embedding_model_name = ""
+        self._fts_page_offset = 0
+        self._fts_total_count = 0
+        self._fts_has_more = False
+        self._fts_page_hit_count = 0
+        self._vector_groups: list[GroupedSearchResult] = []
 
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Simple Search"))
 
         self.search_box = QLineEdit()
-        self.search_box.setPlaceholderText("Type to search messages (FTS5)...")
+        self.search_box.setPlaceholderText("Enter query and press Search or Enter...")
         self.search_box.textChanged.connect(self._on_text_changed)
         self.search_box.returnPressed.connect(self._on_search_committed)
-        self.search_box.editingFinished.connect(self._on_search_committed)
         layout.addWidget(self.search_box)
 
-        self.keyword_toggle = QCheckBox("Keyword Expansion (yellow)")
-        self.keyword_toggle.toggled.connect(self._on_keyword_toggle_changed)
-        layout.addWidget(self.keyword_toggle)
+        mode_row = QHBoxLayout()
+        mode_row.addWidget(QLabel("Mode"))
+        self.mode_combo = QComboBox()
+        for mode in ("fts5", "expanded_keyword", "message_embedding", "chunk_embedding"):
+            self.mode_combo.addItem(SEARCH_MODE_LABELS[mode], mode)  # type: ignore[index]
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        mode_row.addWidget(self.mode_combo, stretch=1)
+        self.search_button = QPushButton("Search")
+        self.search_button.clicked.connect(self._on_search_committed)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.clicked.connect(self._on_cancel_search)
+        mode_row.addWidget(self.search_button)
+        mode_row.addWidget(self.cancel_button)
+        layout.addLayout(mode_row)
 
-        self.message_embedding_toggle = QCheckBox("Message Embedding Search (purple)")
-        self.message_embedding_toggle.toggled.connect(self._on_vector_toggle_changed)
-        layout.addWidget(self.message_embedding_toggle)
-
-        self.chunk_embedding_toggle = QCheckBox("Chunk Embedding Search (pink)")
-        self.chunk_embedding_toggle.toggled.connect(self._on_vector_toggle_changed)
-        layout.addWidget(self.chunk_embedding_toggle)
-
-        vector_selectivity_row = QHBoxLayout()
+        self.embedding_selectivity_row = QWidget()
+        vector_selectivity_row = QHBoxLayout(self.embedding_selectivity_row)
         vector_selectivity_row.addWidget(QLabel("Embedding squelch"))
         self.embedding_selectivity = QSlider(Qt.Orientation.Horizontal)
         self.embedding_selectivity.setRange(0, 2)
@@ -129,9 +137,10 @@ class SimpleSearchTab(QWidget):
         vector_selectivity_row.addWidget(self.embedding_selectivity, stretch=1)
         self.embedding_selectivity_label = QLabel("Balanced")
         vector_selectivity_row.addWidget(self.embedding_selectivity_label)
-        layout.addLayout(vector_selectivity_row)
+        layout.addWidget(self.embedding_selectivity_row)
 
-        chip_controls = QHBoxLayout()
+        self.chip_controls = QWidget()
+        chip_controls = QHBoxLayout(self.chip_controls)
         self.chip_container = QHBoxLayout()
         chip_wrapper = QWidget()
         chip_wrapper.setLayout(self.chip_container)
@@ -140,10 +149,22 @@ class SimpleSearchTab(QWidget):
         self.add_chip_button.setFixedWidth(28)
         self.add_chip_button.clicked.connect(self._add_custom_chip)
         chip_controls.addWidget(self.add_chip_button)
-        layout.addLayout(chip_controls)
+        layout.addWidget(self.chip_controls)
 
         self.status_label = QLabel("Load a dataset to search.")
         layout.addWidget(self.status_label)
+
+        self.pagination_row = QWidget()
+        pagination_row = QHBoxLayout(self.pagination_row)
+        self.fts_page_label = QLabel("")
+        self.fts_prev_button = QPushButton("Previous")
+        self.fts_next_button = QPushButton("Next")
+        self.fts_prev_button.clicked.connect(self._on_fts_prev_page)
+        self.fts_next_button.clicked.connect(self._on_fts_next_page)
+        pagination_row.addWidget(self.fts_page_label, stretch=1)
+        pagination_row.addWidget(self.fts_prev_button)
+        pagination_row.addWidget(self.fts_next_button)
+        layout.addWidget(self.pagination_row)
 
         self.results_splitter = QSplitter(Qt.Orientation.Vertical)
         self.results_list = DraggableResultsList(self)
@@ -169,70 +190,89 @@ class SimpleSearchTab(QWidget):
         self.results_splitter.setStretchFactor(1, 2)
         self.results_splitter.setSizes([240, 480])
         layout.addWidget(self.results_splitter, stretch=1)
+        self._on_mode_changed()
 
-        self._debounce = QTimer(self)
-        self._debounce.setSingleShot(True)
-        self._debounce.setInterval(300)
-        self._debounce.timeout.connect(lambda: self._run_search(expand_keywords=False))
+    def _selected_mode(self) -> SearchMode:
+        return self.mode_combo.currentData()
+
+    def _on_mode_changed(self, _index: int | None = None) -> None:
+        mode = self._selected_mode()
+        self.embedding_selectivity_row.setVisible(mode in ("message_embedding", "chunk_embedding"))
+        self.chip_controls.setVisible(mode == "expanded_keyword")
+        self.pagination_row.setVisible(mode in ("fts5", "expanded_keyword"))
 
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
-        self._sort_index_by_message = {}
         self._thread_titles_by_id = {}
         self.results_list.clear()
         self._groups = []
+        self._vector_groups = []
+        self._fts_page_offset = 0
+        self._fts_total_count = 0
+        self._fts_has_more = False
+        self._fts_page_hit_count = 0
         self.transcript_widget.set_dataset(dataset_id)
         self.add_evidence_block_button.setEnabled(dataset_id is not None)
         if dataset_id is None:
             self.status_label.setText("Load a dataset to search.")
+            self._update_pagination_controls()
             return
-        rows = self.conn.execute(
-            "SELECT message_id, sort_index FROM message WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchall()
-        self._sort_index_by_message = {row["message_id"]: row["sort_index"] for row in rows}
         self._thread_titles_by_id = {
             thread.source_thread_id: thread.display_title
             for thread in repositories.list_source_threads(self.conn, dataset_id)
         }
         self.status_label.setText("Ready.")
 
+    def update_embedding_gating(self, state) -> None:
+        from PySide6.QtCore import Qt
+        from message_evidence_workstation.domain.embedding_state import EmbeddingState
+
+        if not isinstance(state, EmbeddingState):
+            return
+        model = self.mode_combo.model()
+        for row in range(self.mode_combo.count()):
+            mode = self.mode_combo.itemData(row)
+            item = model.item(row)
+            if item is None or mode not in ("message_embedding", "chunk_embedding"):
+                continue
+            ready = state.message_ready if mode == "message_embedding" else state.chunk_ready
+            progress = state.message_progress if mode == "message_embedding" else state.chunk_progress
+            total = state.message_total if mode == "message_embedding" else state.chunk_total
+            flags = item.flags()
+            if ready:
+                item.setFlags(flags | Qt.ItemFlag.ItemIsEnabled)
+                item.setToolTip("")
+            else:
+                item.setFlags(flags & ~Qt.ItemFlag.ItemIsEnabled)
+                if total > 0:
+                    item.setToolTip(
+                        f"{SEARCH_MODE_LABELS[mode]} still building ({progress}/{total}) — "
+                        "available when complete"
+                    )
+                else:
+                    item.setToolTip(
+                        f"{SEARCH_MODE_LABELS[mode]} unavailable — build embeddings first"
+                    )
+        if self._selected_mode() in ("message_embedding", "chunk_embedding"):
+            current_mode = self._selected_mode()
+            ready = state.message_ready if current_mode == "message_embedding" else state.chunk_ready
+            if not ready:
+                self.mode_combo.setCurrentIndex(0)
+
     def _on_text_changed(self, _text: str = "") -> None:
         query = self.search_box.text().strip()
         if query != self._last_expansion_query:
-            self._expansion_generation += 1
             self._active_chips = []
             self._rebuild_chip_widgets()
-        self._debounce.start()
 
     def _on_search_committed(self) -> None:
-        self._debounce.stop()
-        self._run_search(expand_keywords=True)
+        self._run_search(page_offset=0, expand_keywords=True)
 
-    def _on_keyword_toggle_changed(self, checked: bool) -> None:
-        if not checked:
-            self._active_chips = []
-            self._last_expansion_query = ""
-            self._rebuild_chip_widgets()
-            self._debounce.stop()
-            self._run_search(expand_keywords=False)
-            return
-        query = self.search_box.text().strip()
-        if query:
-            self._debounce.stop()
-            self._run_search(expand_keywords=True)
-
-    def _on_vector_toggle_changed(self, _checked: bool = False) -> None:
-        if self.search_box.text().strip():
-            self._debounce.stop()
-            self._run_search(expand_keywords=False)
-
-    def _embedding_selectivity_value(self) -> str:
-        return {
-            0: "broad",
-            1: "balanced",
-            2: "narrow",
-        }.get(int(self.embedding_selectivity.value()), "balanced")
+    def _on_cancel_search(self) -> None:
+        if self._search_cancel_token is not None:
+            self._search_cancel_token.cancel()
+        self.cancel_button.setEnabled(False)
+        self.status_label.setText("Search cancelled.")
 
     def _on_embedding_selectivity_changed(self, _value: int) -> None:
         label = {
@@ -241,90 +281,198 @@ class SimpleSearchTab(QWidget):
             "narrow": "Narrow",
         }[self._embedding_selectivity_value()]
         self.embedding_selectivity_label.setText(label)
-        if (
-            self.search_box.text().strip()
-            and (self.message_embedding_toggle.isChecked() or self.chunk_embedding_toggle.isChecked())
-        ):
-            self._debounce.stop()
-            self._run_search(expand_keywords=False)
 
-    def _message_details(self, message_id: str) -> dict[str, str]:
-        row = self.conn.execute(
-            """
-            SELECT sender_display, timestamp, body
-            FROM message
-            WHERE dataset_id = ? AND message_id = ?
-            """,
-            (self.dataset_id, message_id),
-        ).fetchone()
-        if row is None:
-            return {"sender_display": "", "timestamp": "", "body": ""}
+    def _embedding_selectivity_value(self) -> str:
         return {
-            "sender_display": row["sender_display"],
-            "timestamp": row["timestamp"],
-            "body": row["body"],
-        }
+            0: "broad",
+            1: "balanced",
+            2: "narrow",
+        }.get(int(self.embedding_selectivity.value()), "balanced")
 
-    def _fts_to_search_hits(self, query: str) -> list[SearchHit]:
-        assert self.dataset_id is not None
-        results = fts.search_messages(self.conn, self.logger, self.dataset_id, query)
-        hits: list[SearchHit] = []
-        for fts_hit in results["exact"]:
-            details = self._message_details(fts_hit.message_id)
-            hits.append(
-                SearchHit(
-                    message_id=fts_hit.message_id,
-                    source_thread_id=fts_hit.source_thread_id,
-                    match_type="exact",
-                    retrieval_method="fts_exact",
-                    query_text=query,
-                    matched_term=query,
-                    score=fts_hit.rank,
-                    sender_display=details["sender_display"],
-                    timestamp=details["timestamp"],
-                    body=details["body"],
-                    snippet=details["body"][:160],
-                )
+    def _fts_page_size(self) -> int:
+        return max(1, int(load_settings().search.fts_page_size))
+
+    def _format_fts_page_range(self) -> str:
+        if self._fts_total_count <= 0:
+            return "Showing 0 of 0 matches"
+        start = self._fts_page_offset + 1
+        end = min(self._fts_page_offset + self._fts_page_hit_count, self._fts_total_count)
+        return f"Showing {start:,}–{end:,} of {self._fts_total_count:,} matches"
+
+    def _update_pagination_controls(self) -> None:
+        has_query = bool(self.search_box.text().strip()) and self.dataset_id is not None
+        if not has_query or self._fts_total_count <= 0:
+            self.fts_page_label.setText("")
+            self.fts_prev_button.setEnabled(False)
+            self.fts_next_button.setEnabled(False)
+            return
+        self.fts_page_label.setText(self._format_fts_page_range())
+        self.fts_prev_button.setEnabled(self._fts_page_offset > 0)
+        self.fts_next_button.setEnabled(self._fts_has_more)
+
+    def _on_fts_prev_page(self) -> None:
+        page_size = self._fts_page_size()
+        next_offset = max(0, self._fts_page_offset - page_size)
+        if next_offset == self._fts_page_offset:
+            return
+        self._run_search(page_offset=next_offset)
+
+    def _on_fts_next_page(self) -> None:
+        if not self._fts_has_more:
+            return
+        self._run_search(page_offset=self._fts_page_offset + self._fts_page_size())
+
+    def _apply_search_result(self, result: SearchJobResult) -> None:
+        if result.generation != self._search_generation:
+            return
+        self.cancel_button.setEnabled(False)
+        if result.cancelled:
+            self.status_label.setText("Search cancelled.")
+            return
+        if result.keyword_terms:
+            self._active_chips = list(result.keyword_terms)
+            self._last_expansion_query = result.query
+            self._rebuild_chip_widgets()
+        self._groups = list(result.groups)
+        self._vector_groups = []
+        if result.total_count is not None:
+            self._fts_total_count = int(result.total_count)
+            self._fts_page_offset = result.offset
+            self._fts_has_more = bool(result.has_more)
+            self._fts_page_hit_count = sum(len(group.hits) for group in result.groups)
+        self._render_results(result.query, status_message=result.status_message)
+
+    def _run_embedding_search(self, query: str, generation: int) -> None:
+        mode = self._selected_mode()
+        model_name = load_settings().embedding_model
+        self._embedding_model_name = model_name
+        from message_evidence_workstation.embeddings.model_registry import get_model_spec
+        from message_evidence_workstation.ui.embedding_worker import EmbeddingJobSpec, run_embedding_job
+
+        spec = get_model_spec(model_name)
+        if spec is None:
+            self.cancel_button.setEnabled(False)
+            self.status_label.setText(f"Unknown embedding model: {model_name}")
+            return
+
+        job = EmbeddingJobSpec(
+            job_type="vector_search",
+            db_path=self.db_path,
+            dataset_id=self.dataset_id,
+            adapter_key=spec.adapter_key,
+            model_id=spec.model_id,
+            vector_query=query,
+            use_message_vectors=mode == "message_embedding",
+            use_chunk_vectors=mode == "chunk_embedding",
+            embedding_selectivity=self._embedding_selectivity_value(),
+        )
+
+        def on_success(vector_hits: object) -> None:
+            if generation != self._search_generation:
+                return
+            self.cancel_button.setEnabled(False)
+            self._groups = group_hits(
+                list(vector_hits),  # type: ignore[arg-type]
+                logger=self.logger,
+                dataset_id=self.dataset_id,
             )
-        for fts_hit in results["partial"]:
-            if any(existing.message_id == fts_hit.message_id for existing in hits):
-                continue
-            details = self._message_details(fts_hit.message_id)
-            hits.append(
-                SearchHit(
-                    message_id=fts_hit.message_id,
-                    source_thread_id=fts_hit.source_thread_id,
-                    match_type="partial",
-                    retrieval_method="fts_partial",
-                    query_text=query,
-                    matched_term=query,
-                    score=fts_hit.rank,
-                    sender_display=details["sender_display"],
-                    timestamp=details["timestamp"],
-                    body=details["body"],
-                    snippet=details["body"][:160],
-                )
+            self._vector_groups = []
+            self._fts_total_count = 0
+            self._fts_has_more = False
+            self._render_results(
+                query,
+                status_message=f"Showing top {len(self._groups)} grouped result(s) by similarity.",
             )
-        for fts_hit in results["fuzzy"]:
-            if any(existing.message_id == fts_hit.message_id for existing in hits):
-                continue
-            details = self._message_details(fts_hit.message_id)
-            hits.append(
-                SearchHit(
-                    message_id=fts_hit.message_id,
-                    source_thread_id=fts_hit.source_thread_id,
-                    match_type="fuzzy",
-                    retrieval_method="spellfix_fuzzy",
-                    query_text=query,
-                    matched_term=query,
-                    score=fts_hit.rank,
-                    sender_display=details["sender_display"],
-                    timestamp=details["timestamp"],
-                    body=details["body"],
-                    snippet=details["body"][:160],
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._search_generation:
+                return
+            self.cancel_button.setEnabled(False)
+            if isinstance(exc, EmbeddingIndexNotReadyError):
+                self.status_label.setText(str(exc))
+            else:
+                self.status_label.setText(f"Vector search failed: {exc}")
+
+        run_embedding_job(self, job, on_success=on_success, on_error=on_error)
+
+    def _run_search(self, *, expand_keywords: bool = False, page_offset: int | None = None) -> None:
+        self.results_list.clear()
+        self._groups = []
+        self._vector_groups = []
+        self.transcript_widget.set_dataset(self.dataset_id)
+        if self.dataset_id is None:
+            self._update_pagination_controls()
+            return
+        query = self.search_box.text().strip()
+        if not query:
+            self._fts_page_offset = 0
+            self._fts_total_count = 0
+            self._fts_has_more = False
+            self._fts_page_hit_count = 0
+            self.status_label.setText("Ready.")
+            self._update_pagination_controls()
+            return
+        if page_offset is None:
+            page_offset = 0
+        mode = self._selected_mode()
+        if mode == "expanded_keyword" and expand_keywords:
+            settings = load_settings()
+            if not is_role_configured(settings, UserFacingModelRole.EXPANSION) and not self._active_chips:
+                self.status_label.setText(
+                    "Expansion model not configured — open Setup / Settings and assign an Expansion model."
                 )
+                return
+        self._search_generation += 1
+        generation = self._search_generation
+        if self._search_cancel_token is not None:
+            self._search_cancel_token.cancel()
+        self._search_cancel_token = SearchCancellationToken()
+        cancel_token = self._search_cancel_token
+        self.cancel_button.setEnabled(True)
+        self.status_label.setText(f"Searching ({SEARCH_MODE_LABELS[mode]})...")
+
+        if mode in ("message_embedding", "chunk_embedding"):
+            self._run_embedding_search(query, generation)
+            return
+
+        job = SearchJobSpec(
+            db_path=self.db_path,
+            dataset_id=self.dataset_id,
+            mode=mode,
+            query=query,
+            page_size=self._fts_page_size(),
+            offset=page_offset,
+            keyword_terms=list(self._active_chips),
+            expand_keywords=expand_keywords and mode == "expanded_keyword",
+            generation=generation,
+        )
+
+        def on_success(result: SearchJobResult) -> None:
+            self._apply_search_result(result)
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._search_generation:
+                return
+            self.cancel_button.setEnabled(False)
+            if isinstance(exc, NimClientError):
+                self.status_label.setText(f"Search failed: {nim_error_user_message(exc)}")
+            else:
+                self.status_label.setText(f"Search failed: {exc}")
+            self.logger.error(
+                component="ui.simple_search_tab",
+                operation="search_failed",
+                message=str(exc),
+                exc=exc,
+                dataset_id=self.dataset_id,
             )
-        return fuse_hits(hits)
+
+        self._search_thread = run_search_job_background(
+            self,
+            job,
+            cancel_token,
+            on_success=on_success,
+            on_error=on_error,
+        )
 
     def _rebuild_chip_widgets(self) -> None:
         while self.chip_container.count():
@@ -347,7 +495,6 @@ class SimpleSearchTab(QWidget):
     def _remove_chip(self, term: str) -> None:
         self._active_chips = [chip for chip in self._active_chips if chip != term]
         self._rebuild_chip_widgets()
-        self._run_search()
 
     def _add_custom_chip(self) -> None:
         term, ok = QInputDialog.getText(self, "Add keyword chip", "Term:")
@@ -356,209 +503,14 @@ class SimpleSearchTab(QWidget):
         if term.strip() not in self._active_chips:
             self._active_chips.append(term.strip())
             self._rebuild_chip_widgets()
-            self._run_search()
 
-    def _keyword_hits(self, query: str) -> list[SearchHit]:
-        assert self.dataset_id is not None
-        hits: list[SearchHit] = []
-        for chip in self._active_chips:
-            for fts_hit in fts.search_exact(self.conn, self.logger, self.dataset_id, chip):
-                details = self._message_details(fts_hit.message_id)
-                hits.append(
-                    SearchHit(
-                        message_id=fts_hit.message_id,
-                        source_thread_id=fts_hit.source_thread_id,
-                        match_type="keyword",
-                        retrieval_method="keyword_expansion",
-                        query_text=query,
-                        matched_term=chip,
-                        score=fts_hit.rank,
-                        sender_display=details["sender_display"],
-                        timestamp=details["timestamp"],
-                        body=details["body"],
-                        snippet=details["body"][:160],
-                    )
-                )
-        return hits
-
-    def _request_keyword_expansion(self, query: str) -> None:
-        if not self.keyword_toggle.isChecked() or query == self._last_expansion_query:
-            return
-        settings = load_settings()
-        if not is_role_configured(settings, UserFacingModelRole.EXPANSION):
-            self.status_label.setText(
-                "Expansion model not configured — open Setup / Settings and assign an Expansion model."
-            )
-            return
-
-        self._expansion_generation += 1
-        generation = self._expansion_generation
-        self.status_label.setText("Requesting keyword expansion...")
-        dataset_id = self.dataset_id
-        db_path = self.db_path
-
-        def work() -> list[str]:
-            worker_conn = connect(db_path)
-            try:
-                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
-                router = ModelRouter(load_settings())
-                return expand_keywords(
-                    worker_conn,
-                    worker_logger,
-                    router,
-                    query,
-                    dataset_id=dataset_id,
-                )
-            finally:
-                worker_conn.close()
-
-        def on_success(terms: object) -> None:
-            if generation != self._expansion_generation:
-                return
-            expansion_query = self.search_box.text().strip()
-            self._active_chips = list(terms)  # type: ignore[arg-type]
-            self._last_expansion_query = expansion_query
-            self._rebuild_chip_widgets()
-            self._run_search(expand_keywords=False)
-            if self.message_embedding_toggle.isChecked() or self.chunk_embedding_toggle.isChecked():
-                current_query = self.search_box.text().strip()
-                if current_query:
-                    hits = self._fts_to_search_hits(current_query)
-                    if self._active_chips and current_query == self._last_expansion_query:
-                        hits = fuse_hits(hits, self._keyword_hits(current_query))
-                    self._request_vector_search(current_query, hits)
-
-        def on_error(exc: BaseException) -> None:
-            if generation != self._expansion_generation:
-                return
-            if isinstance(exc, NimClientError):
-                self.status_label.setText(f"Keyword expansion failed: {nim_error_user_message(exc)}")
-                self.logger.error(
-                    component="ui.simple_search_tab",
-                    operation="keyword_expansion_failed",
-                    message=str(exc),
-                    exc=exc,
-                    dataset_id=self.dataset_id,
-                )
-            else:
-                self.status_label.setText(f"Keyword expansion failed: {exc}")
-                self.logger.error(
-                    component="ui.simple_search_tab",
-                    operation="keyword_expansion_failed",
-                    message="Unexpected keyword expansion failure",
-                    exc=exc,
-                    dataset_id=self.dataset_id,
-                )
-
-        run_background(self, work, on_success=on_success, on_error=on_error)
-
-    def _request_vector_search(self, query: str, base_hits: list[SearchHit]) -> None:
-        if not (
-            self.message_embedding_toggle.isChecked() or self.chunk_embedding_toggle.isChecked()
-        ):
-            return
-        if self.dataset_id is None:
-            return
-        model_name = load_settings().embedding_model
-        self._embedding_model_name = model_name
-        self._vector_search_generation += 1
-        generation = self._vector_search_generation
-        use_message = self.message_embedding_toggle.isChecked()
-        use_chunk = self.chunk_embedding_toggle.isChecked()
-        self.status_label.setText(self.status_label.text() + " | vector search in progress...")
-
-        from message_evidence_workstation.embeddings.model_registry import get_model_spec
-        from message_evidence_workstation.ui.embedding_worker import EmbeddingJobSpec, run_embedding_job
-
-        spec = get_model_spec(model_name)
-        if spec is None:
-            self.status_label.setText(f"Unknown embedding model: {model_name}")
-            return
-
-        job = EmbeddingJobSpec(
-            job_type="vector_search",
-            db_path=self.db_path,
-            dataset_id=self.dataset_id,
-            adapter_key=spec.adapter_key,
-            model_id=spec.model_id,
-            vector_query=query,
-            use_message_vectors=use_message,
-            use_chunk_vectors=use_chunk,
-            embedding_selectivity=self._embedding_selectivity_value(),
-        )
-
-        def on_success(vector_hits: object) -> None:
-            if generation != self._vector_search_generation:
-                return
-            merged = fuse_hits(base_hits, list(vector_hits))  # type: ignore[arg-type]
-            if self.keyword_toggle.isChecked() and self._active_chips and query == self._last_expansion_query:
-                merged = fuse_hits(merged, self._keyword_hits(query))
-            self._groups = group_hits(
-                merged,
-                sort_index_by_message=self._sort_index_by_message,
-                logger=self.logger,
-                dataset_id=self.dataset_id,
-            )
-            self._render_results(query, vector_pending=False)
-
-        def on_error(exc: BaseException) -> None:
-            if generation != self._vector_search_generation:
-                return
-            if isinstance(exc, EmbeddingIndexNotReadyError):
-                self.status_label.setText(str(exc))
-            else:
-                self.status_label.setText(f"Vector search failed: {exc}")
-            self.logger.error(
-                component="ui.simple_search_tab",
-                operation="vector_search_failed",
-                message=str(exc),
-                exc=exc,
-                dataset_id=self.dataset_id,
-            )
-
-        run_embedding_job(self, job, on_success=on_success, on_error=on_error)
-
-    def _run_search(self, *, expand_keywords: bool = False) -> None:
+    def _render_results(self, query: str, *, status_message: str = "") -> None:
         self.results_list.clear()
-        self._groups = []
-        self.transcript_widget.set_dataset(self.dataset_id)
-        if self.dataset_id is None:
-            return
-        query = self.search_box.text().strip()
-        if not query:
-            self.status_label.setText("Ready.")
-            return
-        try:
-            hits = self._fts_to_search_hits(query)
-            if self.keyword_toggle.isChecked():
-                if self._active_chips and query == self._last_expansion_query:
-                    hits = fuse_hits(hits, self._keyword_hits(query))
-            self._groups = group_hits(
-                hits,
-                sort_index_by_message=self._sort_index_by_message,
-                logger=self.logger,
-                dataset_id=self.dataset_id,
-            )
-        except sqlite3.OperationalError:
-            self.status_label.setText("Search failed - see process log for FTS syntax/details.")
-            return
-        vector_pending = (
-            self.message_embedding_toggle.isChecked() or self.chunk_embedding_toggle.isChecked()
-        )
-        self._render_results(query, vector_pending=vector_pending)
-        if expand_keywords and self.keyword_toggle.isChecked():
-            self._request_keyword_expansion(query)
-        if vector_pending:
-            self._request_vector_search(query, hits)
-
-    def _render_results(self, query: str, *, vector_pending: bool = False) -> None:
-        self.results_list.clear()
+        mode = self._selected_mode()
         for index, group in enumerate(self._groups):
             methods = ", ".join(sorted(group.retrieval_methods))
             primary = group.hits[0]
-            distance = ""
-            if primary.distance is not None:
-                distance = f" dist={primary.distance:.4f}"
+            distance = f" dist={primary.distance:.4f}" if primary.distance is not None else ""
             rank = f" rank={primary.rank}" if primary.rank is not None else ""
             text = (
                 f"[{primary.match_type}] {primary.timestamp} | {primary.sender_display}: "
@@ -566,33 +518,46 @@ class SimpleSearchTab(QWidget):
                 f"({len(group.hits)} matching message(s); methods: {methods})"
             )
             item = QListWidgetItem(text)
-            item.setData(Qt.ItemDataRole.UserRole, index)
+            item.setData(Qt.ItemDataRole.UserRole, ("result", index))
             item.setForeground(MATCH_COLORS.get(primary.match_type, QColor("#000000")))
             self.results_list.addItem(item)
-        status = f"{len(self._groups)} grouped result(s) for '{query}'."
-        if (
-            self.keyword_toggle.isChecked()
-            and query != self._last_expansion_query
-            and self._expansion_generation > 0
-        ):
-            status += " (keyword expansion in progress...)"
-        if vector_pending:
-            status += " (vector search in progress...)"
-        self.status_label.setText(status)
+        if mode in ("message_embedding", "chunk_embedding") and self._groups:
+            header = QListWidgetItem("Showing top results by similarity (not a complete result set).")
+            header.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.results_list.insertItem(0, header)
+        if status_message:
+            self.status_label.setText(status_message)
+        elif self._groups:
+            self.status_label.setText(f"{len(self._groups)} grouped result(s) for '{query}'.")
+        self._update_pagination_controls()
         if self._groups:
-            self.results_list.setCurrentRow(0)
+            self.results_list.setCurrentRow(min(1 if mode in ("message_embedding", "chunk_embedding") else 0, self.results_list.count() - 1))
+
+    def _group_for_row(self, row: int) -> GroupedSearchResult | None:
+        item = self.results_list.item(row)
+        if item is None:
+            return None
+        payload = item.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(payload, tuple) or len(payload) != 2:
+            return None
+        lane, index = payload
+        if lane == "result" and 0 <= index < len(self._groups):
+            return self._groups[index]
+        if lane == "fts" and 0 <= index < len(self._groups):
+            return self._groups[index]
+        return None
 
     def _on_result_selected(self, row: int) -> None:
-        if row < 0 or row >= len(self._groups) or self.dataset_id is None:
+        group = self._group_for_row(row)
+        if group is None or self.dataset_id is None:
             return
-        group = self._groups[row]
         self._navigate_to_search_group(group, source_action="result_select")
 
     def _on_result_double_clicked(self, _item: QListWidgetItem) -> None:
         row = self.results_list.currentRow()
-        if row < 0 or row >= len(self._groups) or self.dataset_id is None:
+        group = self._group_for_row(row)
+        if group is None or self.dataset_id is None:
             return
-        group = self._groups[row]
         self._navigate_to_search_group(group, source_action="result_double_click")
         block = self.transcript_widget.create_evidence_block_for_message(
             group.primary_hit_message_id,
@@ -634,9 +599,9 @@ class SimpleSearchTab(QWidget):
         )
 
     def start_drag_for_row(self, row: int) -> None:
-        if row < 0 or row >= len(self._groups):
+        group = self._group_for_row(row)
+        if group is None:
             return
-        group = self._groups[row]
         mime = QMimeData()
         mime.setData(MIME_SEARCH_RESULT, json.dumps(group.to_drag_payload()).encode("utf-8"))
         drag = QDrag(self)

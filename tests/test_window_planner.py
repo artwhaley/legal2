@@ -14,6 +14,7 @@ from message_evidence_workstation.search.session_map import rebuild_dataset_sess
 from message_evidence_workstation.search.window_planner import (
     all_session_message_ids,
     build_token_bounded_windows,
+    iter_thread_messages_for_window_planning,
 )
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
@@ -122,3 +123,132 @@ def test_dataset_windowing_packs_full_thread_not_one_message_per_window(planner_
     )
     assert len(windows) == 1
     assert len(windows[0].message_ids) == 100
+
+
+def test_large_budget_produces_fewer_windows_than_tiny_budget(planner_db) -> None:
+    conn, _logger, dataset_id, _sessions = planner_db
+    from message_evidence_workstation.search.window_planner import build_token_bounded_windows_for_dataset
+
+    large_budget_windows = build_token_bounded_windows_for_dataset(
+        conn,
+        dataset_id,
+        target_tokens=128_000,
+        overlap_messages=0,
+        model_id="test-model",
+    )
+    tiny_budget_windows = build_token_bounded_windows_for_dataset(
+        conn,
+        dataset_id,
+        target_tokens=500,
+        overlap_messages=0,
+        model_id="test-model",
+    )
+    assert len(large_budget_windows) < len(tiny_budget_windows)
+
+
+def test_streaming_planner_does_not_load_full_thread_list(planner_db, monkeypatch) -> None:
+    conn, _logger, dataset_id, _sessions = planner_db
+    from message_evidence_workstation.search import window_planner
+
+    load_calls = 0
+    original = window_planner.load_thread_messages
+
+    def counting_load(*args, **kwargs):
+        nonlocal load_calls
+        load_calls += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(window_planner, "load_thread_messages", counting_load)
+    window_planner.build_token_bounded_windows_for_dataset(
+        conn,
+        dataset_id,
+        target_tokens=50_000,
+        overlap_messages=0,
+        model_id="test-model",
+    )
+    assert load_calls == 0
+
+
+def test_streaming_planner_keyset_matches_timestamp_order(planner_db) -> None:
+    conn, _logger, dataset_id, _sessions = planner_db
+    conn.execute(
+        """
+        INSERT INTO source_thread (
+            source_thread_id, dataset_id, source_platform, platform_thread_id,
+            display_title, participant_summary, start_ts, end_ts, message_count,
+            metadata_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')
+        """,
+        (
+            "thread_keyset",
+            dataset_id,
+            "messenger",
+            "thread-keyset",
+            "Keyset Thread",
+            "A",
+            "2024-01-01T08:00:00+00:00",
+            "2024-01-01T09:00:00+00:00",
+            2,
+        ),
+    )
+    conn.execute(
+        """
+        INSERT INTO message (
+            message_id, dataset_id, source_thread_id, source_platform,
+            source_message_id, timestamp, sender_id, sender_display, body,
+            body_normalized, has_attachment, attachment_summary, sort_index,
+            source_metadata_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', ?, '{}')
+        """,
+        (
+            "out_of_sort_early",
+            dataset_id,
+            "thread_keyset",
+            "messenger",
+            "k1",
+            "2024-01-01T08:00:00+00:00",
+            "a",
+            "A",
+            "early timestamp with high sort index",
+            "early timestamp with high sort index",
+            99,
+        ),
+    )
+    conn.execute(
+        """
+        INSERT INTO message (
+            message_id, dataset_id, source_thread_id, source_platform,
+            source_message_id, timestamp, sender_id, sender_display, body,
+            body_normalized, has_attachment, attachment_summary, sort_index,
+            source_metadata_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '', ?, '{}')
+        """,
+        (
+            "out_of_sort_late",
+            dataset_id,
+            "thread_keyset",
+            "messenger",
+            "k2",
+            "2024-01-01T09:00:00+00:00",
+            "a",
+            "A",
+            "later timestamp with low sort index",
+            "later timestamp with low sort index",
+            1,
+        ),
+    )
+    conn.commit()
+
+    messages = list(
+        iter_thread_messages_for_window_planning(
+            conn,
+            dataset_id,
+            "thread_keyset",
+            batch_size=1,
+        )
+    )
+
+    assert [message.message_id for message in messages] == [
+        "out_of_sort_early",
+        "out_of_sort_late",
+    ]

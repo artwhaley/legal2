@@ -155,6 +155,26 @@ def _semantic_boundary(
     return _cosine_similarity(centroid, next_vector) < config.semantic_similarity_threshold
 
 
+def _chunk_count_for_threshold(
+    messages_by_thread: dict[str, list[_MessageRow]],
+    *,
+    config: ChunkingConfig,
+    threshold: float,
+) -> int:
+    candidate_config = ChunkingConfig(
+        max_chars=config.max_chars,
+        semantic_similarity_threshold=threshold,
+        desired_average_chunk_messages=config.desired_average_chunk_messages,
+        session_gap_hours=config.session_gap_hours,
+        use_semantic_boundaries=config.use_semantic_boundaries,
+        split_on_date_change=config.split_on_date_change,
+    )
+    return sum(
+        len(build_thread_chunks(rows, config=candidate_config))
+        for rows in messages_by_thread.values()
+    )
+
+
 def calibrate_semantic_similarity_threshold(
     messages_by_thread: dict[str, list[_MessageRow]],
     *,
@@ -164,26 +184,33 @@ def calibrate_semantic_similarity_threshold(
     if message_count <= 0 or config.desired_average_chunk_messages <= 0:
         return config.semantic_similarity_threshold
     target_chunks = max(1, round(message_count / config.desired_average_chunk_messages))
+
+    def score(threshold: float) -> tuple[int, float]:
+        chunk_count = _chunk_count_for_threshold(messages_by_thread, config=config, threshold=threshold)
+        return (
+            abs(chunk_count - target_chunks),
+            abs(threshold - DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD),
+        )
+
+    low = 0.0
+    high = 1.0
     best_threshold = config.semantic_similarity_threshold
-    best_delta: tuple[int, float] | None = None
-    for step in range(0, 101):
-        threshold = step / 100
-        candidate_config = ChunkingConfig(
-            max_chars=config.max_chars,
-            semantic_similarity_threshold=threshold,
-            desired_average_chunk_messages=config.desired_average_chunk_messages,
-            session_gap_hours=config.session_gap_hours,
-            use_semantic_boundaries=config.use_semantic_boundaries,
-            split_on_date_change=config.split_on_date_change,
-        )
-        chunk_count = sum(
-            len(build_thread_chunks(rows, config=candidate_config))
-            for rows in messages_by_thread.values()
-        )
-        delta = (abs(chunk_count - target_chunks), abs(threshold - DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD))
-        if best_delta is None or delta < best_delta:
-            best_delta = delta
-            best_threshold = threshold
+    best_delta = score(best_threshold)
+    for _ in range(7):
+        left = low + (high - low) / 3
+        right = high - (high - low) / 3
+        left_delta = score(left)
+        right_delta = score(right)
+        if left_delta <= right_delta:
+            high = right
+            if left_delta < best_delta:
+                best_delta = left_delta
+                best_threshold = left
+        else:
+            low = left
+            if right_delta < best_delta:
+                best_delta = right_delta
+                best_threshold = right
     return best_threshold
 
 
@@ -213,8 +240,17 @@ def _deserialize_float32_vector(blob: bytes) -> tuple[float, ...]:
     return struct.unpack(f"<{dimensions}f", blob[: dimensions * 4])
 
 
-def load_message_vector_map(conn: sqlite3.Connection, dataset_id: int) -> dict[str, tuple[float, ...]]:
-    from message_evidence_workstation.embeddings.sqlite_vec_backend import MESSAGE_VEC_TABLE, load_sqlite_vec
+def load_message_vector_map(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str | None = None,
+) -> dict[str, tuple[float, ...]]:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import (
+        MESSAGE_VEC_TABLE,
+        _vec_table_has_model_partition,
+        load_sqlite_vec,
+    )
 
     row = conn.execute(
         "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
@@ -223,41 +259,45 @@ def load_message_vector_map(conn: sqlite3.Connection, dataset_id: int) -> dict[s
     if row is None:
         return {}
     load_sqlite_vec(conn)
-    rows = conn.execute(
-        f"SELECT message_id, embedding FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
-        (dataset_id,),
-    ).fetchall()
+    if model_name and _vec_table_has_model_partition(conn, MESSAGE_VEC_TABLE):
+        rows = conn.execute(
+            f"""
+            SELECT message_id, embedding
+            FROM {MESSAGE_VEC_TABLE}
+            WHERE dataset_id = ? AND model_name = ?
+            """,
+            (dataset_id, model_name),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            f"SELECT message_id, embedding FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
+            (dataset_id,),
+        ).fetchall()
     return {
         str(row["message_id"]): _deserialize_float32_vector(bytes(row["embedding"]))
         for row in rows
     }
 
 
-def message_vector_count(conn: sqlite3.Connection, dataset_id: int) -> int:
-    from message_evidence_workstation.embeddings.sqlite_vec_backend import MESSAGE_VEC_TABLE, load_sqlite_vec
+def message_vector_count(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    model_name: str | None = None,
+) -> int:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import count_message_vectors
 
-    row = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?",
-        (MESSAGE_VEC_TABLE,),
-    ).fetchone()
-    if row is None:
-        return 0
-    load_sqlite_vec(conn)
-    return int(
-        conn.execute(
-            f"SELECT COUNT(*) FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchone()[0]
-    )
+    return count_message_vectors(conn, dataset_id, model_name=model_name)
 
 
 def _load_messages_by_thread(
     conn: sqlite3.Connection,
     dataset_id: int,
     config: ChunkingConfig,
+    *,
+    model_name: str | None = None,
 ) -> dict[str, list[_MessageRow]]:
     vectors_by_message = (
-        load_message_vector_map(conn, dataset_id)
+        load_message_vector_map(conn, dataset_id, model_name=model_name)
         if config.use_semantic_boundaries
         else {}
     )
@@ -300,10 +340,15 @@ def calibrated_config_for_dataset(
     conn: sqlite3.Connection,
     dataset_id: int,
     config: ChunkingConfig,
+    *,
+    model_name: str | None = None,
 ) -> ChunkingConfig:
     if not config.use_semantic_boundaries:
         return config
-    return config_with_calibrated_threshold(_load_messages_by_thread(conn, dataset_id, config), config)
+    return config_with_calibrated_threshold(
+        _load_messages_by_thread(conn, dataset_id, config, model_name=model_name),
+        config,
+    )
 
 
 def build_thread_chunks(
@@ -395,10 +440,13 @@ def iter_dataset_chunks(
     *,
     max_chars: int = DEFAULT_MAX_CHARS,
     config: ChunkingConfig | None = None,
+    model_name: str | None = None,
 ) -> Iterator[MessageChunkSpec]:
     """Yield chunks one thread at a time to avoid loading the whole dataset into RAM."""
     resolved_config = config or ChunkingConfig(max_chars=max_chars)
-    messages_by_thread = _load_messages_by_thread(conn, dataset_id, resolved_config)
+    messages_by_thread = _load_messages_by_thread(
+        conn, dataset_id, resolved_config, model_name=model_name
+    )
     if resolved_config.use_semantic_boundaries:
         resolved_config = config_with_calibrated_threshold(messages_by_thread, resolved_config)
     for source_thread_id in sorted(messages_by_thread):
@@ -411,5 +459,11 @@ def count_dataset_chunks(
     *,
     max_chars: int = DEFAULT_MAX_CHARS,
     config: ChunkingConfig | None = None,
+    model_name: str | None = None,
 ) -> int:
-    return sum(1 for _ in iter_dataset_chunks(conn, dataset_id, max_chars=max_chars, config=config))
+    return sum(
+        1
+        for _ in iter_dataset_chunks(
+            conn, dataset_id, max_chars=max_chars, config=config, model_name=model_name
+        )
+    )

@@ -19,6 +19,7 @@ from message_evidence_workstation.domain.slots import (
     validate_slot_bounds,
 )
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
+from message_evidence_workstation.db.repositories import message_ordinal, thread_message_count
 
 
 def _row_to_evidence_block(row: sqlite3.Row, highlights: frozenset[str]) -> EvidenceBlock:
@@ -41,12 +42,40 @@ def _row_to_evidence_block(row: sqlite3.Row, highlights: frozenset[str]) -> Evid
     )
 
 
+_HIGHLIGHT_IN_CHUNK_SIZE = 500
+
+
 def _load_highlights(conn: sqlite3.Connection, evidence_block_id: int) -> frozenset[str]:
-    rows = conn.execute(
-        "SELECT message_id FROM evidence_block_highlight WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    ).fetchall()
-    return frozenset(str(row["message_id"]) for row in rows)
+    return fetch_highlights_for_blocks(conn, [evidence_block_id]).get(
+        evidence_block_id,
+        frozenset(),
+    )
+
+
+def fetch_highlights_for_blocks(
+    conn: sqlite3.Connection,
+    block_ids: list[int],
+) -> dict[int, frozenset[str]]:
+    """Return highlight message IDs keyed by evidence_block_id."""
+    if not block_ids:
+        return {}
+    unique_ids = list(dict.fromkeys(block_ids))
+    highlights: dict[int, set[str]] = {block_id: set() for block_id in unique_ids}
+    for start in range(0, len(unique_ids), _HIGHLIGHT_IN_CHUNK_SIZE):
+        chunk = unique_ids[start : start + _HIGHLIGHT_IN_CHUNK_SIZE]
+        placeholders = ",".join("?" * len(chunk))
+        rows = conn.execute(
+            f"""
+            SELECT evidence_block_id, message_id
+            FROM evidence_block_highlight
+            WHERE evidence_block_id IN ({placeholders})
+            """,
+            chunk,
+        ).fetchall()
+        for row in rows:
+            block_id = int(row["evidence_block_id"])
+            highlights[block_id].add(str(row["message_id"]))
+    return {block_id: frozenset(message_ids) for block_id, message_ids in highlights.items()}
 
 
 def ensure_uncategorized_category(
@@ -158,8 +187,13 @@ def list_evidence_blocks(
         params.append(source_thread_id)
     query += " ORDER BY updated_at DESC, evidence_block_id DESC"
     rows = conn.execute(query, params).fetchall()
+    block_ids = [int(row["evidence_block_id"]) for row in rows]
+    highlights_by_block = fetch_highlights_for_blocks(conn, block_ids)
     return [
-        _row_to_evidence_block(row, _load_highlights(conn, int(row["evidence_block_id"])))
+        _row_to_evidence_block(
+            row,
+            highlights_by_block.get(int(row["evidence_block_id"]), frozenset()),
+        )
         for row in rows
     ]
 
@@ -190,7 +224,8 @@ def create_evidence_block(
     source_thread_id: str,
     title: str,
     core_hit_message_id: str,
-    ordered_message_ids: list[str],
+    ordered_message_ids: list[str] | None = None,
+    message_count: int | None = None,
     summary: str = "",
     context_start_slot: int | None = None,
     relevant_start_slot: int | None = None,
@@ -199,13 +234,18 @@ def create_evidence_block(
     highlighted_message_ids: list[str] | None = None,
     created_by: str = CREATED_BY_MANUAL,
 ) -> EvidenceBlock:
-    message_count = len(ordered_message_ids)
+    if message_count is None:
+        if ordered_message_ids is None:
+            raise ValueError("message_count or ordered_message_ids is required")
+        message_count = len(ordered_message_ids)
     if (
         context_start_slot is None
         or relevant_start_slot is None
         or relevant_end_slot is None
         or context_end_slot is None
     ):
+        if ordered_message_ids is None:
+            raise ValueError("ordered_message_ids is required when slots are not provided")
         hit_index = hit_index_for_message(ordered_message_ids, core_hit_message_id)
         context_start_slot, relevant_start_slot, relevant_end_slot, context_end_slot = (
             default_slots_for_hit_index(message_count, hit_index)
@@ -276,12 +316,26 @@ def create_evidence_block_from_search(
     source_thread_id: str,
     primary_hit_message_id: str,
     title: str,
-    ordered_message_ids: list[str],
+    ordered_message_ids: list[str] | None = None,
+    message_count: int | None = None,
     category_id: int | None = None,
     summary: str = "",
 ) -> EvidenceBlock:
     if category_id is None:
         category_id = ensure_uncategorized_category(conn, logger, dataset_id).category_id
+    if message_count is None:
+        if ordered_message_ids is None:
+            message_count = thread_message_count(conn, dataset_id, source_thread_id)
+        else:
+            message_count = len(ordered_message_ids)
+    hit_index = (
+        hit_index_for_message(ordered_message_ids, primary_hit_message_id)
+        if ordered_message_ids is not None
+        else (message_ordinal(conn, dataset_id, source_thread_id, primary_hit_message_id) or 0)
+    )
+    context_start_slot, relevant_start_slot, relevant_end_slot, context_end_slot = (
+        default_slots_for_hit_index(message_count, hit_index)
+    )
     return create_evidence_block(
         conn,
         logger,
@@ -290,8 +344,12 @@ def create_evidence_block_from_search(
         source_thread_id=source_thread_id,
         title=title,
         core_hit_message_id=primary_hit_message_id,
-        ordered_message_ids=ordered_message_ids,
+        message_count=message_count,
         summary=summary,
+        context_start_slot=context_start_slot,
+        relevant_start_slot=relevant_start_slot,
+        relevant_end_slot=relevant_end_slot,
+        context_end_slot=context_end_slot,
         created_by=CREATED_BY_SIMPLE_SEARCH,
     )
 
@@ -302,7 +360,7 @@ def create_evidence_block_from_conversational_candidate(
     *,
     dataset_id: int,
     source_thread_id: str,
-    ordered_message_ids: list[str],
+    ordered_message_ids: list[str] | None = None,
     title: str,
     summary: str,
     core_message_id: str,
@@ -315,13 +373,29 @@ def create_evidence_block_from_conversational_candidate(
 ) -> EvidenceBlock:
     if category_id is None:
         category_id = ensure_uncategorized_category(conn, logger, dataset_id).category_id
-    context_start, relevant_start, relevant_end, context_end = slots_from_message_boundary_ids(
-        ordered_message_ids,
-        leading_context_start_message_id=leading_context_start_message_id,
-        relevant_start_message_id=relevant_start_message_id,
-        relevant_end_message_id=relevant_end_message_id,
-        trailing_context_end_message_id=trailing_context_end_message_id,
-    )
+    if ordered_message_ids is not None:
+        context_start, relevant_start, relevant_end, context_end = slots_from_message_boundary_ids(
+            ordered_message_ids,
+            leading_context_start_message_id=leading_context_start_message_id,
+            relevant_start_message_id=relevant_start_message_id,
+            relevant_end_message_id=relevant_end_message_id,
+            trailing_context_end_message_id=trailing_context_end_message_id,
+        )
+        message_count = len(ordered_message_ids)
+    else:
+        from message_evidence_workstation.domain.slots import slots_from_message_ordinals
+
+        message_count = thread_message_count(conn, dataset_id, source_thread_id)
+        context_start, relevant_start, relevant_end, context_end = slots_from_message_ordinals(
+            conn,
+            dataset_id,
+            source_thread_id,
+            leading_context_start_message_id=leading_context_start_message_id,
+            relevant_start_message_id=relevant_start_message_id,
+            relevant_end_message_id=relevant_end_message_id,
+            trailing_context_end_message_id=trailing_context_end_message_id,
+            message_count=message_count,
+        )
     return create_evidence_block(
         conn,
         logger,
@@ -331,7 +405,7 @@ def create_evidence_block_from_conversational_candidate(
         title=title,
         summary=summary,
         core_hit_message_id=core_message_id,
-        ordered_message_ids=ordered_message_ids,
+        message_count=message_count,
         context_start_slot=context_start,
         relevant_start_slot=relevant_start,
         relevant_end_slot=relevant_end,

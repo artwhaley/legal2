@@ -82,6 +82,8 @@ class SettingsTab(QWidget):
 
         self.db_path = db_path or default_db_path()
         self._entries: list[dict[str, Any]] = []
+        self._logs_loaded = False
+        self._chunk_preview_generation = 0
         self.settings = load_settings()
         self._models_by_provider: dict[str, list] = {}
         self._initializing = True
@@ -131,7 +133,7 @@ class SettingsTab(QWidget):
         self.context_window_tokens.setValue(self.settings.nim.context_window_tokens)
         self.context_window_tokens.setToolTip(
             "Context window size for the selected writing model. "
-            "0 uses the built-in default (8192)."
+            "Must be set before conversational features can run."
         )
         nim_form.addRow("Model context window (tokens)", self.context_window_tokens)
         self.context_safety_ratio = QDoubleSpinBox()
@@ -232,8 +234,8 @@ class SettingsTab(QWidget):
         answer_form.addRow("Session gap (minutes)", self.answer_session_gap_minutes)
         self.window_overlap_messages = QSpinBox()
         self.window_overlap_messages.setRange(0, 20)
-        self.window_overlap_messages.setValue(self.settings.answer.window_overlap_messages)
-        answer_form.addRow("Exhaustive window overlap messages", self.window_overlap_messages)
+        self.window_overlap_messages.setValue(self.settings.nim.window_overlap_messages)
+        answer_form.addRow("Window overlap (messages)", self.window_overlap_messages)
         self.context_budget_readout = QLabel()
         self.context_budget_readout.setWordWrap(True)
         answer_form.addRow("Context budget readout", self.context_budget_readout)
@@ -255,24 +257,14 @@ class SettingsTab(QWidget):
         answer_buttons.addWidget(self.rebuild_sessions_button)
         answer_form.addRow("", answer_buttons)
         layout.addWidget(answer_group)
-        self.refresh_context_budget_readout()
 
         prompt_group = QGroupBox("Prompt templates")
         prompt_layout = QVBoxLayout(prompt_group)
         prompt_row = QHBoxLayout()
+        from message_evidence_workstation.nim.prompts import ALL_RUN_TYPES
+
         self.prompt_type = QComboBox()
-        for run_type in (
-            "keyword_expansion",
-            "conversational_search_planner",
-            "conversational_search_synthesis",
-            "whole_transcript_answer",
-            "coverage_session_answer",
-            "coverage_audit",
-            "session_summary",
-            "session_classification",
-            "exhaustive_window_scan",
-            "exhaustive_window_merge",
-        ):
+        for run_type in ALL_RUN_TYPES:
             self.prompt_type.addItem(run_type, run_type)
         self.prompt_type.currentIndexChanged.connect(self._load_selected_prompt)
         prompt_row.addWidget(QLabel("Run type"))
@@ -417,13 +409,18 @@ class SettingsTab(QWidget):
             Qt.ConnectionType.QueuedConnection,
         )
         self._load_selected_prompt()
-        self.refresh_persisted_logs()
         self._chunk_preview_timer = QTimer(self)
         self._chunk_preview_timer.setSingleShot(True)
         self._chunk_preview_timer.timeout.connect(self._update_chunk_preview)
-        self.start_embedding_model_preload()
-        self._update_chunk_preview()
         self._initializing = False
+        self.refresh_context_budget_readout()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._logs_loaded:
+            self._logs_loaded = True
+            self.refresh_persisted_logs()
+        self._chunk_preview_timer.start(250)
 
     _MAX_LIVE_LOG_ENTRIES = 500
     _LIVE_LOG_STATUS_ONLY = frozenset(
@@ -499,7 +496,7 @@ class SettingsTab(QWidget):
             parts.append(json.dumps(entry["details_json"], ensure_ascii=True))
         return " | ".join(parts)
 
-    def _append_entry(self, entry: dict[str, Any]) -> None:
+    def _append_entry(self, entry: dict[str, Any], *, scroll: bool = True) -> None:
         self._entries.append(entry)
         if len(self._entries) > self._MAX_LIVE_LOG_ENTRIES:
             overflow = len(self._entries) - self._MAX_LIVE_LOG_ENTRIES
@@ -514,7 +511,8 @@ class SettingsTab(QWidget):
         elif entry.get("severity") == SEVERITY_WARNING:
             item.setForeground(Qt.GlobalColor.darkYellow)
         self.log_list.addItem(item)
-        self.log_list.scrollToBottom()
+        if scroll:
+            self.log_list.scrollToBottom()
 
     def _on_live_entry(self, entry: dict[str, Any]) -> None:
         severity_filter = self.severity_filter.currentData()
@@ -559,7 +557,9 @@ class SettingsTab(QWidget):
                 "exception_type": row.exception_type,
                 "stack_trace": row.stack_trace,
             }
-            self._append_entry(entry)
+            self._append_entry(entry, scroll=False)
+        if self.log_list.count() > 0:
+            self.log_list.scrollToBottom()
 
     def _emit_test_logs(self) -> None:
         self.logger.info(
@@ -695,16 +695,21 @@ class SettingsTab(QWidget):
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
         self.refresh_context_budget_readout()
-        self._update_chunk_preview()
+        if self.isVisible():
+            self._chunk_preview_timer.start(250)
+        elif hasattr(self, "chunk_preview_label"):
+            self.chunk_preview_label.setText(
+                "Switch to Setup / Settings to preview chunk counts after message embeddings are checked."
+            )
 
     def refresh_context_budget_readout(self) -> None:
+        if getattr(self, "_initializing", False):
+            return
         if not hasattr(self, "answer_strategy") or not hasattr(self, "context_budget_readout"):
             return
         from message_evidence_workstation.config.settings import AnswerSettings
-        from message_evidence_workstation.search.conversational_answer import (
-            build_dataset_transcript,
-            resolve_answer_budget,
-        )
+        from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
+        from message_evidence_workstation.search.conversational_answer import resolve_answer_budget
 
         nim_settings = self._current_nim_settings()
         model_id = (
@@ -716,54 +721,57 @@ class SettingsTab(QWidget):
         answer_settings = AnswerSettings(
             answer_strategy=str(self.answer_strategy.currentData() or "whole_transcript"),
             session_gap_minutes=int(self.answer_session_gap_minutes.value()),
-            window_overlap_messages=int(self.window_overlap_messages.value()),
         )
         transcript_tokens = "n/a"
         auto_decision = "n/a"
         if self.dataset_id is not None:
-            transcript = build_dataset_transcript(self.conn, self.dataset_id)
-            budget = resolve_answer_budget(
-                transcript,
-                answer_settings,
-                model_id,
-                nim_settings=nim_settings,
-                provider_metadata=provider_metadata,
-            )
-            transcript_tokens = (
-                f"{budget.transcript_tokens} ({budget.transcript_token_method})"
-            )
-            auto_decision = budget.decision
-            usable_input = budget.usable_input_tokens
-            max_output = budget.max_output_tokens
-            context_window = budget.context_window_tokens
-            context_source = budget.context_source
-            if context_source == "default":
-                context_source = "built-in default (8192) — set Model context window in API settings"
+            if nim_settings.context_window_tokens <= 0:
+                transcript_tokens = "n/a"
+                auto_decision = "n/a"
+                context_window = 0
+                context_source = "not configured — set Model context window in API settings"
+                usable_input = 0
+                max_output = max(1, nim_settings.max_output_tokens)
+            else:
+                stats = compute_dataset_budget_stats(self.conn, self.dataset_id)
+                budget = resolve_answer_budget(
+                    stats,
+                    answer_settings,
+                    model_id,
+                    nim_settings=nim_settings,
+                    provider_metadata=provider_metadata,
+                )
+                transcript_tokens = (
+                    f"{budget.transcript_tokens} ({budget.transcript_token_method})"
+                )
+                auto_decision = budget.decision
+                usable_input = budget.usable_input_tokens
+                max_output = budget.max_output_tokens
+                context_window = budget.context_window_tokens
+                context_source = budget.context_source
         else:
             from message_evidence_workstation.nim.model_context import resolve_model_context
             from message_evidence_workstation.search.token_budget import compute_usable_input_tokens
 
-            model_context = resolve_model_context(
-                model_id,
-                provider_metadata=provider_metadata,
-                user_override_tokens=(
-                    nim_settings.context_window_tokens
-                    if nim_settings.context_window_tokens > 0
-                    else None
-                ),
-            )
-            context_window = model_context.context_window_tokens
-            context_source = (
-                "built-in default (8192) — set Model context window in API settings"
-                if model_context.source == "default"
-                else model_context.source
-            )
-            usable_input = compute_usable_input_tokens(
-                context_window_tokens=context_window,
-                safety_ratio=max(0.25, min(0.90, nim_settings.context_safety_ratio)),
-                prompt_overhead_tokens=nim_settings.prompt_overhead_tokens,
-            )
-            max_output = max(1, nim_settings.max_output_tokens)
+            if nim_settings.context_window_tokens <= 0:
+                context_window = 0
+                context_source = "not configured — set Model context window in API settings"
+                usable_input = 0
+                max_output = max(1, nim_settings.max_output_tokens)
+            else:
+                model_context = resolve_model_context(
+                    model_id,
+                    context_window_tokens=nim_settings.context_window_tokens,
+                    provider_metadata=provider_metadata,
+                )
+                context_window = model_context.context_window_tokens
+                context_source = model_context.source
+                usable_input = compute_usable_input_tokens(
+                    context_window_tokens=context_window,
+                    safety_ratio=max(0.25, min(0.90, nim_settings.context_safety_ratio)),
+                    prompt_overhead_tokens=nim_settings.prompt_overhead_tokens,
+                )
+                max_output = max(1, nim_settings.max_output_tokens)
         self.context_budget_readout.setText(
             "\n".join(
                 [
@@ -784,7 +792,7 @@ class SettingsTab(QWidget):
             self.answer_strategy.currentData() or "whole_transcript"
         )
         self.settings.answer.session_gap_minutes = int(self.answer_session_gap_minutes.value())
-        self.settings.answer.window_overlap_messages = int(self.window_overlap_messages.value())
+        self.settings.nim.window_overlap_messages = int(self.window_overlap_messages.value())
         save_settings(self.settings)
         self.refresh_context_budget_readout()
         self.logger.info(
@@ -1220,43 +1228,132 @@ class SettingsTab(QWidget):
         if hasattr(self, "_chunk_preview_timer"):
             self._chunk_preview_timer.start(150)
 
-    def _update_chunk_preview(self) -> None:
+    def _apply_chunk_preview_from_metadata(self) -> None:
+        """O(1) chunk preview from persisted index metadata — safe on UI thread."""
         if self.dataset_id is None:
             self.chunk_preview_label.setText("Load a dataset to preview chunk counts.")
             return
-        try:
+        from message_evidence_workstation.config.settings import load_settings
+        from message_evidence_workstation.embeddings.index_jobs import get_ready_index
+
+        model_id = load_settings().embedding_model
+        message_row = get_ready_index(self.conn, self.dataset_id, "message", model_id)
+        chunk_row = get_ready_index(self.conn, self.dataset_id, "chunk", model_id)
+        message_count = int(
+            self.conn.execute(
+                "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
+                (self.dataset_id,),
+            ).fetchone()[0]
+        )
+        if message_row is None:
+            embedded = 0
+        else:
+            embedded = int(message_row["message_count"] or 0)
+        if embedded < message_count:
+            self.chunk_preview_label.setText(
+                f"Build message embeddings first for semantic chunking "
+                f"({embedded}/{message_count} message vectors ready)."
+            )
+            return
+        if chunk_row is None:
+            self.chunk_preview_label.setText(
+                f"Message embeddings ready ({embedded}/{message_count}). Build chunk embeddings to preview chunks."
+            )
+            return
+        import json
+
+        chunk_meta = json.loads(chunk_row["chunking_config_json"] or "{}")
+        chunk_count = int(chunk_row["chunk_count"] or chunk_meta.get("chunk_count") or 0)
+        threshold = chunk_meta.get("semantic_similarity_threshold")
+        threshold_text = f"{float(threshold):.2f}" if threshold is not None else "n/a"
+        average = message_count / chunk_count if chunk_count else 0
+        config = self._current_chunking_config()
+        self.chunk_desired_average_label.setText(f"{config.desired_average_chunk_messages} messages")
+        self.chunk_preview_label.setText(
+            f"{chunk_count} chunks from {message_count} messages | "
+            f"avg={average:.1f} msg/chunk, target={config.desired_average_chunk_messages}, "
+            f"threshold={threshold_text}, gap={config.session_gap_hours:g}h, max={config.max_chars} chars"
+        )
+
+    def _update_chunk_preview(self) -> None:
+        if not self.isVisible():
+            return
+        if self.dataset_id is None:
+            self.chunk_preview_label.setText("Load a dataset to preview chunk counts.")
+            return
+        dataset_id = self.dataset_id
+        config = self._current_chunking_config()
+        self.chunk_desired_average_label.setText(f"{config.desired_average_chunk_messages} messages")
+        self._chunk_preview_generation += 1
+        generation = self._chunk_preview_generation
+        self.chunk_preview_label.setText("Calculating chunk preview...")
+        model_id = self.embedding_model.currentData()
+        from message_evidence_workstation.embeddings.model_registry import get_model_spec
+
+        spec = get_model_spec(model_id)
+        embedding_model_name = spec.model_name if spec else None
+
+        def compute_preview() -> str:
+            from message_evidence_workstation.db.connection import connect
             from message_evidence_workstation.embeddings.chunking import (
                 calibrated_config_for_dataset,
                 count_dataset_chunks,
                 message_vector_count,
             )
 
-            config = self._current_chunking_config()
-            self.chunk_desired_average_label.setText(f"{config.desired_average_chunk_messages} messages")
-            message_count = int(
-                self.conn.execute(
-                    "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
-                    (self.dataset_id,),
-                ).fetchone()[0]
-            )
-            vector_count = message_vector_count(self.conn, self.dataset_id)
-            if vector_count < message_count:
-                self.chunk_preview_label.setText(
-                    f"Build message embeddings first for semantic chunking "
-                    f"({vector_count}/{message_count} message vectors ready)."
+            worker_conn = connect(self.db_path)
+            try:
+                message_count = int(
+                    worker_conn.execute(
+                        "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
+                        (dataset_id,),
+                    ).fetchone()[0]
                 )
+                vector_count = message_vector_count(
+                    worker_conn, dataset_id, embedding_model_name
+                )
+                if vector_count < message_count:
+                    return (
+                        f"Build message embeddings first for semantic chunking "
+                        f"({vector_count}/{message_count} message vectors ready)."
+                    )
+                calibrated_config = calibrated_config_for_dataset(
+                    worker_conn, dataset_id, config, model_name=embedding_model_name
+                )
+                chunk_count = count_dataset_chunks(
+                    worker_conn,
+                    dataset_id,
+                    config=calibrated_config,
+                    model_name=embedding_model_name,
+                )
+                average = message_count / chunk_count if chunk_count else 0
+                return (
+                    f"{chunk_count} chunks from {message_count} messages | "
+                    f"avg={average:.1f} msg/chunk, target={config.desired_average_chunk_messages}, "
+                    f"threshold={calibrated_config.semantic_similarity_threshold:.2f}, "
+                    f"gap={config.session_gap_hours:g}h, max={config.max_chars} chars"
+                )
+            finally:
+                worker_conn.close()
+
+        def on_success(text: str) -> None:
+            if generation != self._chunk_preview_generation:
                 return
-            calibrated_config = calibrated_config_for_dataset(self.conn, self.dataset_id, config)
-            chunk_count = count_dataset_chunks(self.conn, self.dataset_id, config=calibrated_config)
-            average = message_count / chunk_count if chunk_count else 0
-            self.chunk_preview_label.setText(
-                f"{chunk_count} chunks from {message_count} messages | "
-                f"avg={average:.1f} msg/chunk, target={config.desired_average_chunk_messages}, "
-                f"threshold={calibrated_config.semantic_similarity_threshold:.2f}, "
-                f"gap={config.session_gap_hours:g}h, max={config.max_chars} chars"
-            )
-        except Exception as exc:
+            self.chunk_preview_label.setText(text)
+
+        def on_error(exc: BaseException) -> None:
+            if generation != self._chunk_preview_generation:
+                return
             self.chunk_preview_label.setText(f"Chunk preview failed: {exc}")
+
+        from message_evidence_workstation.ui.background_tasks import run_background
+
+        run_background(
+            self,
+            compute_preview,
+            on_success=on_success,
+            on_error=on_error,
+        )
 
     def _start_index_job(self, granularity: str, *, force_restart: bool = False) -> None:
         if self.dataset_id is None:
@@ -1287,7 +1384,7 @@ class SettingsTab(QWidget):
                     (self.dataset_id,),
                 ).fetchone()[0]
             )
-            vector_count = message_vector_count(self.conn, self.dataset_id)
+            vector_count = message_vector_count(self.conn, self.dataset_id, spec.model_name)
             if vector_count < message_count:
                 self.embedding_status.setText(
                     f"Build message embeddings first ({vector_count}/{message_count} message vectors ready)."
@@ -1354,7 +1451,8 @@ class SettingsTab(QWidget):
                 )
             else:
                 self.embedding_status.setText(f"{granularity} index failed: {build.error}")
-            self._update_chunk_preview()
+            if self.isVisible():
+                self._chunk_preview_timer.start(150)
             trace("settings_tab", "index_build_on_success_exit", granularity=granularity)
 
         def on_error(exc: BaseException) -> None:

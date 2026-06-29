@@ -1,4 +1,7 @@
-"""Embedding index build jobs."""
+"""Embedding index build jobs.
+
+Single embedding worker at a time per workspace database; concurrent builds are unsupported.
+"""
 
 from __future__ import annotations
 
@@ -46,6 +49,80 @@ class IndexBuildResult:
     error: str | None = None
     resumed: bool = False
     total_target: int = 0
+    resume_strategy: str = "none"
+
+
+@dataclass(frozen=True, slots=True)
+class MessageSortKey:
+    source_thread_id: str
+    timestamp: str
+    sort_index: int
+    message_id: str
+
+    def as_tuple(self) -> tuple[str, str, int, str]:
+        return (self.source_thread_id, self.timestamp, self.sort_index, self.message_id)
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> MessageSortKey:
+        return cls(
+            source_thread_id=str(row["source_thread_id"]),
+            timestamp=str(row["timestamp"]),
+            sort_index=int(row["sort_index"]),
+            message_id=str(row["message_id"]),
+        )
+
+    @classmethod
+    def from_metadata(cls, row: sqlite3.Row | None) -> MessageSortKey | None:
+        if row is None or not row["last_embedded_message_id"]:
+            return None
+        return cls(
+            source_thread_id=str(row["last_embedded_source_thread_id"] or ""),
+            timestamp=str(row["last_embedded_timestamp"] or ""),
+            sort_index=int(row["last_embedded_sort_index"]),
+            message_id=str(row["last_embedded_message_id"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ChunkSortKey:
+    source_thread_id: str
+    start_message_id: str
+    text_checksum: str
+
+    def as_tuple(self) -> tuple[str, str, str]:
+        return (self.source_thread_id, self.start_message_id, self.text_checksum)
+
+    @classmethod
+    def from_chunk(cls, chunk: MessageChunkSpec) -> ChunkSortKey:
+        return cls(
+            source_thread_id=chunk.source_thread_id,
+            start_message_id=chunk.start_message_id,
+            text_checksum=chunk.text_checksum,
+        )
+
+    @classmethod
+    def from_metadata(cls, row: sqlite3.Row | None) -> ChunkSortKey | None:
+        if row is None or not row["last_embedded_chunk_checksum"]:
+            return None
+        return cls(
+            source_thread_id=str(row["last_embedded_source_thread_id"] or ""),
+            start_message_id=str(row["last_embedded_message_id"] or ""),
+            text_checksum=str(row["last_embedded_chunk_checksum"]),
+        )
+
+
+@dataclass(slots=True)
+class MessageResumePlan:
+    strategy: str
+    embedded_count: int
+    checkpoint: MessageSortKey | None = None
+
+
+@dataclass(slots=True)
+class ChunkResumePlan:
+    strategy: str
+    embedded_count: int
+    checkpoint: ChunkSortKey | None = None
 
 
 def _progress_payload(
@@ -87,7 +164,9 @@ def _get_latest_metadata(
     return conn.execute(
         """
         SELECT embedding_index_id, status, dimensions, message_count, chunk_count,
-               chunking_config_json, last_error
+               chunking_config_json, last_error, model_revision, normalization_mode,
+               last_embedded_source_thread_id, last_embedded_timestamp,
+               last_embedded_sort_index, last_embedded_message_id, last_embedded_chunk_checksum
         FROM embedding_index_metadata
         WHERE dataset_id = ? AND granularity = ? AND model_name = ?
         ORDER BY embedding_index_id DESC
@@ -121,32 +200,227 @@ def _message_count(conn: sqlite3.Connection, dataset_id: int) -> int:
     )
 
 
-def _iter_pending_message_batches(
+def _metadata_adapter_compatible(row: sqlite3.Row | None, adapter_info: EmbeddingAdapterInfo) -> bool:
+    if row is None:
+        return False
+    if row["status"] == "stale":
+        return False
+    if row["dimensions"] != adapter_info.dimensions:
+        return False
+    stored_normalization = str(row["normalization_mode"] or "")
+    if stored_normalization and stored_normalization != adapter_info.normalization_mode:
+        return False
+    stored_revision = str(row["model_revision"] or "")
+    if stored_revision and stored_revision != adapter_info.model_revision:
+        return False
+    return True
+
+
+def _pending_message_sql(*, after_checkpoint: MessageSortKey | None, before_or_at_checkpoint: bool) -> tuple[str, tuple[Any, ...]]:
+    params: list[Any] = []
+    extra = ""
+    if after_checkpoint is not None:
+        comparator = "<=" if before_or_at_checkpoint else ">"
+        extra = (
+            f" AND (m.source_thread_id, m.timestamp, m.sort_index, m.message_id) "
+            f"{comparator} (?, ?, ?, ?)"
+        )
+        params.extend(after_checkpoint.as_tuple())
+    return extra, tuple(params)
+
+
+def _message_vec_join_clause(conn: sqlite3.Connection, model_name: str | None) -> tuple[str, tuple[Any, ...]]:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import (
+        MESSAGE_VEC_TABLE,
+        _vec_table_has_model_partition,
+    )
+
+    base = f"v.dataset_id = m.dataset_id AND v.message_id = m.message_id"
+    if model_name and _vec_table_has_model_partition(conn, MESSAGE_VEC_TABLE):
+        return f"{base} AND v.model_name = ?", (model_name,)
+    return base, ()
+
+
+def _count_pending_messages(
     conn: sqlite3.Connection,
     dataset_id: int,
-    embedded_ids: set[str],
     *,
+    model_name: str | None = None,
+    checkpoint: MessageSortKey | None = None,
+    before_or_at_checkpoint: bool = False,
+) -> int:
+    if not _vec_table_exists(conn, MESSAGE_VEC_TABLE):
+        return _message_count(conn, dataset_id)
+    load_sqlite_vec(conn)
+    join_on, join_params = _message_vec_join_clause(conn, model_name)
+    extra, extra_params = _pending_message_sql(
+        after_checkpoint=checkpoint,
+        before_or_at_checkpoint=before_or_at_checkpoint,
+    )
+    row = conn.execute(
+        f"""
+        SELECT COUNT(*)
+        FROM message m
+        LEFT JOIN {MESSAGE_VEC_TABLE} v
+          ON {join_on}
+        WHERE m.dataset_id = ? AND v.message_id IS NULL
+        {extra}
+        """,
+        (*join_params, dataset_id, *extra_params),
+    ).fetchone()
+    return int(row[0])
+
+
+def _iter_antijoin_message_batches(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str | None = None,
+    checkpoint: MessageSortKey | None = None,
+    before_or_at_checkpoint: bool = False,
     batch_size: int = BATCH_SIZE,
 ) -> Iterator[list[sqlite3.Row]]:
+    if not _vec_table_exists(conn, MESSAGE_VEC_TABLE):
+        load_sqlite_vec(conn)
+    join_on, join_params = _message_vec_join_clause(conn, model_name)
+    extra, extra_params = _pending_message_sql(
+        after_checkpoint=checkpoint,
+        before_or_at_checkpoint=before_or_at_checkpoint,
+    )
     cursor = conn.execute(
-        """
-        SELECT message_id, source_thread_id, body_normalized
-        FROM message
-        WHERE dataset_id = ?
-        ORDER BY source_thread_id, timestamp, sort_index, message_id
+        f"""
+        SELECT m.message_id, m.source_thread_id, m.body_normalized,
+               m.timestamp, m.sort_index
+        FROM message m
+        LEFT JOIN {MESSAGE_VEC_TABLE} v
+          ON {join_on}
+        WHERE m.dataset_id = ? AND v.message_id IS NULL
+        {extra}
+        ORDER BY m.source_thread_id, m.timestamp, m.sort_index, m.message_id
         """,
-        (dataset_id,),
+        (*join_params, dataset_id, *extra_params),
     )
     pending: list[sqlite3.Row] = []
     for row in cursor:
-        if row["message_id"] in embedded_ids:
-            continue
         pending.append(row)
         if len(pending) >= batch_size:
             yield pending
             pending = []
     if pending:
         yield pending
+
+
+def _has_message_holes_before_checkpoint(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    checkpoint: MessageSortKey,
+    *,
+    model_name: str,
+) -> bool:
+    return _count_pending_messages(
+        conn,
+        dataset_id,
+        model_name=model_name,
+        checkpoint=checkpoint,
+        before_or_at_checkpoint=True,
+    ) > 0
+
+
+def _resolve_message_resume_plan(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    model_name: str,
+    adapter_info: EmbeddingAdapterInfo,
+    *,
+    resume: bool,
+) -> MessageResumePlan:
+    embedded_count = _embedded_message_count(conn, dataset_id, model_name)
+    if not resume or embedded_count <= 0:
+        return MessageResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    row = _get_latest_metadata(conn, dataset_id, "message", model_name)
+    if not _metadata_adapter_compatible(row, adapter_info):
+        return MessageResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    checkpoint = MessageSortKey.from_metadata(row)
+    if checkpoint is None:
+        return MessageResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    if _has_message_holes_before_checkpoint(conn, dataset_id, checkpoint, model_name=model_name):
+        return MessageResumePlan(
+            strategy="hole_fill",
+            embedded_count=embedded_count,
+            checkpoint=checkpoint,
+        )
+    return MessageResumePlan(
+        strategy="checkpoint",
+        embedded_count=embedded_count,
+        checkpoint=checkpoint,
+    )
+
+
+def _iter_pending_message_batches(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    resume_plan: MessageResumePlan,
+    *,
+    model_name: str,
+    batch_size: int = BATCH_SIZE,
+) -> Iterator[list[sqlite3.Row]]:
+    checkpoint = resume_plan.checkpoint
+    if resume_plan.strategy == "checkpoint" and checkpoint is not None:
+        yield from _iter_antijoin_message_batches(
+            conn,
+            dataset_id,
+            model_name=model_name,
+            checkpoint=checkpoint,
+            before_or_at_checkpoint=False,
+            batch_size=batch_size,
+        )
+        return
+    if resume_plan.strategy == "hole_fill" and checkpoint is not None:
+        yield from _iter_antijoin_message_batches(
+            conn,
+            dataset_id,
+            model_name=model_name,
+            checkpoint=checkpoint,
+            before_or_at_checkpoint=True,
+            batch_size=batch_size,
+        )
+        yield from _iter_antijoin_message_batches(
+            conn,
+            dataset_id,
+            model_name=model_name,
+            checkpoint=checkpoint,
+            before_or_at_checkpoint=False,
+            batch_size=batch_size,
+        )
+        return
+    yield from _iter_antijoin_message_batches(
+        conn, dataset_id, model_name=model_name, batch_size=batch_size
+    )
+
+
+def _save_message_checkpoint(
+    conn: sqlite3.Connection,
+    *,
+    dataset_id: int,
+    model_name: str,
+    last_row: sqlite3.Row,
+) -> None:
+    sort_key = MessageSortKey.from_row(last_row)
+    conn.execute(
+        """
+        UPDATE embedding_index_metadata
+        SET last_embedded_source_thread_id = ?,
+            last_embedded_timestamp = ?,
+            last_embedded_sort_index = ?,
+            last_embedded_message_id = ?
+        WHERE dataset_id = ? AND granularity = 'message' AND model_name = ?
+        """,
+        (
+            *sort_key.as_tuple(),
+            dataset_id,
+            model_name,
+        ),
+    )
 
 
 def _vec_table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
@@ -157,30 +431,196 @@ def _vec_table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
     return row is not None
 
 
+def _embedded_message_count(
+    conn: sqlite3.Connection, dataset_id: int, model_name: str | None = None
+) -> int:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import count_message_vectors
+
+    return count_message_vectors(conn, dataset_id, model_name=model_name)
+
+
 def _embedded_message_ids(conn: sqlite3.Connection, dataset_id: int) -> set[str]:
+    """Legacy set-based lookup; avoid on large-dataset resume paths."""
     if not _vec_table_exists(conn, MESSAGE_VEC_TABLE):
         return set()
     load_sqlite_vec(conn)
     rows = conn.execute(
-        "SELECT message_id FROM message_embedding_vec WHERE dataset_id = ?",
+        f"SELECT message_id FROM {MESSAGE_VEC_TABLE} WHERE dataset_id = ?",
         (dataset_id,),
     ).fetchall()
     return {str(row["message_id"]) for row in rows}
 
 
-def _embedded_chunk_vector_count(conn: sqlite3.Connection, dataset_id: int) -> int:
-    if not _vec_table_exists(conn, CHUNK_VEC_TABLE):
-        return 0
-    load_sqlite_vec(conn)
-    return int(
-        conn.execute(
-            "SELECT COUNT(*) FROM chunk_embedding_vec WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchone()[0]
+def _embedded_chunk_vector_count(
+    conn: sqlite3.Connection, dataset_id: int, model_name: str | None = None
+) -> int:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import count_chunk_vectors
+
+    return count_chunk_vectors(conn, dataset_id, model_name=model_name)
+
+
+def _chunk_is_embedded(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    text_checksum: str,
+    *,
+    model_name: str | None = None,
+) -> bool:
+    from message_evidence_workstation.embeddings.sqlite_vec_backend import (
+        _vec_table_has_model_partition,
+    )
+
+    partition_filter = ""
+    params: list[Any] = [dataset_id, text_checksum]
+    if model_name and _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE):
+        partition_filter = " AND cv.model_name = ?"
+        params.append(model_name)
+    row = conn.execute(
+        f"""
+        SELECT 1
+        FROM message_chunk mc
+        INNER JOIN chunk_embedding_vec cv
+          ON cv.chunk_id = mc.chunk_id AND cv.dataset_id = mc.dataset_id
+        WHERE mc.dataset_id = ? AND mc.text_checksum = ?{partition_filter}
+        LIMIT 1
+        """,
+        tuple(params),
+    ).fetchone()
+    return row is not None
+
+
+def _has_chunk_holes_before_checkpoint(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    checkpoint: ChunkSortKey,
+    *,
+    model_name: str,
+    chunking_config: ChunkingConfig,
+) -> bool:
+    for chunk in iter_dataset_chunks(
+        conn, dataset_id, config=chunking_config, model_name=model_name
+    ):
+        key = ChunkSortKey.from_chunk(chunk)
+        if key.as_tuple() > checkpoint.as_tuple():
+            break
+        if not _chunk_is_embedded(conn, dataset_id, chunk.text_checksum, model_name=model_name):
+            return True
+    return False
+
+
+def _resolve_chunk_resume_plan(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    model_name: str,
+    adapter_info: EmbeddingAdapterInfo,
+    chunking_config: dict[str, Any],
+    *,
+    resume: bool,
+    resolved_chunking_config: ChunkingConfig,
+) -> ChunkResumePlan:
+    embedded_count = _embedded_chunk_vector_count(conn, dataset_id, model_name)
+    if not resume or embedded_count <= 0:
+        return ChunkResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    row = _get_latest_metadata(conn, dataset_id, "chunk", model_name)
+    if not _metadata_adapter_compatible(row, adapter_info):
+        return ChunkResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    if not _metadata_chunking_config_matches(row, chunking_config):
+        return ChunkResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    checkpoint = ChunkSortKey.from_metadata(row)
+    if checkpoint is None:
+        return ChunkResumePlan(strategy="antijoin", embedded_count=embedded_count)
+    if _has_chunk_holes_before_checkpoint(
+        conn,
+        dataset_id,
+        checkpoint,
+        model_name=model_name,
+        chunking_config=resolved_chunking_config,
+    ):
+        return ChunkResumePlan(
+            strategy="hole_fill",
+            embedded_count=embedded_count,
+            checkpoint=checkpoint,
+        )
+    return ChunkResumePlan(
+        strategy="checkpoint",
+        embedded_count=embedded_count,
+        checkpoint=checkpoint,
+    )
+
+
+def _iter_pending_chunks(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str,
+    chunking_config: ChunkingConfig,
+    resume_plan: ChunkResumePlan,
+) -> Iterator[MessageChunkSpec]:
+    checkpoint = resume_plan.checkpoint
+    for chunk in iter_dataset_chunks(
+        conn, dataset_id, config=chunking_config, model_name=model_name
+    ):
+        key = ChunkSortKey.from_chunk(chunk).as_tuple()
+        if resume_plan.strategy == "checkpoint" and checkpoint is not None:
+            if key <= checkpoint.as_tuple():
+                continue
+            if _chunk_is_embedded(conn, dataset_id, chunk.text_checksum, model_name=model_name):
+                continue
+            yield chunk
+            continue
+        if _chunk_is_embedded(conn, dataset_id, chunk.text_checksum, model_name=model_name):
+            continue
+        yield chunk
+
+
+def _count_pending_chunks(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    model_name: str,
+    chunking_config: ChunkingConfig,
+    resume_plan: ChunkResumePlan,
+) -> int:
+    return sum(
+        1
+        for _chunk in _iter_pending_chunks(
+            conn,
+            dataset_id,
+            model_name=model_name,
+            chunking_config=chunking_config,
+            resume_plan=resume_plan,
+        )
+    )
+
+
+def _save_chunk_checkpoint(
+    conn: sqlite3.Connection,
+    *,
+    dataset_id: int,
+    model_name: str,
+    chunk: MessageChunkSpec,
+) -> None:
+    sort_key = ChunkSortKey.from_chunk(chunk)
+    conn.execute(
+        """
+        UPDATE embedding_index_metadata
+        SET last_embedded_source_thread_id = ?,
+            last_embedded_message_id = ?,
+            last_embedded_chunk_checksum = ?
+        WHERE dataset_id = ? AND granularity = 'chunk' AND model_name = ?
+        """,
+        (
+            sort_key.source_thread_id,
+            sort_key.start_message_id,
+            sort_key.text_checksum,
+            dataset_id,
+            model_name,
+        ),
     )
 
 
 def _embedded_chunk_checksums(conn: sqlite3.Connection, dataset_id: int) -> set[str]:
+    """Legacy set-based lookup; avoid on large-dataset resume paths."""
     rows = conn.execute(
         "SELECT text_checksum FROM message_chunk WHERE dataset_id = ?",
         (dataset_id,),
@@ -206,9 +646,9 @@ def _should_resume_build(
     if row["dimensions"] != adapter_info.dimensions:
         return False, 0
     if granularity == "message":
-        already = len(_embedded_message_ids(conn, dataset_id))
+        already = _embedded_message_count(conn, dataset_id, model_name)
     else:
-        already = _embedded_chunk_vector_count(conn, dataset_id)
+        already = _embedded_chunk_vector_count(conn, dataset_id, model_name)
     if already <= 0:
         if row["status"] in ("building", "failed"):
             return True, 0
@@ -238,10 +678,12 @@ def _index_build_already_complete(
         return None
     if granularity == "message":
         total = _message_count(conn, dataset_id)
-        embedded = len(_embedded_message_ids(conn, dataset_id))
+        embedded = _embedded_message_count(conn, dataset_id, model_name)
     else:
-        total = count_dataset_chunks(conn, dataset_id, config=chunking_config)
-        embedded = len(_embedded_chunk_checksums(conn, dataset_id))
+        total = count_dataset_chunks(
+            conn, dataset_id, config=chunking_config, model_name=model_name
+        )
+        embedded = _embedded_chunk_vector_count(conn, dataset_id, model_name)
     if total <= 0 or embedded < total:
         return None
     return IndexBuildResult(
@@ -280,8 +722,10 @@ def _upsert_metadata(
         INSERT INTO embedding_index_metadata (
             dataset_id, granularity, backend, model_name, model_revision, dimensions,
             distance_metric, normalization_mode, chunking_config_json, sqlite_vec_version,
-            extension_path, created_at, status, message_count, chunk_count, last_error
-        ) VALUES (?, ?, 'sqlite_vec', ?, ?, ?, 'cosine', ?, ?, ?, 'auto', ?, ?, ?, ?, ?)
+            extension_path, created_at, status, message_count, chunk_count, last_error,
+            last_embedded_source_thread_id, last_embedded_timestamp, last_embedded_sort_index,
+            last_embedded_message_id, last_embedded_chunk_checksum
+        ) VALUES (?, ?, 'sqlite_vec', ?, ?, ?, 'cosine', ?, ?, ?, 'auto', ?, ?, ?, ?, ?, '', '', -1, '', '')
         """,
         (
             dataset_id,
@@ -552,20 +996,21 @@ def build_message_embedding_index(
         resume=resume,
         already_embedded=already_embedded,
     )
+    resume_plan = MessageResumePlan(strategy="fresh", embedded_count=0)
     try:
         if not resume:
-            clear_message_vectors(conn, dataset_id)
+            clear_message_vectors(conn, dataset_id, model_name=model_name)
 
-        embedded_ids = _embedded_message_ids(conn, dataset_id)
-        embedded = len(embedded_ids)
+        resume_plan = _resolve_message_resume_plan(
+            conn,
+            dataset_id,
+            model_name,
+            adapter_info,
+            resume=resume,
+        )
+        embedded = resume_plan.embedded_count
         failures = 0
-        if embedded_ids:
-            pending_total = sum(
-                len(batch)
-                for batch in _iter_pending_message_batches(conn, dataset_id, embedded_ids)
-            )
-        else:
-            pending_total = total_messages
+        pending_total = _count_pending_messages(conn, dataset_id, model_name=model_name)
         batch_total = max((pending_total + BATCH_SIZE - 1) // BATCH_SIZE, 0)
 
         if resume and embedded:
@@ -573,12 +1018,18 @@ def build_message_embedding_index(
                 component="embeddings.index_jobs",
                 operation="message_index_resume",
                 message=f"Resuming message embeddings: {embedded}/{total_messages} already stored",
-                details={"embedded": embedded, "remaining": pending_total},
+                details={
+                    "embedded": embedded,
+                    "remaining": pending_total,
+                    "resume_strategy": resume_plan.strategy,
+                },
                 dataset_id=dataset_id,
             )
 
         batch_index = 0
-        for batch in _iter_pending_message_batches(conn, dataset_id, embedded_ids):
+        for batch in _iter_pending_message_batches(
+            conn, dataset_id, resume_plan, model_name=model_name
+        ):
             batch_index += 1
             texts = [row["body_normalized"] or row["message_id"] for row in batch]
             try:
@@ -602,7 +1053,13 @@ def build_message_embedding_index(
                 (vector, row["message_id"], dataset_id, row["source_thread_id"])
                 for vector, row in zip(vectors, batch, strict=True)
             ]
-            insert_message_vectors(conn, payload)
+            insert_message_vectors(conn, payload, model_name=model_name)
+            _save_message_checkpoint(
+                conn,
+                dataset_id=dataset_id,
+                model_name=model_name,
+                last_row=batch[-1],
+            )
             conn.commit()
             embedded += len(batch)
             elapsed_so_far = time.perf_counter() - started
@@ -645,10 +1102,7 @@ def build_message_embedding_index(
                 dataset_id=dataset_id,
             )
 
-        stored = conn.execute(
-            "SELECT COUNT(*) FROM message_embedding_vec WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchone()[0]
+        stored = _embedded_message_count(conn, dataset_id, model_name)
         if stored != embedded:
             raise RuntimeError(f"Vector row count mismatch: stored={stored}, embedded={embedded}")
         elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -695,10 +1149,11 @@ def build_message_embedding_index(
             dimensions=adapter_info.dimensions,
             resumed=resume,
             total_target=total_messages,
+            resume_strategy=resume_plan.strategy if resume else "fresh",
         )
     except Exception as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
-        embedded_now = len(_embedded_message_ids(conn, dataset_id))
+        embedded_now = _embedded_message_count(conn, dataset_id, model_name)
         conn.execute(
             """
             UPDATE embedding_index_metadata
@@ -728,6 +1183,7 @@ def build_message_embedding_index(
             error=str(exc),
             resumed=resume,
             total_target=total_messages,
+            resume_strategy=resume_plan.strategy if resume else "fresh",
         )
 
 
@@ -765,7 +1221,7 @@ def build_chunk_embedding_index(
         )
     if resolved_chunking_config.use_semantic_boundaries:
         total_messages = _message_count(conn, dataset_id)
-        ready_message_vectors = message_vector_count(conn, dataset_id)
+        ready_message_vectors = message_vector_count(conn, dataset_id, model_name)
         if ready_message_vectors < total_messages:
             elapsed_ms = int((time.perf_counter() - started) * 1000)
             error = (
@@ -836,7 +1292,9 @@ def build_chunk_embedding_index(
         details={"dataset_id": dataset_id, **chunking_metadata},
         dataset_id=dataset_id,
     )
-    total_chunks = count_dataset_chunks(conn, dataset_id, config=resolved_chunking_config)
+    total_chunks = count_dataset_chunks(
+        conn, dataset_id, config=resolved_chunking_config, model_name=model_name
+    )
 
     logger.info(
         component="embeddings.index_jobs",
@@ -866,27 +1324,39 @@ def build_chunk_embedding_index(
         already_embedded=already_embedded,
         chunking_config=chunking_metadata,
     )
+    resume_plan = ChunkResumePlan(strategy="fresh", embedded_count=0)
     try:
         if not resume:
-            clear_chunk_vectors(conn, dataset_id)
+            clear_chunk_vectors(conn, dataset_id, model_name=model_name)
 
-        embedded_checksums = _embedded_chunk_checksums(conn, dataset_id)
-        embedded = len(embedded_checksums)
-        if embedded_checksums:
-            pending_total = sum(
-                1
-                for chunk in iter_dataset_chunks(conn, dataset_id, config=resolved_chunking_config)
-                if chunk.text_checksum not in embedded_checksums
-            )
-        else:
-            pending_total = total_chunks
+        resume_plan = _resolve_chunk_resume_plan(
+            conn,
+            dataset_id,
+            model_name,
+            adapter_info,
+            chunking_metadata,
+            resume=resume,
+            resolved_chunking_config=resolved_chunking_config,
+        )
+        embedded = resume_plan.embedded_count
+        pending_total = _count_pending_chunks(
+            conn,
+            dataset_id,
+            model_name=model_name,
+            chunking_config=resolved_chunking_config,
+            resume_plan=resume_plan,
+        )
         batch_total = max((pending_total + BATCH_SIZE - 1) // BATCH_SIZE, 0)
 
         logger.info(
             component="embeddings.index_jobs",
             operation="chunking_complete",
             message=f"Chunking complete: {total_chunks} chunks ({pending_total} remaining)",
-            details={"chunk_count": total_chunks, "pending": pending_total},
+            details={
+                "chunk_count": total_chunks,
+                "pending": pending_total,
+                "resume_strategy": resume_plan.strategy,
+            },
             dataset_id=dataset_id,
         )
 
@@ -895,125 +1365,45 @@ def build_chunk_embedding_index(
                 component="embeddings.index_jobs",
                 operation="chunk_index_resume",
                 message=f"Resuming chunk embeddings: {embedded}/{total_chunks} already stored",
-                details={"embedded": embedded, "remaining": pending_total},
+                details={
+                    "embedded": embedded,
+                    "remaining": pending_total,
+                    "resume_strategy": resume_plan.strategy,
+                },
                 dataset_id=dataset_id,
             )
 
         batch_index = 0
         failures = 0
         pending_batch: list[MessageChunkSpec] = []
-        for chunk in iter_dataset_chunks(conn, dataset_id, config=resolved_chunking_config):
-            if chunk.text_checksum in embedded_checksums:
-                continue
-            pending_batch.append(chunk)
-            if len(pending_batch) < BATCH_SIZE:
-                continue
-            batch_index += 1
-            batch = pending_batch
-            pending_batch = []
-            texts = [item.body_text for item in batch]
-            try:
-                vectors = adapter.embed_texts(texts)
-            except Exception as exc:
-                failures += len(batch)
-                logger.error(
-                    component="embeddings.index_jobs",
-                    operation="chunk_batch_embed_failed",
-                    message=f"Chunk embeddings batch {batch_index}/{batch_total} failed",
-                    details={"batch": batch_index, "batch_total": batch_total},
-                    exc=exc,
-                    dataset_id=dataset_id,
-                )
-                continue
-            if len(vectors) != len(batch):
-                raise RuntimeError(
-                    f"Chunk embedding count mismatch: expected {len(batch)}, got {len(vectors)}"
-                )
-            for chunk_item, vector in zip(batch, vectors, strict=True):
-                cursor = conn.execute(
-                    """
-                    INSERT INTO message_chunk (
-                        dataset_id, source_thread_id, start_message_id, end_message_id,
-                        message_count, char_count, text_checksum, body_text
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        dataset_id,
-                        chunk_item.source_thread_id,
-                        chunk_item.start_message_id,
-                        chunk_item.end_message_id,
-                        chunk_item.message_count,
-                        chunk_item.char_count,
-                        chunk_item.text_checksum,
-                        chunk_item.body_text,
-                    ),
-                )
-                chunk_id = int(cursor.lastrowid)
-                insert_chunk_vectors(
-                    conn,
-                    [(vector, chunk_id, dataset_id, chunk_item.source_thread_id)],
-                )
-                embedded_checksums.add(chunk_item.text_checksum)
-            conn.commit()
-            embedded += len(batch)
-            elapsed_so_far = time.perf_counter() - started
-            rate = embedded / max(elapsed_so_far, 0.001)
-            remaining = total_chunks - embedded
-            eta_seconds = int(remaining / rate) if rate > 0 else None
-            progress = _progress_payload(
-                completed=embedded,
-                total=total_chunks,
-                batch=batch_index,
-                batch_total=batch_total,
-                resumed=resume,
-            )
-            _update_build_progress(
+        with logger.batch(auto_flush_every=1) as blog:
+            for chunk in _iter_pending_chunks(
                 conn,
-                dataset_id=dataset_id,
-                granularity="chunk",
+                dataset_id,
                 model_name=model_name,
-                message_count=0,
-                chunk_count=embedded,
-                progress=progress,
-                chunking_config=chunking_metadata,
-            )
-            logger.info(
-                component="embeddings.index_jobs",
-                operation="chunk_batch_progress",
-                message=(
-                    f"Chunk embeddings batch {batch_index}/{batch_total} "
-                    f"({embedded}/{total_chunks} chunks)"
-                ),
-                details={
-                    "batch": batch_index,
-                    "batch_total": batch_total,
-                    "embedded": embedded,
-                    "total": total_chunks,
-                    "failures": failures,
-                    "elapsed_ms": int(elapsed_so_far * 1000),
-                    "chunks_per_second": round(rate, 2),
-                    "eta_seconds": eta_seconds,
-                },
-                dataset_id=dataset_id,
-            )
-
-        if pending_batch:
-            batch_index += 1
-            batch = pending_batch
-            texts = [item.body_text for item in batch]
-            try:
-                vectors = adapter.embed_texts(texts)
-            except Exception as exc:
-                failures += len(batch)
-                logger.error(
-                    component="embeddings.index_jobs",
-                    operation="chunk_batch_embed_failed",
-                    message=f"Chunk embeddings final batch {batch_index}/{batch_total} failed",
-                    details={"batch": batch_index, "batch_total": batch_total},
-                    exc=exc,
-                    dataset_id=dataset_id,
-                )
-            else:
+                chunking_config=resolved_chunking_config,
+                resume_plan=resume_plan,
+            ):
+                pending_batch.append(chunk)
+                if len(pending_batch) < BATCH_SIZE:
+                    continue
+                batch_index += 1
+                batch = pending_batch
+                pending_batch = []
+                texts = [item.body_text for item in batch]
+                try:
+                    vectors = adapter.embed_texts(texts)
+                except Exception as exc:
+                    failures += len(batch)
+                    blog.error(
+                        component="embeddings.index_jobs",
+                        operation="chunk_batch_embed_failed",
+                        message=f"Chunk embeddings batch {batch_index}/{batch_total} failed",
+                        details={"batch": batch_index, "batch_total": batch_total},
+                        exc=exc,
+                        dataset_id=dataset_id,
+                    )
+                    continue
                 if len(vectors) != len(batch):
                     raise RuntimeError(
                         f"Chunk embedding count mismatch: expected {len(batch)}, got {len(vectors)}"
@@ -1041,10 +1431,20 @@ def build_chunk_embedding_index(
                     insert_chunk_vectors(
                         conn,
                         [(vector, chunk_id, dataset_id, chunk_item.source_thread_id)],
+                        model_name=model_name,
                     )
-                    embedded_checksums.add(chunk_item.text_checksum)
+                _save_chunk_checkpoint(
+                    conn,
+                    dataset_id=dataset_id,
+                    model_name=model_name,
+                    chunk=batch[-1],
+                )
                 conn.commit()
                 embedded += len(batch)
+                elapsed_so_far = time.perf_counter() - started
+                rate = embedded / max(elapsed_so_far, 0.001)
+                remaining = total_chunks - embedded
+                eta_seconds = int(remaining / rate) if rate > 0 else None
                 progress = _progress_payload(
                     completed=embedded,
                     total=total_chunks,
@@ -1062,11 +1462,99 @@ def build_chunk_embedding_index(
                     progress=progress,
                     chunking_config=chunking_metadata,
                 )
+                blog.summary(
+                    component="embeddings.index_jobs",
+                    operation="chunk_batch_progress",
+                    message=(
+                        f"Chunk embeddings batch {batch_index}/{batch_total} "
+                        f"({embedded}/{total_chunks} chunks)"
+                    ),
+                    details={
+                        "batch": batch_index,
+                        "batch_total": batch_total,
+                        "embedded": embedded,
+                        "total": total_chunks,
+                        "failures": failures,
+                        "elapsed_ms": int(elapsed_so_far * 1000),
+                        "chunks_per_second": round(rate, 2),
+                        "eta_seconds": eta_seconds,
+                    },
+                    dataset_id=dataset_id,
+                )
 
-        stored = conn.execute(
-            "SELECT COUNT(*) FROM chunk_embedding_vec WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchone()[0]
+            if pending_batch:
+                batch_index += 1
+                batch = pending_batch
+                texts = [item.body_text for item in batch]
+                try:
+                    vectors = adapter.embed_texts(texts)
+                except Exception as exc:
+                    failures += len(batch)
+                    blog.error(
+                        component="embeddings.index_jobs",
+                        operation="chunk_batch_embed_failed",
+                        message=f"Chunk embeddings final batch {batch_index}/{batch_total} failed",
+                        details={"batch": batch_index, "batch_total": batch_total},
+                        exc=exc,
+                        dataset_id=dataset_id,
+                    )
+                else:
+                    if len(vectors) != len(batch):
+                        raise RuntimeError(
+                            f"Chunk embedding count mismatch: expected {len(batch)}, got {len(vectors)}"
+                        )
+                    for chunk_item, vector in zip(batch, vectors, strict=True):
+                        cursor = conn.execute(
+                            """
+                            INSERT INTO message_chunk (
+                                dataset_id, source_thread_id, start_message_id, end_message_id,
+                                message_count, char_count, text_checksum, body_text
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                dataset_id,
+                                chunk_item.source_thread_id,
+                                chunk_item.start_message_id,
+                                chunk_item.end_message_id,
+                                chunk_item.message_count,
+                                chunk_item.char_count,
+                                chunk_item.text_checksum,
+                                chunk_item.body_text,
+                            ),
+                        )
+                        chunk_id = int(cursor.lastrowid)
+                        insert_chunk_vectors(
+                            conn,
+                            [(vector, chunk_id, dataset_id, chunk_item.source_thread_id)],
+                            model_name=model_name,
+                        )
+                    _save_chunk_checkpoint(
+                        conn,
+                        dataset_id=dataset_id,
+                        model_name=model_name,
+                        chunk=batch[-1],
+                    )
+                    conn.commit()
+                    embedded += len(batch)
+                    progress = _progress_payload(
+                        completed=embedded,
+                        total=total_chunks,
+                        batch=batch_index,
+                        batch_total=batch_total,
+                        resumed=resume,
+                    )
+                    _update_build_progress(
+                        conn,
+                        dataset_id=dataset_id,
+                        granularity="chunk",
+                        model_name=model_name,
+                        message_count=0,
+                        chunk_count=embedded,
+                        progress=progress,
+                        chunking_config=chunking_metadata,
+                    )
+
+        stored = _embedded_chunk_vector_count(conn, dataset_id, model_name)
         if stored != embedded:
             raise RuntimeError(f"Chunk vector row count mismatch: stored={stored}, embedded={embedded}")
         elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -1095,13 +1583,11 @@ def build_chunk_embedding_index(
             dimensions=adapter_info.dimensions,
             resumed=resume,
             total_target=total_chunks,
+            resume_strategy=resume_plan.strategy if resume else "fresh",
         )
     except Exception as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
-        embedded_now = conn.execute(
-            "SELECT COUNT(*) FROM chunk_embedding_vec WHERE dataset_id = ?",
-            (dataset_id,),
-        ).fetchone()[0]
+        embedded_now = _embedded_chunk_vector_count(conn, dataset_id, model_name)
         conn.execute(
             """
             UPDATE embedding_index_metadata
@@ -1131,4 +1617,5 @@ def build_chunk_embedding_index(
             error=str(exc),
             resumed=resume,
             total_target=total_chunks,
+            resume_strategy=resume_plan.strategy if resume else "fresh",
         )

@@ -60,8 +60,9 @@ def test_spellfix_expands_edit_distance_typo(fts_db) -> None:
 
 def test_search_messages_includes_fuzzy_hits_for_typo(fts_db) -> None:
     conn, logger, dataset_id = fts_db
-    results = fts.search_messages(conn, logger, dataset_id, "algery")
-    assert "msg_001" in [hit.message_id for hit in results["fuzzy"]]
+    results = fts.search_messages(conn, logger, dataset_id, "algery", limit=None)
+    fuzzy_ids = [hit.message_id for hit in results["hits"] if hit.match_type == "fuzzy"]
+    assert "msg_001" in fuzzy_ids
 
 
 def test_message_fts_uses_trigram_tokenizer(fts_db) -> None:
@@ -104,15 +105,15 @@ def test_empty_query_returns_no_hits(fts_db) -> None:
 
 def test_multi_token_search_matches_any_token(fts_db) -> None:
     conn, logger, dataset_id = fts_db
-    results = fts.search_messages(conn, logger, dataset_id, "allergies allergic allergy")
-    message_ids = {hit.message_id for hit in results["exact"] + results["partial"]}
+    results = fts.search_messages(conn, logger, dataset_id, "allergies allergic allergy", limit=None)
+    message_ids = {hit.message_id for hit in results["hits"] if hit.match_type in {"exact", "partial"}}
     assert "msg_001" in message_ids
 
 
 def test_allergies_finds_allergy(fts_db) -> None:
     conn, logger, dataset_id = fts_db
-    results = fts.search_messages(conn, logger, dataset_id, "allergies")
-    message_ids = {hit.message_id for hit in results["exact"] + results["partial"]}
+    results = fts.search_messages(conn, logger, dataset_id, "allergies", limit=None)
+    message_ids = {hit.message_id for hit in results["hits"] if hit.match_type in {"exact", "partial"}}
     assert "msg_001" in message_ids
 
 
@@ -124,13 +125,59 @@ def test_malformed_partial_query_returns_empty(fts_db) -> None:
 
 def test_question_mark_in_query_does_not_raise(fts_db) -> None:
     conn, logger, dataset_id = fts_db
-    results = fts.search_messages(conn, logger, dataset_id, "allergies?")
-    message_ids = {hit.message_id for hit in results["exact"] + results["partial"]}
+    results = fts.search_messages(conn, logger, dataset_id, "allergies?", limit=None)
+    message_ids = {hit.message_id for hit in results["hits"] if hit.match_type in {"exact", "partial"}}
     assert "msg_001" in message_ids
 
 
 def test_hyphenated_query_does_not_raise(fts_db) -> None:
     conn, logger, dataset_id = fts_db
-    results = fts.search_messages(conn, logger, dataset_id, "two-window")
-    assert "exact" in results
-    assert "partial" in results
+    results = fts.search_messages(conn, logger, dataset_id, "two-window", limit=None)
+    assert results["total_count"] >= 0
+    assert "hits" in results
+
+
+def test_search_messages_pagination_matches_full_set(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    query = "the"
+    full = fts.search_messages(conn, logger, dataset_id, query, limit=None)
+    assert full["total_count"] == len(full["hits"])
+    page1 = fts.search_messages(conn, logger, dataset_id, query, limit=2, offset=0)
+    page2 = fts.search_messages(conn, logger, dataset_id, query, limit=2, offset=2)
+    assert page1["total_count"] == full["total_count"]
+    assert page1["has_more"] is (full["total_count"] > 2)
+    if full["total_count"] > 2:
+        assert page1["next_offset"] == 2
+    ids_full = [hit.message_id for hit in full["hits"]]
+    assert [hit.message_id for hit in page1["hits"]] == ids_full[:2]
+    assert [hit.message_id for hit in page2["hits"]] == ids_full[2:4]
+
+
+def test_multi_token_search_counts_message_once(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    results = fts.search_messages(
+        conn,
+        logger,
+        dataset_id,
+        "allergy allergies allergic",
+        limit=None,
+    )
+    message_ids = [hit.message_id for hit in results["hits"]]
+    assert len(message_ids) == len(set(message_ids))
+    assert "msg_001" in message_ids
+
+
+def test_search_messages_ordering_is_stable(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    query = "the"
+    first = fts.search_messages(conn, logger, dataset_id, query, limit=None)
+    second = fts.search_messages(conn, logger, dataset_id, query, limit=None)
+    assert [hit.message_id for hit in first["hits"]] == [hit.message_id for hit in second["hits"]]
+
+
+def test_count_fts_matches_matches_hit_list(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    fts_query = fts.escape_fts_phrase("allergy")
+    assert fts.count_fts_matches(conn, dataset_id, fts_query) >= 1
+    hits = fts.search_exact(conn, logger, dataset_id, "allergy")
+    assert fts.count_fts_matches(conn, dataset_id, fts_query) == len(hits)

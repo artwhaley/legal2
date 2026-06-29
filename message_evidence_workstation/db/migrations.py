@@ -52,10 +52,15 @@ def initialize_schema(conn: sqlite3.Connection, logger: ProcessLogger) -> None:
             )
         conn.commit()
         _ensure_workspace_metadata(conn)
+        _ensure_thread_ordinal_schema(conn)
         if fts_recreated:
             _rebuild_fts_for_existing_datasets(conn, logger)
         if current is not None and current < 5 <= SCHEMA_VERSION:
             _rebuild_spellfix_for_existing_datasets(conn, logger)
+        if current is not None and current < 7 <= SCHEMA_VERSION:
+            _mark_existing_datasets_ready(conn)
+        if current is not None and current < 8 <= SCHEMA_VERSION:
+            _ensure_embedding_checkpoint_columns(conn)
         seed_default_prompts(conn, logger)
         logger.info(
             component="db.migrations",
@@ -230,6 +235,123 @@ def _migrate_to_version(
                 ON printable_artifact_evidence_block(printable_artifact_id, sort_order);
             """
         )
+    if current < 7 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v7",
+            message="Applying schema migration to version 7 (dataset import validity)",
+            details={"from_version": current},
+        )
+        conn.executescript(
+            """
+            ALTER TABLE dataset ADD COLUMN import_validity TEXT NOT NULL DEFAULT 'ready';
+            ALTER TABLE dataset ADD COLUMN import_error TEXT NOT NULL DEFAULT '';
+            ALTER TABLE dataset ADD COLUMN normalized_format_version INTEGER;
+            """
+        )
+    if current < 8 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v8",
+            message="Applying schema migration to version 8 (embedding resume checkpoints)",
+            details={"from_version": current},
+        )
+        _ensure_embedding_checkpoint_columns(conn)
+    if current < 9 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v9",
+            message="Applying schema migration to version 9 (drop legacy workstation conversation tables)",
+            details={"from_version": current},
+        )
+        conn.executescript(
+            """
+            DROP TABLE IF EXISTS message_highlight_override;
+            DROP TABLE IF EXISTS conversation_range;
+            DROP TABLE IF EXISTS conversation_hit;
+            DROP TABLE IF EXISTS workstation_conversation;
+
+            UPDATE prompt_template
+            SET is_active = 0
+            WHERE run_type IN (
+                'evidence_range_suggestion',
+                'conversational_search_planner',
+                'conversational_search_synthesis'
+            );
+            """
+        )
+    if current < 10 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v10",
+            message="Applying schema migration to version 10 (thread ordinals)",
+            details={"from_version": current},
+        )
+        _ensure_thread_ordinal_schema(conn)
+        from message_evidence_workstation.db.repositories import backfill_thread_ordinals
+
+        rows = conn.execute("SELECT dataset_id FROM dataset ORDER BY dataset_id").fetchall()
+        for row in rows:
+            backfill_thread_ordinals(conn, int(row["dataset_id"]))
+    if current < 11 <= target:
+        logger.info(
+            component="db.migrations",
+            operation="schema_migrate_v11",
+            message="Applying schema migration to version 11 (vec model partitions)",
+            details={"from_version": current},
+        )
+        from message_evidence_workstation.embeddings.sqlite_vec_backend import (
+            migrate_legacy_vec_tables_to_partitions,
+        )
+
+        migrate_legacy_vec_tables_to_partitions(conn, logger)
+
+
+def _ensure_thread_ordinal_schema(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(message)").fetchall()}
+    if "thread_ordinal" not in existing:
+        conn.execute("ALTER TABLE message ADD COLUMN thread_ordinal INTEGER")
+    conn.executescript(
+        """
+        CREATE INDEX IF NOT EXISTS idx_message_thread_ordinal
+            ON message(dataset_id, source_thread_id, thread_ordinal);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_message_thread_ordinal_unique
+            ON message(dataset_id, source_thread_id, thread_ordinal)
+            WHERE thread_ordinal IS NOT NULL;
+        """
+    )
+
+
+def _ensure_embedding_checkpoint_columns(conn: sqlite3.Connection) -> None:
+    existing = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(embedding_index_metadata)").fetchall()
+    }
+    additions = [
+        ("last_embedded_source_thread_id", "TEXT NOT NULL DEFAULT ''"),
+        ("last_embedded_timestamp", "TEXT NOT NULL DEFAULT ''"),
+        ("last_embedded_sort_index", "INTEGER NOT NULL DEFAULT -1"),
+        ("last_embedded_message_id", "TEXT NOT NULL DEFAULT ''"),
+        ("last_embedded_chunk_checksum", "TEXT NOT NULL DEFAULT ''"),
+    ]
+    for column_name, column_def in additions:
+        if column_name in existing:
+            continue
+        conn.execute(
+            f"ALTER TABLE embedding_index_metadata ADD COLUMN {column_name} {column_def}"
+        )
+
+
+def _mark_existing_datasets_ready(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        """
+        UPDATE dataset
+        SET import_validity = 'ready', import_error = ''
+        WHERE import_validity IS NULL OR import_validity = ''
+        """
+    )
+    conn.commit()
 
 
 def _ensure_workspace_metadata(conn: sqlite3.Connection) -> None:

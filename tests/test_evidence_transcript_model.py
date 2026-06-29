@@ -139,3 +139,63 @@ def test_per_block_anchor_and_highlight_track_each_overlay() -> None:
     assert model.overlay_by_id(1).core_hit_message_id == "msg_001"
     model.toggle_highlight_for_block(1, "msg_002")
     assert "msg_002" in model.overlay_by_id(1).highlighted_message_ids
+
+
+def test_virtualized_separator_updates_stay_bounded() -> None:
+    from message_evidence_workstation.domain.models import EvidenceBlock
+    from message_evidence_workstation.ui.transcript_data_source import InMemoryTranscriptDataSource
+
+    messages = _sample_messages()
+    messages.extend(
+        Message(
+            message_id=f"msg_{index:03d}",
+            dataset_id=1,
+            source_thread_id="thread_001",
+            source_platform="facebook",
+            source_message_id=f"s{index}",
+            timestamp=f"2024-01-01T10:{index % 60:02d}:00+00:00",
+            sender_id="a",
+            sender_display="Alice",
+            body=f"body {index}",
+            body_normalized=f"body {index}",
+            has_attachment=False,
+            attachment_summary="",
+            sort_index=index,
+            source_metadata_json={},
+        )
+        for index in range(4, 5_000)
+    )
+    data_source = InMemoryTranscriptDataSource({"thread_001": messages})
+    model = EvidenceTranscriptModel()
+    model.load_thread_virtualized(data_source, "thread_001", [])
+
+    emit_count = 0
+    original_emit = model._emit_separator_change
+
+    def counting_emit(slot_index: int) -> None:
+        nonlocal emit_count
+        emit_count += 1
+        original_emit(slot_index)
+
+    model._emit_separator_change = counting_emit  # type: ignore[method-assign]
+    model.append_evidence_block(
+        EvidenceBlock(
+            evidence_block_id=99,
+            dataset_id=1,
+            category_id=1,
+            source_thread_id="thread_001",
+            title="Far block",
+            summary="",
+            core_hit_message_id="msg_4000",
+            context_start_slot=3990,
+            relevant_start_slot=3995,
+            relevant_end_slot=4000,
+            context_end_slot=4005,
+            highlighted_message_ids=frozenset(),
+            created_by="manual",
+            created_at="",
+            updated_at="",
+        )
+    )
+    assert emit_count < 500
+    assert emit_count > 0

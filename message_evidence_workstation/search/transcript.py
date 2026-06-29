@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from message_evidence_workstation.db import repositories
+from message_evidence_workstation.db.repositories import _json_loads
 from message_evidence_workstation.domain.models import Message
 
 CHARS_PER_TOKEN_ESTIMATE = 4
@@ -113,7 +114,7 @@ def load_dataset_messages(conn: sqlite3.Connection, dataset_id: int) -> list[Mes
             has_attachment=bool(row["has_attachment"]),
             attachment_summary=row["attachment_summary"],
             sort_index=row["sort_index"],
-            source_metadata_json={},
+            source_metadata_json=_json_loads(row["source_metadata_json"]),
         )
         for row in rows
     ]

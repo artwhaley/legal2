@@ -1,4 +1,4 @@
-"""Database repository helpers."""
+﻿"""Database repository helpers."""
 
 from __future__ import annotations
 
@@ -6,22 +6,12 @@ import json
 import sqlite3
 from typing import Any
 
-from message_evidence_workstation.domain.constants import (
-    CONVERSATION_STATUS_CANDIDATE,
-    CREATED_BY_MANUAL,
-    CREATED_BY_SIMPLE_SEARCH,
-    RETRIEVAL_MANUAL,
-)
 from message_evidence_workstation.domain.models import (
     Category,
-    ConversationHit,
-    ConversationRange,
     Dataset,
     Message,
     ModelRunSummary,
-    OutputConversationContext,
     SourceThread,
-    WorkstationConversation,
 )
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
 
@@ -30,6 +20,64 @@ def _json_loads(value: str | None) -> dict[str, Any]:
     if not value:
         return {}
     return json.loads(value)
+
+
+_MESSAGE_IN_CHUNK_SIZE = 500
+
+
+_MESSAGE_SELECT_COLUMNS = """
+    message_id, dataset_id, source_thread_id, source_platform,
+    source_message_id, timestamp, sender_id, sender_display, body,
+    body_normalized, has_attachment, attachment_summary, sort_index,
+    source_metadata_json, thread_ordinal
+"""
+
+
+def _message_from_row(row: sqlite3.Row) -> Message:
+    thread_ordinal = row["thread_ordinal"]
+    return Message(
+        message_id=row["message_id"],
+        dataset_id=row["dataset_id"],
+        source_thread_id=row["source_thread_id"],
+        source_platform=row["source_platform"],
+        source_message_id=row["source_message_id"],
+        timestamp=row["timestamp"],
+        sender_id=row["sender_id"],
+        sender_display=row["sender_display"],
+        body=row["body"],
+        body_normalized=row["body_normalized"],
+        has_attachment=bool(row["has_attachment"]),
+        attachment_summary=row["attachment_summary"],
+        sort_index=row["sort_index"],
+        source_metadata_json=_json_loads(row["source_metadata_json"]),
+        thread_ordinal=int(thread_ordinal) if thread_ordinal is not None else None,
+    )
+
+
+def fetch_messages_by_ids(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    message_ids: list[str],
+) -> dict[str, Message]:
+    """Return messages keyed by message_id; chunk large IN clauses."""
+    if not message_ids:
+        return {}
+    unique_ids = list(dict.fromkeys(message_ids))
+    result: dict[str, Message] = {}
+    for start in range(0, len(unique_ids), _MESSAGE_IN_CHUNK_SIZE):
+        chunk = unique_ids[start : start + _MESSAGE_IN_CHUNK_SIZE]
+        placeholders = ",".join("?" * len(chunk))
+        rows = conn.execute(
+            f"""
+            SELECT {_MESSAGE_SELECT_COLUMNS}
+            FROM message
+            WHERE dataset_id = ? AND message_id IN ({placeholders})
+            """,
+            (dataset_id, *chunk),
+        ).fetchall()
+        for row in rows:
+            result[row["message_id"]] = _message_from_row(row)
+    return result
 
 
 def get_latest_dataset(conn: sqlite3.Connection) -> Dataset | None:
@@ -81,42 +129,184 @@ def list_source_threads(conn: sqlite3.Connection, dataset_id: int) -> list[Sourc
     ]
 
 
+def thread_message_count(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+) -> int:
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS message_count
+        FROM message
+        WHERE dataset_id = ? AND source_thread_id = ?
+        """,
+        (dataset_id, source_thread_id),
+    ).fetchone()
+    return int(row["message_count"] or 0)
+
+
+def backfill_thread_ordinals(conn: sqlite3.Connection, dataset_id: int) -> int:
+    """Assign per-thread ordinals in chronological order; idempotent."""
+    conn.execute(
+        """
+        WITH ordered AS (
+            SELECT dataset_id,
+                   message_id,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY dataset_id, source_thread_id
+                       ORDER BY timestamp, sort_index, message_id
+                   ) - 1 AS ordinal
+            FROM message
+            WHERE dataset_id = ?
+        )
+        UPDATE message
+        SET thread_ordinal = (
+            SELECT ordinal
+            FROM ordered
+            WHERE ordered.dataset_id = message.dataset_id
+              AND ordered.message_id = message.message_id
+        )
+        WHERE dataset_id = ?
+        """,
+        (dataset_id, dataset_id),
+    )
+    conn.commit()
+    row = conn.execute(
+        "SELECT COUNT(*) AS message_count FROM message WHERE dataset_id = ?",
+        (dataset_id,),
+    ).fetchone()
+    return int(row["message_count"] or 0)
+
+
+def message_ordinal(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+    message_id: str,
+) -> int | None:
+    row = conn.execute(
+        """
+        SELECT thread_ordinal
+        FROM message
+        WHERE dataset_id = ? AND source_thread_id = ? AND message_id = ?
+        """,
+        (dataset_id, source_thread_id, message_id),
+    ).fetchone()
+    if row is None or row["thread_ordinal"] is None:
+        return None
+    return int(row["thread_ordinal"])
+
+
+def message_ids_for_ordinal_range(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+    start_ordinal: int,
+    end_ordinal: int,
+) -> list[str]:
+    """Return message ids for a half-open ordinal range [start_ordinal, end_ordinal)."""
+    if end_ordinal <= start_ordinal:
+        return []
+    rows = conn.execute(
+        """
+        SELECT message_id
+        FROM message
+        WHERE dataset_id = ?
+          AND source_thread_id = ?
+          AND thread_ordinal >= ?
+          AND thread_ordinal < ?
+        ORDER BY thread_ordinal
+        """,
+        (dataset_id, source_thread_id, start_ordinal, end_ordinal),
+    ).fetchall()
+    return [str(row["message_id"]) for row in rows]
+
+
+def fetch_message_ids_for_thread(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+) -> list[str]:
+    rows = conn.execute(
+        """
+        SELECT message_id
+        FROM message
+        WHERE dataset_id = ? AND source_thread_id = ?
+        ORDER BY thread_ordinal, timestamp, sort_index, message_id
+        """,
+        (dataset_id, source_thread_id),
+    ).fetchall()
+    return [str(row["message_id"]) for row in rows]
+
+
+def message_index_in_thread(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+    message_id: str,
+) -> int | None:
+    return message_ordinal(conn, dataset_id, source_thread_id, message_id)
+
+
+def fetch_messages_for_slot_range(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+    start_slot: int,
+    end_slot: int,
+) -> list[Message]:
+    """Return chronologically ordered messages for a half-open slot range."""
+    if end_slot <= start_slot:
+        return []
+    rows = conn.execute(
+        f"""
+        SELECT {_MESSAGE_SELECT_COLUMNS}
+        FROM message
+        WHERE dataset_id = ?
+          AND source_thread_id = ?
+          AND thread_ordinal >= ?
+          AND thread_ordinal < ?
+        ORDER BY thread_ordinal
+        """,
+        (dataset_id, source_thread_id, start_slot, end_slot),
+    ).fetchall()
+    return [_message_from_row(row) for row in rows]
+
+
+def fetch_thread_participant_map(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    source_thread_id: str,
+) -> dict[str, int]:
+    rows = conn.execute(
+        """
+        SELECT DISTINCT COALESCE(NULLIF(TRIM(sender_id), ''), NULLIF(TRIM(sender_display), '')) AS sender_key
+        FROM message
+        WHERE dataset_id = ? AND source_thread_id = ?
+          AND sender_key IS NOT NULL
+        ORDER BY sender_key COLLATE NOCASE
+        """,
+        (dataset_id, source_thread_id),
+    ).fetchall()
+    sender_keys = [str(row["sender_key"]) for row in rows if row["sender_key"]]
+    return {sender_key: index % 8 for index, sender_key in enumerate(sender_keys)}
+
+
 def list_messages_for_thread(
     conn: sqlite3.Connection,
     dataset_id: int,
     source_thread_id: str,
 ) -> list[Message]:
     rows = conn.execute(
-        """
-        SELECT message_id, dataset_id, source_thread_id, source_platform,
-               source_message_id, timestamp, sender_id, sender_display, body,
-               body_normalized, has_attachment, attachment_summary, sort_index,
-               source_metadata_json
+        f"""
+        SELECT {_MESSAGE_SELECT_COLUMNS}
         FROM message
         WHERE dataset_id = ? AND source_thread_id = ?
-        ORDER BY timestamp, sort_index, message_id
+        ORDER BY thread_ordinal, timestamp, sort_index, message_id
         """,
         (dataset_id, source_thread_id),
     ).fetchall()
-    return [
-        Message(
-            message_id=row["message_id"],
-            dataset_id=row["dataset_id"],
-            source_thread_id=row["source_thread_id"],
-            source_platform=row["source_platform"],
-            source_message_id=row["source_message_id"],
-            timestamp=row["timestamp"],
-            sender_id=row["sender_id"],
-            sender_display=row["sender_display"],
-            body=row["body"],
-            body_normalized=row["body_normalized"],
-            has_attachment=bool(row["has_attachment"]),
-            attachment_summary=row["attachment_summary"],
-            sort_index=row["sort_index"],
-            source_metadata_json=_json_loads(row["source_metadata_json"]),
-        )
-        for row in rows
-    ]
+    return [_message_from_row(row) for row in rows]
 
 
 def list_categories(conn: sqlite3.Connection, dataset_id: int) -> list[Category]:
@@ -205,25 +395,6 @@ def rename_category(
 
 def delete_category(conn: sqlite3.Connection, logger: ProcessLogger, category_id: int) -> None:
     conn.execute(
-        "DELETE FROM conversation_hit WHERE workstation_conversation_id IN "
-        "(SELECT workstation_conversation_id FROM workstation_conversation WHERE category_id = ?)",
-        (category_id,),
-    )
-    conn.execute(
-        "DELETE FROM conversation_range WHERE workstation_conversation_id IN "
-        "(SELECT workstation_conversation_id FROM workstation_conversation WHERE category_id = ?)",
-        (category_id,),
-    )
-    conn.execute(
-        "DELETE FROM message_highlight_override WHERE workstation_conversation_id IN "
-        "(SELECT workstation_conversation_id FROM workstation_conversation WHERE category_id = ?)",
-        (category_id,),
-    )
-    conn.execute(
-        "DELETE FROM workstation_conversation WHERE category_id = ?",
-        (category_id,),
-    )
-    conn.execute(
         "DELETE FROM evidence_block_highlight WHERE evidence_block_id IN "
         "(SELECT evidence_block_id FROM evidence_block WHERE category_id = ?)",
         (category_id,),
@@ -257,564 +428,3 @@ def set_category_collapsed(
         message=f"Category {category_id} collapsed={is_collapsed}",
         details={"category_id": category_id, "is_collapsed": is_collapsed},
     )
-
-
-def list_workstation_conversations(
-    conn: sqlite3.Connection,
-    dataset_id: int,
-    category_id: int | None = None,
-) -> list[WorkstationConversation]:
-    if category_id is None:
-        rows = conn.execute(
-            """
-            SELECT workstation_conversation_id, dataset_id, category_id, source_thread_id,
-                   primary_hit_message_id, title, user_notes, status, created_by,
-                   created_at, updated_at
-            FROM workstation_conversation
-            WHERE dataset_id = ?
-            ORDER BY updated_at DESC
-            """,
-            (dataset_id,),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            """
-            SELECT workstation_conversation_id, dataset_id, category_id, source_thread_id,
-                   primary_hit_message_id, title, user_notes, status, created_by,
-                   created_at, updated_at
-            FROM workstation_conversation
-            WHERE dataset_id = ? AND category_id = ?
-            ORDER BY updated_at DESC
-            """,
-            (dataset_id, category_id),
-        ).fetchall()
-    return [
-        WorkstationConversation(
-            workstation_conversation_id=row["workstation_conversation_id"],
-            dataset_id=row["dataset_id"],
-            category_id=row["category_id"],
-            source_thread_id=row["source_thread_id"],
-            primary_hit_message_id=row["primary_hit_message_id"],
-            title=row["title"],
-            user_notes=row["user_notes"],
-            status=row["status"],
-            created_by=row["created_by"],
-            created_at=row["created_at"],
-            updated_at=row["updated_at"],
-        )
-        for row in rows
-    ]
-
-
-def create_workstation_conversation_manual(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    dataset_id: int,
-    category_id: int,
-    source_thread_id: str,
-    primary_hit_message_id: str,
-    hit_message_ids: list[str],
-    title: str,
-) -> WorkstationConversation:
-    now = utc_now_iso()
-    cursor = conn.execute(
-        """
-        INSERT INTO workstation_conversation (
-            dataset_id, category_id, source_thread_id, primary_hit_message_id,
-            title, user_notes, status, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?)
-        """,
-        (
-            dataset_id,
-            category_id,
-            source_thread_id,
-            primary_hit_message_id,
-            title,
-            CONVERSATION_STATUS_CANDIDATE,
-            CREATED_BY_MANUAL,
-            now,
-            now,
-        ),
-    )
-    conversation_id = int(cursor.lastrowid)
-    for message_id in hit_message_ids:
-        conn.execute(
-            """
-            INSERT INTO conversation_hit (
-                workstation_conversation_id, message_id, retrieval_method,
-                query_text, matched_term, explanation, metadata_json
-            ) VALUES (?, ?, ?, '', '', 'manual selection', '{}')
-            """,
-            (conversation_id, message_id, RETRIEVAL_MANUAL),
-        )
-    conn.commit()
-    logger.info(
-        component="db.repositories",
-        operation="workstation_conversation_create_manual",
-        message=f"Created workstation conversation '{title}'",
-        details={
-            "workstation_conversation_id": conversation_id,
-            "category_id": category_id,
-            "source_thread_id": source_thread_id,
-            "hit_count": len(hit_message_ids),
-        },
-        dataset_id=dataset_id,
-    )
-    return WorkstationConversation(
-        workstation_conversation_id=conversation_id,
-        dataset_id=dataset_id,
-        category_id=category_id,
-        source_thread_id=source_thread_id,
-        primary_hit_message_id=primary_hit_message_id,
-        title=title,
-        user_notes="",
-        status=CONVERSATION_STATUS_CANDIDATE,
-        created_by=CREATED_BY_MANUAL,
-        created_at=now,
-        updated_at=now,
-    )
-
-
-def create_workstation_conversation_from_search(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    dataset_id: int,
-    category_id: int,
-    source_thread_id: str,
-    primary_hit_message_id: str,
-    title: str,
-    hits: list[dict[str, Any]],
-    merge_into_conversation_id: int | None = None,
-    created_by: str = CREATED_BY_SIMPLE_SEARCH,
-) -> WorkstationConversation:
-    now = utc_now_iso()
-    if merge_into_conversation_id is not None:
-        conversation_id = merge_into_conversation_id
-        conn.execute(
-            """
-            UPDATE workstation_conversation
-            SET updated_at = ?
-            WHERE workstation_conversation_id = ?
-            """,
-            (now, conversation_id),
-        )
-        operation = "workstation_conversation_merge_search_drop"
-        log_message = f"Merged search drop into conversation {conversation_id}"
-    else:
-        cursor = conn.execute(
-            """
-            INSERT INTO workstation_conversation (
-                dataset_id, category_id, source_thread_id, primary_hit_message_id,
-                title, user_notes, status, created_by, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?)
-            """,
-            (
-                dataset_id,
-                category_id,
-                source_thread_id,
-                primary_hit_message_id,
-                title,
-                CONVERSATION_STATUS_CANDIDATE,
-                created_by,
-                now,
-                now,
-            ),
-        )
-        conversation_id = int(cursor.lastrowid)
-        operation = "workstation_conversation_create_search_drop"
-        log_message = f"Created workstation conversation from search drop '{title}'"
-
-    for hit in hits:
-        conn.execute(
-            """
-            INSERT INTO conversation_hit (
-                workstation_conversation_id, message_id, retrieval_method,
-                query_text, matched_term, score, rank, distance, explanation, metadata_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?)
-            """,
-            (
-                conversation_id,
-                hit["message_id"],
-                hit.get("retrieval_method", "fts_exact"),
-                hit.get("query_text", ""),
-                hit.get("matched_term", ""),
-                hit.get("score"),
-                hit.get("rank"),
-                hit.get("distance"),
-                json.dumps({"match_type": hit.get("match_type", "")}),
-            ),
-        )
-    conn.commit()
-    logger.info(
-        component="db.repositories",
-        operation=operation,
-        message=log_message,
-        details={
-            "workstation_conversation_id": conversation_id,
-            "category_id": category_id,
-            "source_thread_id": source_thread_id,
-            "hit_count": len(hits),
-            "merged": merge_into_conversation_id is not None,
-        },
-        dataset_id=dataset_id,
-    )
-    row = conn.execute(
-        """
-        SELECT workstation_conversation_id, dataset_id, category_id, source_thread_id,
-               primary_hit_message_id, title, user_notes, status, created_by,
-               created_at, updated_at
-        FROM workstation_conversation
-        WHERE workstation_conversation_id = ?
-        """,
-        (conversation_id,),
-    ).fetchone()
-    assert row is not None
-    return WorkstationConversation(
-        workstation_conversation_id=row["workstation_conversation_id"],
-        dataset_id=row["dataset_id"],
-        category_id=row["category_id"],
-        source_thread_id=row["source_thread_id"],
-        primary_hit_message_id=row["primary_hit_message_id"],
-        title=row["title"],
-        user_notes=row["user_notes"],
-        status=row["status"],
-        created_by=row["created_by"],
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
-    )
-
-
-def find_merge_candidate_for_search_drop(
-    conn: sqlite3.Connection,
-    *,
-    category_id: int,
-    source_thread_id: str,
-    hit_message_ids: list[str],
-) -> int | None:
-    rows = conn.execute(
-        """
-        SELECT wc.workstation_conversation_id, ch.message_id
-        FROM workstation_conversation wc
-        JOIN conversation_hit ch ON ch.workstation_conversation_id = wc.workstation_conversation_id
-        WHERE wc.category_id = ? AND wc.source_thread_id = ?
-        """,
-        (category_id, source_thread_id),
-    ).fetchall()
-    by_conversation: dict[int, set[str]] = {}
-    for row in rows:
-        by_conversation.setdefault(row["workstation_conversation_id"], set()).add(row["message_id"])
-    incoming = set(hit_message_ids)
-    for conversation_id, existing_ids in by_conversation.items():
-        if incoming & existing_ids:
-            return conversation_id
-    return None
-
-
-def list_conversation_hits(
-    conn: sqlite3.Connection,
-    workstation_conversation_id: int,
-) -> list[ConversationHit]:
-    rows = conn.execute(
-        """
-        SELECT conversation_hit_id, workstation_conversation_id, message_id,
-               retrieval_method, query_text, matched_term, score, rank, distance,
-               explanation, metadata_json
-        FROM conversation_hit
-        WHERE workstation_conversation_id = ?
-        ORDER BY conversation_hit_id
-        """,
-        (workstation_conversation_id,),
-    ).fetchall()
-    return [
-        ConversationHit(
-            conversation_hit_id=row["conversation_hit_id"],
-            workstation_conversation_id=row["workstation_conversation_id"],
-            message_id=row["message_id"],
-            retrieval_method=row["retrieval_method"],
-            query_text=row["query_text"],
-            matched_term=row["matched_term"],
-            score=row["score"],
-            rank=row["rank"],
-            distance=row["distance"],
-            explanation=row["explanation"],
-            metadata_json=_json_loads(row["metadata_json"]),
-        )
-        for row in rows
-    ]
-
-
-def get_workstation_conversation(
-    conn: sqlite3.Connection,
-    workstation_conversation_id: int,
-) -> WorkstationConversation | None:
-    row = conn.execute(
-        """
-        SELECT workstation_conversation_id, dataset_id, category_id, source_thread_id,
-               primary_hit_message_id, title, user_notes, status, created_by,
-               created_at, updated_at
-        FROM workstation_conversation
-        WHERE workstation_conversation_id = ?
-        """,
-        (workstation_conversation_id,),
-    ).fetchone()
-    if row is None:
-        return None
-    return WorkstationConversation(
-        workstation_conversation_id=row["workstation_conversation_id"],
-        dataset_id=row["dataset_id"],
-        category_id=row["category_id"],
-        source_thread_id=row["source_thread_id"],
-        primary_hit_message_id=row["primary_hit_message_id"],
-        title=row["title"],
-        user_notes=row["user_notes"],
-        status=row["status"],
-        created_by=row["created_by"],
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
-    )
-
-
-def load_output_conversation_context(
-    conn: sqlite3.Connection,
-    workstation_conversation_id: int,
-) -> OutputConversationContext | None:
-    conversation = get_workstation_conversation(conn, workstation_conversation_id)
-    if conversation is None:
-        return None
-    category_row = conn.execute(
-        "SELECT name FROM category WHERE category_id = ?",
-        (conversation.category_id,),
-    ).fetchone()
-    thread_row = conn.execute(
-        """
-        SELECT display_title, source_platform
-        FROM source_thread
-        WHERE dataset_id = ? AND source_thread_id = ?
-        """,
-        (conversation.dataset_id, conversation.source_thread_id),
-    ).fetchone()
-    hits = list_conversation_hits(conn, workstation_conversation_id)
-    hit_message_ids = {hit.message_id for hit in hits}
-    if conversation.primary_hit_message_id:
-        hit_message_ids.add(conversation.primary_hit_message_id)
-    messages = list_messages_for_thread(
-        conn,
-        conversation.dataset_id,
-        conversation.source_thread_id,
-    )
-    conversation_range = get_conversation_range(conn, workstation_conversation_id)
-    highlight_overrides = list_highlight_overrides(conn, workstation_conversation_id)
-    from message_evidence_workstation.output.display_states import (
-        boundary_labels_for_range,
-        compute_message_display_states,
-    )
-
-    display_states = compute_message_display_states(
-        messages,
-        hit_message_ids=hit_message_ids,
-        conversation_range=conversation_range,
-        highlight_overrides=highlight_overrides,
-    )
-    boundary_labels = boundary_labels_for_range(messages, conversation_range)
-    return OutputConversationContext(
-        conversation=conversation,
-        category_name=str(category_row["name"]) if category_row else "",
-        thread_display_title=str(thread_row["display_title"]) if thread_row else conversation.source_thread_id,
-        source_platform=str(thread_row["source_platform"]) if thread_row else "",
-        messages=messages,
-        hits=hits,
-        hit_message_ids=hit_message_ids,
-        conversation_range=conversation_range,
-        highlight_overrides=highlight_overrides,
-        display_states=display_states,
-        boundary_labels=boundary_labels,
-    )
-
-
-def update_workstation_conversation_notes(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    workstation_conversation_id: int,
-    user_notes: str,
-    status: str | None = None,
-) -> None:
-    now = utc_now_iso()
-    if status is None:
-        conn.execute(
-            """
-            UPDATE workstation_conversation
-            SET user_notes = ?, updated_at = ?
-            WHERE workstation_conversation_id = ?
-            """,
-            (user_notes, now, workstation_conversation_id),
-        )
-    else:
-        conn.execute(
-            """
-            UPDATE workstation_conversation
-            SET user_notes = ?, status = ?, updated_at = ?
-            WHERE workstation_conversation_id = ?
-            """,
-            (user_notes, status, now, workstation_conversation_id),
-        )
-    conn.commit()
-    logger.info(
-        component="db.repositories",
-        operation="workstation_conversation_notes_updated",
-        message="Updated workstation conversation notes",
-        details={"workstation_conversation_id": workstation_conversation_id},
-        dataset_id=None,
-    )
-
-
-def get_conversation_range(
-    conn: sqlite3.Connection,
-    workstation_conversation_id: int,
-) -> ConversationRange | None:
-    row = conn.execute(
-        """
-        SELECT conversation_range_id, workstation_conversation_id,
-               lead_in_start_message_id, relevant_start_message_id,
-               relevant_end_message_id, lead_out_end_message_id,
-               llm_suggested_json, user_modified, locked
-        FROM conversation_range
-        WHERE workstation_conversation_id = ?
-        """,
-        (workstation_conversation_id,),
-    ).fetchone()
-    if row is None:
-        return None
-    return ConversationRange(
-        conversation_range_id=int(row["conversation_range_id"]),
-        workstation_conversation_id=int(row["workstation_conversation_id"]),
-        lead_in_start_message_id=row["lead_in_start_message_id"],
-        relevant_start_message_id=row["relevant_start_message_id"],
-        relevant_end_message_id=row["relevant_end_message_id"],
-        lead_out_end_message_id=row["lead_out_end_message_id"],
-        llm_suggested_json=_json_loads(row["llm_suggested_json"]),
-        user_modified=bool(row["user_modified"]),
-        locked=bool(row["locked"]),
-    )
-
-
-def upsert_conversation_range(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    workstation_conversation_id: int,
-    lead_in_start_message_id: str,
-    relevant_start_message_id: str,
-    relevant_end_message_id: str,
-    lead_out_end_message_id: str,
-    llm_suggested_json: dict[str, Any] | None = None,
-    user_modified: bool = False,
-    locked: bool = False,
-) -> ConversationRange:
-    payload = json.dumps(llm_suggested_json or {})
-    existing = get_conversation_range(conn, workstation_conversation_id)
-    if existing is None:
-        cursor = conn.execute(
-            """
-            INSERT INTO conversation_range (
-                workstation_conversation_id, lead_in_start_message_id,
-                relevant_start_message_id, relevant_end_message_id,
-                lead_out_end_message_id, llm_suggested_json, user_modified, locked
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                workstation_conversation_id,
-                lead_in_start_message_id,
-                relevant_start_message_id,
-                relevant_end_message_id,
-                lead_out_end_message_id,
-                payload,
-                int(user_modified),
-                int(locked),
-            ),
-        )
-        range_id = int(cursor.lastrowid)
-    else:
-        range_id = existing.conversation_range_id
-        conn.execute(
-            """
-            UPDATE conversation_range
-            SET lead_in_start_message_id = ?, relevant_start_message_id = ?,
-                relevant_end_message_id = ?, lead_out_end_message_id = ?,
-                llm_suggested_json = ?, user_modified = ?, locked = ?
-            WHERE conversation_range_id = ?
-            """,
-            (
-                lead_in_start_message_id,
-                relevant_start_message_id,
-                relevant_end_message_id,
-                lead_out_end_message_id,
-                payload,
-                int(user_modified),
-                int(locked),
-                range_id,
-            ),
-        )
-    conn.commit()
-    logger.info(
-        component="db.repositories",
-        operation="conversation_range_upsert",
-        message="Saved conversation range boundaries",
-        details={
-            "workstation_conversation_id": workstation_conversation_id,
-            "user_modified": user_modified,
-            "locked": locked,
-        },
-    )
-    result = get_conversation_range(conn, workstation_conversation_id)
-    assert result is not None
-    return result
-
-
-def list_highlight_overrides(
-    conn: sqlite3.Connection,
-    workstation_conversation_id: int,
-) -> dict[str, str]:
-    rows = conn.execute(
-        """
-        SELECT message_id, highlight_state
-        FROM message_highlight_override
-        WHERE workstation_conversation_id = ?
-        """,
-        (workstation_conversation_id,),
-    ).fetchall()
-    return {str(row["message_id"]): str(row["highlight_state"]) for row in rows}
-
-
-def set_highlight_override(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    workstation_conversation_id: int,
-    message_id: str,
-    highlight_state: str,
-) -> None:
-    conn.execute(
-        """
-        INSERT INTO message_highlight_override (
-            workstation_conversation_id, message_id, highlight_state, user_modified
-        ) VALUES (?, ?, ?, 1)
-        ON CONFLICT(workstation_conversation_id, message_id)
-        DO UPDATE SET highlight_state = excluded.highlight_state, user_modified = 1
-        """,
-        (workstation_conversation_id, message_id, highlight_state),
-    )
-    conn.commit()
-    logger.info(
-        component="db.repositories",
-        operation="highlight_override_set",
-        message="Saved per-message highlight override",
-        details={
-            "workstation_conversation_id": workstation_conversation_id,
-            "message_id": message_id,
-            "highlight_state": highlight_state,
-        },
-    )
-

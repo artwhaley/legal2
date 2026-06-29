@@ -1,11 +1,15 @@
-"""Context limit parsing and token budget math tests."""
+﻿"""Context limit parsing and token budget math tests."""
 
 from message_evidence_workstation.nim.client import NimClientError
 from message_evidence_workstation.nim.context_limits import (
     is_context_limit_error,
     parse_context_window_from_error,
 )
-from message_evidence_workstation.nim.model_context import DEFAULT_CONTEXT_WINDOW_TOKENS, resolve_model_context
+from message_evidence_workstation.nim.model_context import (
+    CONTEXT_WINDOW_NOT_CONFIGURED,
+    ModelConfigurationError,
+    resolve_model_context,
+)
 from message_evidence_workstation.search.token_budget import compute_usable_input_tokens
 
 
@@ -29,8 +33,18 @@ def test_is_context_limit_error_detects_400() -> None:
     assert is_context_limit_error(exc)
 
 
-def test_unknown_model_default_context_is_conservative() -> None:
-    assert DEFAULT_CONTEXT_WINDOW_TOKENS == 8192
+def test_unconfigured_context_raises() -> None:
+    import pytest
+
+    with pytest.raises(ModelConfigurationError, match=CONTEXT_WINDOW_NOT_CONFIGURED):
+        resolve_model_context(
+            "google/gemma-2-2b-it",
+            context_window_tokens=0,
+            provider_metadata={
+                "context_length": 4096,
+                "context_source": "learned_from_api_error",
+            },
+        )
 
 
 def test_compute_usable_input_tokens_for_small_model() -> None:
@@ -66,15 +80,3 @@ def test_is_context_limit_error_detects_500_prompt_too_long() -> None:
         },
     )
     assert is_context_limit_error(exc)
-
-
-def test_learned_metadata_is_ignored_for_budgeting() -> None:
-    resolved = resolve_model_context(
-        "google/gemma-2-2b-it",
-        provider_metadata={
-            "context_length": 4096,
-            "context_source": "learned_from_api_error",
-        },
-    )
-    assert resolved.context_window_tokens == 8192
-    assert resolved.source == "default"

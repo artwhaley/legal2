@@ -10,7 +10,10 @@ CREATE TABLE IF NOT EXISTS dataset (
     name TEXT NOT NULL,
     created_at TEXT NOT NULL,
     schema_version INTEGER NOT NULL,
-    notes TEXT NOT NULL DEFAULT ''
+    notes TEXT NOT NULL DEFAULT '',
+    import_validity TEXT NOT NULL DEFAULT 'ready',
+    import_error TEXT NOT NULL DEFAULT '',
+    normalized_format_version INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS source_thread (
@@ -43,6 +46,7 @@ CREATE TABLE IF NOT EXISTS message (
     attachment_summary TEXT NOT NULL DEFAULT '',
     sort_index INTEGER NOT NULL,
     source_metadata_json TEXT NOT NULL DEFAULT '{}',
+    thread_ordinal INTEGER,
     PRIMARY KEY (dataset_id, message_id),
     FOREIGN KEY (dataset_id, source_thread_id)
         REFERENCES source_thread(dataset_id, source_thread_id)
@@ -58,63 +62,6 @@ CREATE TABLE IF NOT EXISTS category (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id)
-);
-
-CREATE TABLE IF NOT EXISTS workstation_conversation (
-    workstation_conversation_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    dataset_id INTEGER NOT NULL,
-    category_id INTEGER NOT NULL,
-    source_thread_id TEXT NOT NULL,
-    primary_hit_message_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    user_notes TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL,
-    created_by TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id),
-    FOREIGN KEY (category_id) REFERENCES category(category_id)
-);
-
-CREATE TABLE IF NOT EXISTS conversation_hit (
-    conversation_hit_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    workstation_conversation_id INTEGER NOT NULL,
-    message_id TEXT NOT NULL,
-    retrieval_method TEXT NOT NULL,
-    query_text TEXT NOT NULL DEFAULT '',
-    matched_term TEXT NOT NULL DEFAULT '',
-    score REAL,
-    rank INTEGER,
-    distance REAL,
-    explanation TEXT NOT NULL DEFAULT '',
-    metadata_json TEXT NOT NULL DEFAULT '{}',
-    FOREIGN KEY (workstation_conversation_id)
-        REFERENCES workstation_conversation(workstation_conversation_id)
-);
-
-CREATE TABLE IF NOT EXISTS conversation_range (
-    conversation_range_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    workstation_conversation_id INTEGER NOT NULL UNIQUE,
-    lead_in_start_message_id TEXT,
-    relevant_start_message_id TEXT,
-    relevant_end_message_id TEXT,
-    lead_out_end_message_id TEXT,
-    llm_suggested_json TEXT NOT NULL DEFAULT '{}',
-    user_modified INTEGER NOT NULL DEFAULT 0,
-    locked INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (workstation_conversation_id)
-        REFERENCES workstation_conversation(workstation_conversation_id)
-);
-
-CREATE TABLE IF NOT EXISTS message_highlight_override (
-    override_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    workstation_conversation_id INTEGER NOT NULL,
-    message_id TEXT NOT NULL,
-    highlight_state TEXT NOT NULL,
-    user_modified INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (workstation_conversation_id, message_id),
-    FOREIGN KEY (workstation_conversation_id)
-        REFERENCES workstation_conversation(workstation_conversation_id)
 );
 
 CREATE TABLE IF NOT EXISTS prompt_template (
@@ -165,6 +112,11 @@ CREATE TABLE IF NOT EXISTS embedding_index_metadata (
     message_count INTEGER NOT NULL DEFAULT 0,
     chunk_count INTEGER NOT NULL DEFAULT 0,
     last_error TEXT NOT NULL DEFAULT '',
+    last_embedded_source_thread_id TEXT NOT NULL DEFAULT '',
+    last_embedded_timestamp TEXT NOT NULL DEFAULT '',
+    last_embedded_sort_index INTEGER NOT NULL DEFAULT -1,
+    last_embedded_message_id TEXT NOT NULL DEFAULT '',
+    last_embedded_chunk_checksum TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id)
 );
 
