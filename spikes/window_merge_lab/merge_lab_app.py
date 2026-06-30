@@ -507,8 +507,10 @@ class MergeLabWindow(QtWidgets.QMainWindow):
             for i, w in enumerate(data):
                 rc = len(w.get("answer_ranges", []))
                 output_chars = w.get("output_estimated_chars", 0)
+                wid = w.get("window_id", "")
+                thread = w.get("source_thread_id", "") or wid.split("__")[0] if "__" in wid else wid
                 compact_input_lines.append(
-                    f"Window {i + 1}: {w.get('window_id', '')} | ~{output_chars} output chars | "
+                    f"Batch {i + 1}: {wid} | thread={thread} | ~{output_chars} output chars | "
                     f"{rc} ranges | {w.get('answer_summary', '')[:100]}"
                 )
             self._compact_input_text.setPlainText("\n".join(compact_input_lines))
@@ -671,19 +673,35 @@ class MergeLabWindow(QtWidgets.QMainWindow):
             json.dumps(result.last_parsed, indent=2, ensure_ascii=False) if result.last_parsed else "(unparseable)"
         )
         readable = self._parsed_to_readable(result.last_parsed) if result.last_parsed else "(no parsed result)"
+        prepend = []
         if result.planner_plans:
-            modes = [p.get("mode", "?") for p in result.planner_plans]
-            labels = [p.get("call_label", "?") for p in result.planner_plans]
-            readable = (
-                f"## Planner Mode{'s' if len(modes) > 1 else ''}\n"
-                + "\n".join(f"- **{l}**: {m}" for l, m in zip(labels, modes))
-                + "\n\n" + readable
-            )
+            prepend.append("## Budget Planner")
+            for p in result.planner_plans:
+                mode = p.get("mode", "?")
+                fmt = p.get("answer_format", "?")
+                in_est = p.get("estimated_input_tokens", "?")
+                out_est = p.get("estimated_output_tokens", "?")
+                avail_in = p.get("available_input_tokens", "?")
+                avail_out = p.get("available_output_tokens", "?")
+                reason = p.get("fallback_reason")
+                prepend.append(
+                    f"- **Mode:** {mode} | **Format:** {fmt} | "
+                    f"**Est in:** {in_est} | **Est out:** {out_est} | "
+                    f"**Avail in:** {avail_in} | **Avail out:** {avail_out}"
+                )
+                if reason:
+                    prepend.append(f"  - Fallback: {reason}")
+            prepend.append("")
+        if prepend:
+            readable = "\n".join(prepend) + "\n" + readable
         self._result_readable_text.setPlainText(readable)
         if result.last_parsed:
             try:
                 eval_text = evaluate_strategy_outputs(
-                    result.last_parsed, self._compact_windows or self._windows
+                    result.last_parsed,
+                    self._compact_windows or self._windows,
+                    strategy_name=result.strategy_name,
+                    planner_plans=result.planner_plans,
                 )
                 self._result_eval_text.setPlainText(eval_text)
             except Exception as e:

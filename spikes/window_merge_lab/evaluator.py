@@ -1,4 +1,8 @@
-"""Evaluation and comparison of strategy outputs."""
+"""Evaluation and comparison of strategy outputs.
+
+Imports the deterministic validator for evidence-ledger strategies and
+falls back to heuristic provenance for legacy strategies.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +10,21 @@ import json
 from pathlib import Path
 from typing import Any
 
+from spikes.window_merge_lab.validator import validate_synthesis_output
+
+
+METADATA_TITLE_RE = __import__("re").compile(
+    r"^(Conversation|School Discussion|Discussion|Chat) (on|about|re) ",
+    __import__("re").IGNORECASE,
+)
+
 
 def evaluate_strategy_outputs(
     parsed: dict,
     source_windows: list[dict],
+    *,
+    strategy_name: str | None = None,
+    planner_plans: list[dict] | None = None,
 ) -> str:
     lines: list[str] = []
     lines.append("# Strategy Output Evaluation")
@@ -20,13 +35,58 @@ def evaluate_strategy_outputs(
     if not parsed:
         return "\n".join(lines)
 
-    # Answer range count
+    # Determine mode from planner_plans or coverage summary
+    inferred_mode: str | None = None
+    if planner_plans:
+        modes = set(p.get("mode", "") for p in planner_plans if p.get("mode"))
+        if modes:
+            inferred_mode = ", ".join(sorted(modes))
+    if not inferred_mode:
+        coverage = parsed.get("coverage_summary") or {}
+        inferred_mode = coverage.get("mode") or parsed.get("planner_mode") or "?"
+
+    # Range counts
     ranges = parsed.get("answer_ranges", [])
     if isinstance(ranges, list):
         range_count = len(ranges)
     else:
         range_count = 0
+    lines.append(f"**Mode/Profile:** {inferred_mode}")
     lines.append(f"**Answer range count:** {range_count}")
+
+    # Deterministic validation (evidence_ledger_synthesis only)
+    vr: Any = None
+    ledgers: list[dict] = []
+    for w in source_windows:
+        for r in w.get("answer_ranges", []):
+            if isinstance(r, dict) and r.get("range_id"):
+                ledgers.append(r)
+    if ledgers and strategy_name and "evidence_ledger" in strategy_name:
+        mode_for_val: str = "full" if "full" in inferred_mode else "compact"
+        vr = validate_synthesis_output(parsed, ledgers, mode=mode_for_val)
+        lines.append(f"\n## Deterministic Validation")
+        lines.append(f"**Valid:** {'PASS' if vr.ok else 'FAIL'}")
+        lines.append(f"**Issues:** {vr.summary()}")
+        lines.append(f"**Input range count:** {vr.input_range_count}")
+        lines.append(f"**Output range count:** {vr.output_range_count}")
+        lines.append(f"**Represented range count:** {vr.represented_range_count}")
+        if vr.missing_range_ids:
+            lines.append(f"**Missing range IDs:** {len(vr.missing_range_ids)}")
+            for rid in vr.missing_range_ids[:5]:
+                lines.append(f"- MISSING: `{rid}`")
+            if len(vr.missing_range_ids) > 5:
+                lines.append(f"- ... and {len(vr.missing_range_ids) - 5} more")
+        if vr.unknown_range_ids:
+            lines.append(f"**Unknown range IDs:** {len(vr.unknown_range_ids)}")
+            for rid in vr.unknown_range_ids[:5]:
+                lines.append(f"- UNKNOWN: `{rid}`")
+            if len(vr.unknown_range_ids) > 5:
+                lines.append(f"- ... and {len(vr.unknown_range_ids) - 5} more")
+        if vr.invalid_message_ids:
+            lines.append(f"**Invalid message IDs:** {len(vr.invalid_message_ids)}")
+        lines.append("")
+    else:
+        ledgers = []
 
     # Source window range counts for comparison
     total_source_ranges = 0
@@ -42,7 +102,7 @@ def evaluate_strategy_outputs(
         else:
             lines.append(f"- OK: Merge output is {pct}% of source range count (reasonable range)")
 
-    # Invalid message IDs
+    # Invalid message IDs (legacy check)
     all_source_ids: set[str] = set()
     for w in source_windows:
         all_source_ids.update(w.get("message_ids", []))
@@ -55,15 +115,15 @@ def evaluate_strategy_outputs(
                     all_cited_ranges_ids.add(val)
     cited = set(parsed.get("cited_message_ids", []) or [])
     all_cited_ids = cited | all_cited_ranges_ids
-    invalid_ids = [mid for mid in all_cited_ids if mid and mid not in all_source_ids]
-    if invalid_ids:
-        lines.append(f"\n**Invalid message IDs:** {len(invalid_ids)}")
-        for mid in invalid_ids[:10]:
+    invalid_ids_legacy = [mid for mid in all_cited_ids if mid and mid not in all_source_ids]
+    if invalid_ids_legacy:
+        lines.append(f"\n**Invalid message IDs (legacy):** {len(invalid_ids_legacy)}")
+        for mid in invalid_ids_legacy[:10]:
             lines.append(f"- BAD: `{mid}`")
-        if len(invalid_ids) > 10:
-            lines.append(f"- ... and {len(invalid_ids) - 10} more")
+        if len(invalid_ids_legacy) > 10:
+            lines.append(f"- ... and {len(invalid_ids_legacy) - 10} more")
     else:
-        lines.append("\n**Invalid message IDs:** None")
+        lines.append("\n**Invalid message IDs (legacy):** None")
 
     # Duplicate-looking ranges
     seen_titles: set[str] = set()
@@ -147,6 +207,15 @@ def evaluate_strategy_outputs(
     summary = parsed.get("answer_summary", "") or ""
     lines.append(f"\n**Output length:** answer={len(answer)} chars, summary={len(summary)} chars")
 
+    # Metadata-only titles
+    metadata_title_count = 0
+    for r in ranges:
+        if isinstance(r, dict):
+            title = (r.get("title") or "").strip()
+            if title and METADATA_TITLE_RE.match(title):
+                metadata_title_count += 1
+    lines.append(f"\n**Metadata-only titles:** {metadata_title_count}")
+
     # Uncertainties
     uncertainties = list(parsed.get("uncertainties", []) or [])
     if uncertainties:
@@ -161,24 +230,27 @@ def evaluate_strategy_outputs(
     # Quality checklist
     lines.append("\n## Quality Checklist")
     lines.append("")
-    coverage = parsed.get("coverage_summary") or {}
-    planner_mode = coverage.get("mode", "") or parsed.get("planner_mode", "")
-    is_compact = "compact" in planner_mode
     has_synthesis = len(answer) > 50 or len(summary) > 50
+    is_compact = "compact" in inferred_mode.lower()
     if is_compact:
         lines.append(f"- {'PASS' if has_synthesis else 'INFO'}: Compact mode — short narrative is expected")
     else:
         lines.append(f"- {'PASS' if has_synthesis else 'FAIL'}: Synthesizes rather than merely lists")
     has_dates = any(r.get("date_description", "") for r in ranges if isinstance(r, dict))
     lines.append(f"- {'PASS' if has_dates else 'FAIL'}: Preserves dates and concrete evidence")
-    no_hallucinated_ids = len(invalid_ids) == 0
-    lines.append(f"- {'PASS' if no_hallucinated_ids else 'FAIL'}: Avoids hallucinated IDs")
+    if vr is not None:
+        lines.append(f"- {'PASS' if vr.ok else 'FAIL'}: Deterministic validation")
+    else:
+        no_hallucinated_ids = len(invalid_ids_legacy) == 0
+        lines.append(f"- {'PASS' if no_hallucinated_ids else 'FAIL'}: Avoids hallucinated IDs")
     all_windows_present = len(dropped) == 0
     lines.append(f"- {'PASS' if all_windows_present else 'FAIL'}: Avoids losing smaller but important clusters")
     ranges_useful = range_count > 0
     lines.append(f"- {'PASS' if ranges_useful else 'FAIL'}: Answer ranges are useful for transcript navigation")
     no_orphaned = provenance["orphaned_count"] == 0
     lines.append(f"- {'PASS' if no_orphaned else 'FAIL'}: Preserves all input ranges (0 orphaned, {provenance['orphaned_count']} lost)")
+    metadata_ok = metadata_title_count <= range_count * 0.3
+    lines.append(f"- {'PASS' if metadata_ok else 'WARN'}: Metadata-only titles = {metadata_title_count}/{range_count}")
 
     return "\n".join(lines)
 

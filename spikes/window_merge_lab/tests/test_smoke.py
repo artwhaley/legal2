@@ -48,10 +48,10 @@ def test_data_loader_extracts_results():
 
 def test_strategies_registry():
     from spikes.window_merge_lab.strategies import EXPECTED_CALL_COUNTS, STRATEGY_REGISTRY
-    assert len(STRATEGY_REGISTRY) == 5
+    assert len(STRATEGY_REGISTRY) == 6
     for name in STRATEGY_REGISTRY:
         assert name in EXPECTED_CALL_COUNTS
-    print("PASS: strategies registry has 5 entries")
+    print("PASS: strategies registry has 6 entries")
 
 
 def test_deterministic_baseline():
@@ -188,7 +188,7 @@ def test_valid_message_ids():
 # --- Budget planner tests ---
 
 
-def test_planner_selects_mode1_when_fits():
+def test_planner_selects_full_when_fits():
     from spikes.window_merge_lab.budget_planner import (
         SynthesisBudgetRequest,
         plan_synthesis_budget,
@@ -204,13 +204,13 @@ def test_planner_selects_mode1_when_fits():
         max_output_tokens=65536,
     )
     plan = plan_synthesis_budget(request)
-    assert plan.mode == "full_direct_synthesis", f"Expected Mode 1, got {plan.mode}"
+    assert plan.mode == "full", f"Expected full, got {plan.mode}"
     assert plan.answer_format == "detailed"
     assert plan.fallback_reason is None
-    print("PASS: planner selects Mode 1 when everything fits")
+    print("PASS: planner selects full when everything fits")
 
 
-def test_planner_selects_mode2_when_output_exceeds():
+def test_planner_selects_compact_when_output_exceeds():
     from spikes.window_merge_lab.budget_planner import (
         SynthesisBudgetRequest,
         plan_synthesis_budget,
@@ -226,14 +226,14 @@ def test_planner_selects_mode2_when_output_exceeds():
         max_output_tokens=512,
     )
     plan = plan_synthesis_budget(request)
-    assert plan.mode == "compact_direct_synthesis", f"Expected Mode 2, got {plan.mode}"
+    assert plan.mode == "compact", f"Expected compact, got {plan.mode}"
     assert plan.answer_format == "brief"
     assert plan.fallback_reason is not None
     assert "output" in plan.fallback_reason
-    print("PASS: planner selects Mode 2 when output budget too small")
+    print("PASS: planner selects compact when output budget too small")
 
 
-def test_planner_selects_mode2_when_input_exceeds():
+def test_planner_selects_compact_when_input_exceeds():
     from spikes.window_merge_lab.budget_planner import (
         SynthesisBudgetRequest,
         plan_synthesis_budget,
@@ -249,10 +249,10 @@ def test_planner_selects_mode2_when_input_exceeds():
         max_output_tokens=65536,
     )
     plan = plan_synthesis_budget(request)
-    assert plan.mode == "compact_direct_synthesis", f"Expected Mode 2, got {plan.mode}"
+    assert plan.mode == "compact", f"Expected compact, got {plan.mode}"
     assert plan.fallback_reason is not None
     assert "input" in plan.fallback_reason
-    print("PASS: planner selects Mode 2 when input budget too small")
+    print("PASS: planner selects compact when input budget too small")
 
 
 def test_planner_does_not_drop_records():
@@ -299,7 +299,7 @@ def test_strategies_include_planner_plans():
     print("PASS: all strategies include planner_plans")
 
 
-def test_prompt_mode1_includes_detailed_format():
+def test_prompt_full_includes_detailed_format():
     from spikes.window_merge_lab.budget_planner import (
         SynthesisBudgetPlan,
     )
@@ -307,7 +307,7 @@ def test_prompt_mode1_includes_detailed_format():
     from spikes.window_merge_lab.data_loader import load_compact_windows
     windows = load_compact_windows()
     plan = SynthesisBudgetPlan(
-        mode="full_direct_synthesis",
+        mode="full",
         strategy_name="one_shot_compact",
         call_label="final",
         range_count=67,
@@ -315,7 +315,7 @@ def test_prompt_mode1_includes_detailed_format():
         estimated_output_tokens=15000,
         available_input_tokens=250000,
         available_output_tokens=30000,
-        prompt_profile="full_direct_synthesis",
+        prompt_profile="full",
         answer_format="detailed",
         max_answer_chars=2000,
         max_range_summary_chars=200,
@@ -324,10 +324,10 @@ def test_prompt_mode1_includes_detailed_format():
     content = msgs[0]["content"] + msgs[1]["content"]
     assert "answer_format to detailed" in content
     assert "planner_mode" in msgs[1]["content"]
-    print("PASS: Mode 1 prompt includes detailed format")
+    print("PASS: full prompt includes detailed format")
 
 
-def test_prompt_mode2_includes_brief_format():
+def test_prompt_compact_includes_brief_format():
     from spikes.window_merge_lab.budget_planner import (
         SynthesisBudgetPlan,
     )
@@ -335,7 +335,7 @@ def test_prompt_mode2_includes_brief_format():
     from spikes.window_merge_lab.data_loader import load_compact_windows
     windows = load_compact_windows()
     plan = SynthesisBudgetPlan(
-        mode="compact_direct_synthesis",
+        mode="compact",
         strategy_name="one_shot_compact",
         call_label="final",
         range_count=67,
@@ -343,7 +343,7 @@ def test_prompt_mode2_includes_brief_format():
         estimated_output_tokens=5000,
         available_input_tokens=8000,
         available_output_tokens=6000,
-        prompt_profile="compact_direct_synthesis",
+        prompt_profile="compact",
         answer_format="brief",
         max_answer_chars=500,
         max_range_summary_chars=60,
@@ -354,7 +354,7 @@ def test_prompt_mode2_includes_brief_format():
     assert "answer_format to brief" in content
     assert "compact format" in content
     assert "Navigation correctness" in content
-    print("PASS: Mode 2 prompt includes brief format and compact guidance")
+    print("PASS: compact prompt includes brief format and compact guidance")
 
 
 if __name__ == "__main__":
@@ -372,6 +372,13 @@ if __name__ == "__main__":
         test_evaluator,
         test_evaluator_falls_back_when_source_keys_are_malformed,
         test_valid_message_ids,
+        test_planner_selects_full_when_fits,
+        test_planner_selects_compact_when_output_exceeds,
+        test_planner_selects_compact_when_input_exceeds,
+        test_planner_does_not_drop_records,
+        test_strategies_include_planner_plans,
+        test_prompt_full_includes_detailed_format,
+        test_prompt_compact_includes_brief_format,
     ]
     passed = 0
     failed = 0

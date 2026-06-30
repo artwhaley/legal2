@@ -1,4 +1,4 @@
-"""Merge strategy implementations for window merge lab."""
+"""Strategy implementations for window merge lab."""
 
 from __future__ import annotations
 
@@ -19,7 +19,9 @@ from spikes.window_merge_lab.budget_planner import (
     plan_synthesis_budget,
 )
 from spikes.window_merge_lab.data_loader import load_compact_windows
+from spikes.window_merge_lab.ledger import build_ledger, ledger_to_dicts, batch_context_to_dicts
 from spikes.window_merge_lab.prompts import (
+    build_evidence_ledger_synthesis_messages,
     build_evidence_table_messages,
     build_hierarchical_batch_messages,
     build_one_shot_messages,
@@ -438,6 +440,80 @@ def run_evidence_table_then_synthesis(
         )
 
 
+def run_evidence_ledger_synthesis(
+    user_query: str,
+    windows: list[dict],
+    *,
+    model_call: ModelCallFn = _noop_model_call,
+    model_context_tokens: int = 32768,
+    max_output_tokens: int = 4096,
+) -> StrategyResult:
+    plans_list: list[dict] = []
+    records, batch_contexts = build_ledger(windows)
+    record_dicts = ledger_to_dicts(records)
+    batch_dicts = batch_context_to_dicts(batch_contexts)
+
+    provisional_messages = build_evidence_ledger_synthesis_messages(
+        user_query, record_dicts,
+        source_batch_contexts=batch_dicts,
+        plan=None,
+    )
+
+    plan = plan_synthesis_budget(SynthesisBudgetRequest(
+        evidence_records=record_dicts,
+        evidence_messages=provisional_messages,
+        user_query=user_query,
+        strategy_name="evidence_ledger_synthesis",
+        call_label="final",
+        model_context_tokens=model_context_tokens,
+        max_output_tokens=max_output_tokens,
+    ))
+    plans_list.append({
+        "call_label": "final",
+        "mode": plan.mode,
+        "answer_format": plan.answer_format,
+        "estimated_input_tokens": plan.estimated_input_tokens,
+        "estimated_output_tokens": plan.estimated_output_tokens,
+        "available_input_tokens": plan.available_input_tokens,
+        "available_output_tokens": plan.available_output_tokens,
+        "fallback_reason": plan.fallback_reason,
+    })
+
+    if plan.mode == "full":
+        messages = provisional_messages
+    else:
+        messages = build_evidence_ledger_synthesis_messages(
+            user_query, record_dicts,
+            source_batch_contexts=batch_dicts,
+            plan=plan,
+        )
+    start = time.monotonic()
+    try:
+        response, _ = model_call(messages)
+        elapsed = int((time.monotonic() - start) * 1000)
+        parsed = _parse_fenced_json(response)
+        return StrategyResult(
+            strategy_name="evidence_ledger_synthesis",
+            messages_per_call=[messages],
+            responses=[response],
+            latency_ms=elapsed,
+            call_count=1,
+            last_parsed=parsed,
+            planner_plans=plans_list,
+        )
+    except Exception as e:
+        elapsed = int((time.monotonic() - start) * 1000)
+        return StrategyResult(
+            strategy_name="evidence_ledger_synthesis",
+            messages_per_call=[messages],
+            responses=[],
+            latency_ms=elapsed,
+            call_count=0,
+            error=str(e),
+            planner_plans=plans_list,
+        )
+
+
 def run_deterministic_baseline(
     user_query: str,
     windows: list[dict],
@@ -511,22 +587,25 @@ def _interim_from_parsed(parsed: dict, window_id: str) -> dict:
 
 
 STRATEGY_REGISTRY: dict[str, Callable] = {
+    "evidence_ledger_synthesis": run_evidence_ledger_synthesis,
     "one_shot_compact": run_one_shot_compact,
+    "evidence_table_then_synthesis": run_evidence_table_then_synthesis,
     "hierarchical_balanced": run_hierarchical_balanced,
     "rolling_synthesis": run_rolling_synthesis,
-    "evidence_table_then_synthesis": run_evidence_table_then_synthesis,
     "deterministic_baseline": run_deterministic_baseline,
 }
 
 STRATEGY_DESCRIPTIONS: dict[str, str] = {
-    "one_shot_compact": "Single LLM call over all six compact window findings",
-    "hierarchical_balanced": "Three LLM calls: merge 1-3, merge 4-6, then merge interim syntheses",
-    "rolling_synthesis": "Six sequential LLM calls, merging one window at a time",
-    "evidence_table_then_synthesis": "Two-phase: normalize ranges into table, then synthesize",
-    "deterministic_baseline": "No LLM call: raw concatenation, deduplication, and counting",
+    "evidence_ledger_synthesis": "Single LLM call over one evidence ledger with full or compact profile",
+    "one_shot_compact": "(legacy) Single LLM call over all six compact window findings",
+    "evidence_table_then_synthesis": "(legacy) Two-phase: normalize ranges into table, then synthesize",
+    "hierarchical_balanced": "(legacy) Three LLM calls: merge 1-3, merge 4-6, then merge interim syntheses",
+    "rolling_synthesis": "(legacy) Six sequential LLM calls, merging one window at a time",
+    "deterministic_baseline": "(legacy) No LLM call: raw concatenation, deduplication, and counting",
 }
 
 EXPECTED_CALL_COUNTS: dict[str, int] = {
+    "evidence_ledger_synthesis": 1,
     "one_shot_compact": 1,
     "hierarchical_balanced": 3,
     "rolling_synthesis": 6,
