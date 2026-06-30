@@ -120,6 +120,8 @@ class VirtualTranscriptRenderer:
         background_color: str | None = None,
         is_context: bool = False,
         is_relevant: bool = False,
+        is_highlighted: bool = False,
+        is_delete_preview: bool = False,
     ) -> None:
         if background_color:
             painter.fillRect(
@@ -129,7 +131,12 @@ class VirtualTranscriptRenderer:
                 max(1, int(layout.height - SHADING_TOP_INSET * 2)),
                 background_color,
             )
-        painter.setFont(style.header_font)
+        if is_delete_preview:
+            sender_font = QFont(style.header_font)
+            sender_font.setWeight(QFont.Weight.Bold)
+            painter.setFont(sender_font)
+        else:
+            painter.setFont(style.header_font)
         sender_metrics = QFontMetrics(style.header_font)
         sender_key = (message.sender_id or message.sender_display or "").strip()
         participant_index = self._participant_map.get(sender_key, 0)
@@ -143,16 +150,22 @@ class VirtualTranscriptRenderer:
                 sender_metrics.height() + 2,
                 tint,
             )
-        painter.setPen("#8a8a8a" if is_context else "#111111")
+        painter.setPen("#111111" if is_delete_preview else ("#8a8a8a" if is_context else "#111111"))
         sender_baseline = sender_top + sender_metrics.ascent() + TEXT_BASELINE_NUDGE
         painter.drawText(
             layout.content_left,
             sender_baseline,
             message.sender_display or message.sender_id or "Unknown",
         )
-        body_font = style.relevant_body_font if is_relevant else style.body_font
+        if is_highlighted or is_delete_preview:
+            body_font = QFont(style.relevant_body_font)
+            body_font.setWeight(QFont.Weight.Bold)
+        elif is_relevant:
+            body_font = style.relevant_body_font
+        else:
+            body_font = style.body_font
         painter.setFont(body_font)
-        painter.setPen("#777777" if is_context else "#111111")
+        painter.setPen("#111111" if is_delete_preview else ("#777777" if is_context else "#111111"))
         body_top = sender_baseline + sender_metrics.descent() + BODY_TOP_GAP
         body_rect = QRect(
             layout.content_left,
@@ -177,9 +190,14 @@ class VirtualTranscriptRenderer:
         )
 
     def paint_annotation_column_headers(self, painter: QPainter, *, hit_rect: QRect, highlight_rect: QRect) -> None:
-        painter.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
         painter.setPen("#555555")
-        painter.drawText(hit_rect, int(Qt.AlignmentFlag.AlignCenter), "Hit")
+        painter.setFont(QFont("Segoe UI", 7, QFont.Weight.DemiBold))
+        painter.drawText(
+            hit_rect,
+            int(Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap),
+            "Primary Key",
+        )
+        painter.setFont(QFont("Segoe UI", 8, QFont.Weight.DemiBold))
         painter.drawText(highlight_rect, int(Qt.AlignmentFlag.AlignCenter), "Highlight")
 
     def paint_boundary_handle(

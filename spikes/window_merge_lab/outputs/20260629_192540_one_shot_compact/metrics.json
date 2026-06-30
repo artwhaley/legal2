@@ -1,0 +1,8 @@
+{
+  "strategy": "one_shot_compact",
+  "call_count": 1,
+  "latency_ms": 67400,
+  "has_error": false,
+  "error": null,
+  "range_count": 0
+}

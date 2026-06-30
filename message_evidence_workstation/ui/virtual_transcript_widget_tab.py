@@ -22,6 +22,7 @@ from message_evidence_workstation.ui.virtual_transcript_widget import VirtualTra
 
 class VirtualTranscriptWidgetTab(QWidget):
     evidence_block_created = Signal(int)
+    evidence_block_deleted = Signal(int)
 
     def __init__(
         self,
@@ -60,6 +61,9 @@ class VirtualTranscriptWidgetTab(QWidget):
         self.create_viewport_button = QPushButton("Create at viewport center")
         self.create_viewport_button.clicked.connect(self._create_from_viewport)
         row2.addWidget(self.create_viewport_button)
+        self.delete_viewport_button = QPushButton("Delete block at center")
+        self.delete_viewport_button.clicked.connect(self._delete_at_viewport)
+        row2.addWidget(self.delete_viewport_button)
         self.create_random_button = QPushButton("Create at random message")
         self.create_random_button.clicked.connect(self._create_at_random)
         row2.addWidget(self.create_random_button)
@@ -81,6 +85,7 @@ class VirtualTranscriptWidgetTab(QWidget):
             lambda _thread_id, _count: self._update_status(last_action="thread loaded")
         )
         self.transcript_widget.evidence_block_created.connect(self.evidence_block_created.emit)
+        self.transcript_widget.evidence_block_deleted.connect(self.evidence_block_deleted.emit)
         self.transcript_widget.active_block_changed.connect(
             lambda _block_id: self._update_status(last_action="active block changed")
         )
@@ -175,6 +180,11 @@ class VirtualTranscriptWidgetTab(QWidget):
         if block is not None:
             self._update_status(last_action=f"created block {block.evidence_block_id}")
 
+    def _delete_at_viewport(self) -> None:
+        self.ensure_thread_loaded()
+        self.transcript_widget.prompt_delete_evidence_block_at_viewport_center()
+        self._update_status(last_action="delete block at center")
+
     def _create_at_random(self) -> None:
         self.ensure_thread_loaded()
         count = self.transcript_widget.message_count
@@ -202,6 +212,11 @@ class VirtualTranscriptWidgetTab(QWidget):
         self.transcript_widget.reload_current_thread()
         self._update_status(last_action="reload thread")
 
+    def reveal_evidence_block(self, evidence_block_id: int) -> None:
+        self.ensure_thread_loaded()
+        self.transcript_widget.select_evidence_block(evidence_block_id)
+        self._update_status(last_action=f"revealed block {evidence_block_id}")
+
     def _set_controls_enabled(self, enabled: bool) -> None:
         for widget in (
             self.jump_50_button,
@@ -209,6 +224,7 @@ class VirtualTranscriptWidgetTab(QWidget):
             self.jump_14000_button,
             self.jump_random_button,
             self.create_viewport_button,
+            self.delete_viewport_button,
             self.create_random_button,
             self.reveal_button,
             self.reload_button,

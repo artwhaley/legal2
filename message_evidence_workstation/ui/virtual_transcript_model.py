@@ -68,6 +68,9 @@ class VirtualTranscriptModel:
         self._overlays = []
         self.active_evidence_block_id = None
 
+    def count_messages(self) -> int:
+        return self.message_count
+
     def load_thread(self, source_thread_id: str) -> None:
         if self.dataset_id is None or self._data_source is None:
             self.clear_thread()
@@ -76,8 +79,6 @@ class VirtualTranscriptModel:
         self._message_cache.clear()
         self.message_count = self._data_source.message_count(source_thread_id)
         self.load_evidence_blocks()
-        if self._evidence_blocks and self.active_evidence_block_id is None:
-            self.set_active_evidence_block(self._evidence_blocks[0].evidence_block_id)
         self.logger.info(
             component="ui.virtual_transcript_model",
             operation="thread_loaded",
@@ -232,11 +233,54 @@ class VirtualTranscriptModel:
             for overlay in self._overlays
         ]
 
+    def block_overlays(self) -> list[VirtualEvidenceOverlay]:
+        return list(self._overlays)
+
     def active_overlay(self) -> VirtualEvidenceOverlay | None:
         for overlay in self._overlays:
             if overlay.is_active:
                 return overlay
         return None
+
+    def overlays_for_relevant_ordinal(self, ordinal: int) -> list[VirtualEvidenceOverlay]:
+        return [
+            overlay
+            for overlay in self._overlays
+            if overlay.relevant_start_slot <= ordinal < overlay.relevant_end_slot
+        ]
+
+    def message_zone(self, ordinal: int) -> str | None:
+        if any(
+            overlay.relevant_start_slot <= ordinal < overlay.relevant_end_slot
+            for overlay in self._overlays
+        ):
+            return "relevant"
+        if any(
+            overlay.context_start_slot <= ordinal < overlay.relevant_start_slot
+            or overlay.relevant_end_slot <= ordinal < overlay.context_end_slot
+            for overlay in self._overlays
+        ):
+            return "context"
+        return None
+
+    def message_is_highlighted_in_any_block(self, message_id: str) -> bool:
+        return any(message_id in overlay.highlighted_message_ids for overlay in self._overlays)
+
+    def overlay_containing_ordinal(self, ordinal: int) -> VirtualEvidenceOverlay | None:
+        for overlay in self._overlays:
+            if overlay.context_start_slot <= ordinal < overlay.context_end_slot:
+                return overlay
+        return None
+
+    def remove_evidence_block(self, evidence_block_id: int) -> None:
+        self._evidence_blocks = [
+            block for block in self._evidence_blocks if block.evidence_block_id != evidence_block_id
+        ]
+        self._overlays = [
+            overlay for overlay in self._overlays if overlay.evidence_block_id != evidence_block_id
+        ]
+        if self.active_evidence_block_id == evidence_block_id:
+            self.active_evidence_block_id = None
 
     def overlay_for_block(self, evidence_block_id: int) -> VirtualEvidenceOverlay | None:
         for overlay in self._overlays:
@@ -244,15 +288,16 @@ class VirtualTranscriptModel:
                 return overlay
         return None
 
-    def update_active_overlay_slots(
+    def update_overlay_slots(
         self,
+        evidence_block_id: int,
         *,
         context_start: int,
         relevant_start: int,
         relevant_end: int,
         context_end: int,
     ) -> None:
-        overlay = self.active_overlay()
+        overlay = self.overlay_for_block(evidence_block_id)
         if overlay is None:
             return
         updated = replace(
@@ -267,8 +312,8 @@ class VirtualTranscriptModel:
             for item in self._overlays
         ]
 
-    def update_active_overlay_hit(self, message_id: str) -> None:
-        overlay = self.active_overlay()
+    def update_overlay_hit(self, evidence_block_id: int, message_id: str) -> None:
+        overlay = self.overlay_for_block(evidence_block_id)
         if overlay is None:
             return
         updated = replace(overlay, core_hit_message_id=message_id)
@@ -277,8 +322,8 @@ class VirtualTranscriptModel:
             for item in self._overlays
         ]
 
-    def toggle_active_overlay_highlight(self, message_id: str) -> None:
-        overlay = self.active_overlay()
+    def toggle_overlay_highlight(self, evidence_block_id: int, message_id: str) -> None:
+        overlay = self.overlay_for_block(evidence_block_id)
         if overlay is None:
             return
         highlights = set(overlay.highlighted_message_ids)

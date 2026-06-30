@@ -42,6 +42,7 @@ class MessageLayoutRect:
 @dataclass(slots=True)
 class BoundaryHandleRect:
     boundary_name: str
+    evidence_block_id: int
     label: str
     rect: QRect
 
@@ -80,6 +81,7 @@ def boundary_handles_for_layouts(
         handles.append(
             BoundaryHandleRect(
                 boundary_name=boundary_name,
+                evidence_block_id=overlay.evidence_block_id,
                 label=BOUNDARY_LABELS[boundary_name],
                 rect=rect,
             )
@@ -87,18 +89,33 @@ def boundary_handles_for_layouts(
     return handles
 
 
-def hit_icon_rect(layout: MessageLayoutRect) -> QRect:
+def hit_icon_rect(
+    layout: MessageLayoutRect,
+    overlay_index: int = 0,
+    overlay_count: int = 1,
+) -> QRect:
+    column_left = layout.content_left + layout.content_width + 18
+    slot_width = CONTROL_COLUMN_WIDTH / max(1, overlay_count)
+    size = HIT_RADIUS * 2
+    x = int(column_left + (overlay_index * slot_width) + ((slot_width - size) / 2))
     return QRect(
-        layout.content_left + layout.content_width + 18,
+        x,
         int(layout.top + CONTROL_TOP_OFFSET),
-        HIT_RADIUS * 2,
-        HIT_RADIUS * 2,
+        size,
+        size,
     )
 
 
-def highlight_icon_rect(layout: MessageLayoutRect) -> QRect:
+def highlight_icon_rect(
+    layout: MessageLayoutRect,
+    overlay_index: int = 0,
+    overlay_count: int = 1,
+) -> QRect:
+    column_left = layout.content_left + layout.content_width + 72
+    slot_width = (CONTROL_COLUMN_WIDTH + 16) / max(1, overlay_count)
+    x = int(column_left + (overlay_index * slot_width) + ((slot_width - HIGHLIGHT_SIZE) / 2))
     return QRect(
-        layout.content_left + layout.content_width + 72,
+        x,
         int(layout.top + CONTROL_TOP_OFFSET + 2),
         HIGHLIGHT_SIZE,
         HIGHLIGHT_SIZE,
@@ -109,8 +126,8 @@ def hit_header_rect(layout: MessageLayoutRect) -> QRect:
     return QRect(
         layout.content_left + layout.content_width,
         int(layout.top + 2),
-        CONTROL_COLUMN_WIDTH,
-        16,
+        CONTROL_COLUMN_WIDTH + 16,
+        20,
     )
 
 

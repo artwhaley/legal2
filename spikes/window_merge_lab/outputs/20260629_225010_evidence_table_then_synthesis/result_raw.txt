@@ -1,0 +1,827 @@
+```json
+{
+  "answer_summary": "The corpus contains 67 hit ranges referencing discussions about school, spanning from February 2022 through December 2025. Conversations appear frequently throughout the timeline, with notable clusters in late 2022, September 2023, and late 2024 into 2025.",
+  "answer_format": "detailed",
+  "answer": "The evidence shows recurring discussions about school across a nearly four-year period. In early 2022, the topic arises multiple times in February, March, May, June, July, August, and September. The frequency increases toward the end of 2022, with multiple hits in October and a dense cluster of conversations in December 2022. The topic continues into early 2023, appearing in January, March, April, and May 2023, before a brief gap and a reappearance in July 2023. Another significant cluster occurs in late September 2023 and October 2023. In 2024, school is discussed in January, March, June, August, September, October, November, and December. Finally, the topic is raised in March, April, July, August, and December of 2025. Because only hit ranges are supplied without message content, the specific nature of each school discussion is not directly evident from the data.",
+  "answer_ranges": [
+    {
+      "title": "School Discussion on February 21, 2022",
+      "summary": "A hit range identifying a discussion about school on February 21, 2022.",
+      "date_description": "On February 21, 2022",
+      "display_text": "School-related discussion occurring on February 21, 2022.",
+      "hit_message_id": "decipher_message_1:8692",
+      "start_message_id": "decipher_message_1:8694",
+      "end_message_id": "decipher_message_1:8692",
+      "source_range_keys": [
+        "decipher_message_1:8692::School Discussion on February 21, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between February 7-21, 2022",
+      "summary": "A hit range identifying a discussion about school spanning February 7 to February 21, 2022.",
+      "date_description": "On February 7-21, 2022",
+      "display_text": "School-related discussion occurring between February 7 and February 21, 2022.",
+      "hit_message_id": "decipher_message_1:8938",
+      "start_message_id": "decipher_message_1:8938",
+      "end_message_id": "decipher_message_1:8700",
+      "source_range_keys": [
+        "decipher_message_1:8938::School Discussion between February 7-21, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between February 11-14, 2022",
+      "summary": "A hit range identifying a discussion about school spanning February 11 to February 14, 2022.",
+      "date_description": "On February 11-14, 2022",
+      "display_text": "School-related discussion occurring between February 11 and February 14, 2022.",
+      "hit_message_id": "decipher_message_1:8817",
+      "start_message_id": "decipher_message_1:8830",
+      "end_message_id": "decipher_message_1:8768",
+      "source_range_keys": [
+        "decipher_message_1:8817::School Discussion between February 11-14, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between February 28 - March 30, 2022",
+      "summary": "A hit range identifying a discussion about school spanning February 28 to March 30, 2022.",
+      "date_description": "On February 28 - March 30, 2022",
+      "display_text": "School-related discussion occurring between February 28 and March 30, 2022.",
+      "hit_message_id": "decipher_message_1:8603",
+      "start_message_id": "decipher_message_1:9587",
+      "end_message_id": "decipher_message_1:8603",
+      "source_range_keys": [
+        "decipher_message_1:8603::School Discussion between February 28 - March 30, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on March 24, 2022",
+      "summary": "A hit range identifying a discussion about school on March 24, 2022.",
+      "date_description": "On March 24, 2022",
+      "display_text": "School-related discussion occurring on March 24, 2022.",
+      "hit_message_id": "decipher_message_1:8246",
+      "start_message_id": "decipher_message_1:8264",
+      "end_message_id": "decipher_message_1:8242",
+      "source_range_keys": [
+        "decipher_message_1:8246::School Discussion on March 24, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between March 11-25, 2022",
+      "summary": "A hit range identifying a discussion about school spanning March 11 to March 25, 2022.",
+      "date_description": "On March 11-25, 2022",
+      "display_text": "School-related discussion occurring between March 11 and March 25, 2022.",
+      "hit_message_id": "decipher_message_1:8400",
+      "start_message_id": "decipher_message_1:8400",
+      "end_message_id": "decipher_message_1:8234",
+      "source_range_keys": [
+        "decipher_message_1:8400::School Discussion between March 11-25, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between March 29-31, 2022",
+      "summary": "A hit range identifying a discussion about school spanning March 29 to March 31, 2022.",
+      "date_description": "On March 29-31, 2022",
+      "display_text": "School-related discussion occurring between March 29 and March 31, 2022.",
+      "hit_message_id": "decipher_message_1:8131",
+      "start_message_id": "decipher_message_1:8184",
+      "end_message_id": "decipher_message_1:8131",
+      "source_range_keys": [
+        "decipher_message_1:8131::School Discussion between March 29-31, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between May 6-12, 2022",
+      "summary": "A hit range identifying a discussion about school spanning May 6 to May 12, 2022.",
+      "date_description": "On May 6-12, 2022",
+      "display_text": "School-related discussion occurring between May 6 and May 12, 2022.",
+      "hit_message_id": "decipher_message_1:7795",
+      "start_message_id": "decipher_message_1:7795",
+      "end_message_id": "decipher_message_1:7490",
+      "source_range_keys": [
+        "decipher_message_1:7795::School Discussion between May 6-12, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between January 7 - May 4, 2022",
+      "summary": "A hit range identifying a discussion about school spanning January 7 to May 4, 2022.",
+      "date_description": "On January 7 - May 4, 2022",
+      "display_text": "School-related discussion occurring between January 7 and May 4, 2022.",
+      "hit_message_id": "decipher_message_1:9297",
+      "start_message_id": "decipher_message_1:9297",
+      "end_message_id": "decipher_message_1:7612",
+      "source_range_keys": [
+        "decipher_message_1:9297::School Discussion between January 7 - May 4, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between May 14-17, 2022",
+      "summary": "A hit range identifying a discussion about school spanning May 14 to May 17, 2022.",
+      "date_description": "On May 14-17, 2022",
+      "display_text": "School-related discussion occurring between May 14 and May 17, 2022.",
+      "hit_message_id": "decipher_message_1:7398",
+      "start_message_id": "decipher_message_1:7398",
+      "end_message_id": "decipher_message_1:7356",
+      "source_range_keys": [
+        "decipher_message_1:7398::School Discussion between May 14-17, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on May 20, 2022",
+      "summary": "A hit range identifying a discussion about school on May 20, 2022.",
+      "date_description": "On May 20, 2022",
+      "display_text": "School-related discussion occurring on May 20, 2022.",
+      "hit_message_id": "decipher_message_1:7278",
+      "start_message_id": "decipher_message_1:7278",
+      "end_message_id": "decipher_message_1:7278",
+      "source_range_keys": [
+        "decipher_message_1:7278::School Discussion on May 20, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between June 14-15, 2022",
+      "summary": "A hit range identifying a discussion about school spanning June 14 to June 15, 2022.",
+      "date_description": "On June 14-15, 2022",
+      "display_text": "School-related discussion occurring between June 14 and June 15, 2022.",
+      "hit_message_id": "decipher_message_1:6780",
+      "start_message_id": "decipher_message_1:6780",
+      "end_message_id": "decipher_message_1:6745",
+      "source_range_keys": [
+        "decipher_message_1:6780::School Discussion between June 14-15, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between June 20-28, 2022",
+      "summary": "A hit range identifying a discussion about school spanning June 20 to June 28, 2022.",
+      "date_description": "On June 20-28, 2022",
+      "display_text": "School-related discussion occurring between June 20 and June 28, 2022.",
+      "hit_message_id": "decipher_message_1:6605",
+      "start_message_id": "decipher_message_1:6605",
+      "end_message_id": "decipher_message_1:5920",
+      "source_range_keys": [
+        "decipher_message_1:6605::School Discussion between June 20-28, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between July 30-August 6, 2022",
+      "summary": "A hit range identifying a discussion about school spanning July 30 to August 6, 2022.",
+      "date_description": "On July 30-August 6, 2022",
+      "display_text": "School-related discussion occurring between July 30 and August 6, 2022.",
+      "hit_message_id": "decipher_message_1:5907",
+      "start_message_id": "decipher_message_1:5907",
+      "end_message_id": "decipher_message_1:5785",
+      "source_range_keys": [
+        "decipher_message_1:5907::School Discussion between July 30-August 6, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between August 8-10, 2022",
+      "summary": "A hit range identifying a discussion about school spanning August 8 to August 10, 2022.",
+      "date_description": "On August 8-10, 2022",
+      "display_text": "School-related discussion occurring between August 8 and August 10, 2022.",
+      "hit_message_id": "decipher_message_1:5778",
+      "start_message_id": "decipher_message_1:5778",
+      "end_message_id": "decipher_message_1:5745",
+      "source_range_keys": [
+        "decipher_message_1:5778::School Discussion between August 8-10, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between August 15-25, 2022",
+      "summary": "A hit range identifying a discussion about school spanning August 15 to August 25, 2022.",
+      "date_description": "On August 15-25, 2022",
+      "display_text": "School-related discussion occurring between August 15 and August 25, 2022.",
+      "hit_message_id": "decipher_message_1:5709",
+      "start_message_id": "decipher_message_1:5709",
+      "end_message_id": "decipher_message_1:5490",
+      "source_range_keys": [
+        "decipher_message_1:5709::School Discussion between August 15-25, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on September 6, 2022",
+      "summary": "A hit range identifying a discussion about school on September 6, 2022.",
+      "date_description": "On September 6, 2022",
+      "display_text": "School-related discussion occurring on September 6, 2022.",
+      "hit_message_id": "decipher_message_1:5456",
+      "start_message_id": "decipher_message_1:5456",
+      "end_message_id": "decipher_message_1:5437",
+      "source_range_keys": [
+        "decipher_message_1:5456::School Discussion on September 6, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between September 9-13, 2022",
+      "summary": "A hit range identifying a discussion about school spanning September 9 to September 13, 2022.",
+      "date_description": "On September 9-13, 2022",
+      "display_text": "School-related discussion occurring between September 9 and September 13, 2022.",
+      "hit_message_id": "decipher_message_1:5418",
+      "start_message_id": "decipher_message_1:5418",
+      "end_message_id": "decipher_message_1:5403",
+      "source_range_keys": [
+        "decipher_message_1:5418::School Discussion between September 9-13, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on September 16, 2022",
+      "summary": "A hit range identifying a discussion about school on September 16, 2022.",
+      "date_description": "On September 16, 2022",
+      "display_text": "School-related discussion occurring on September 16, 2022.",
+      "hit_message_id": "decipher_message_1:5353",
+      "start_message_id": "decipher_message_1:5353",
+      "end_message_id": "decipher_message_1:5351",
+      "source_range_keys": [
+        "decipher_message_1:5353::School Discussion on September 16, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between October 6-7, 2022",
+      "summary": "A hit range identifying a discussion about school spanning October 6 to October 7, 2022.",
+      "date_description": "On October 6-7, 2022",
+      "display_text": "School-related discussion occurring between October 6 and October 7, 2022.",
+      "hit_message_id": "decipher_message_1:5063",
+      "start_message_id": "decipher_message_1:5063",
+      "end_message_id": "decipher_message_1:5060",
+      "source_range_keys": [
+        "decipher_message_1:5063::School Discussion between October 6-7, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between October 27-28, 2022",
+      "summary": "A hit range identifying a discussion about school spanning October 27 to October 28, 2022.",
+      "date_description": "On October 27-28, 2022",
+      "display_text": "School-related discussion occurring between October 27 and October 28, 2022.",
+      "hit_message_id": "decipher_message_1:4917",
+      "start_message_id": "decipher_message_1:4917",
+      "end_message_id": "decipher_message_1:4882",
+      "source_range_keys": [
+        "decipher_message_1:4917::School Discussion between October 27-28, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between December 2-3, 2022",
+      "summary": "A hit range identifying a discussion about school spanning December 2 to December 3, 2022.",
+      "date_description": "On December 2-3, 2022",
+      "display_text": "School-related discussion occurring between December 2 and December 3, 2022.",
+      "hit_message_id": "decipher_message_1:4464",
+      "start_message_id": "decipher_message_1:4472",
+      "end_message_id": "decipher_message_1:4464",
+      "source_range_keys": [
+        "decipher_message_1:4464::School Discussion between December 2-3, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on December 5, 2022",
+      "summary": "A hit range identifying a discussion about school on December 5, 2022.",
+      "date_description": "On December 5, 2022",
+      "display_text": "School-related discussion occurring on December 5, 2022.",
+      "hit_message_id": "decipher_message_1:4440",
+      "start_message_id": "decipher_message_1:4442",
+      "end_message_id": "decipher_message_1:4437",
+      "source_range_keys": [
+        "decipher_message_1:4440::School Discussion on December 5, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between December 8-15, 2022",
+      "summary": "A hit range identifying a discussion about school spanning December 8 to December 15, 2022.",
+      "date_description": "On December 8-15, 2022",
+      "display_text": "School-related discussion occurring between December 8 and December 15, 2022.",
+      "hit_message_id": "decipher_message_1:4389",
+      "start_message_id": "decipher_message_1:4428",
+      "end_message_id": "decipher_message_1:4378",
+      "source_range_keys": [
+        "decipher_message_1:4389::School Discussion between December 8-15, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on December 14, 2022",
+      "summary": "A hit range identifying a discussion about school on December 14, 2022.",
+      "date_description": "On December 14, 2022",
+      "display_text": "School-related discussion occurring on December 14, 2022.",
+      "hit_message_id": "decipher_message_1:4372",
+      "start_message_id": "decipher_message_1:4372",
+      "end_message_id": "decipher_message_1:4370",
+      "source_range_keys": [
+        "decipher_message_1:4372::School Discussion on December 14, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion between December 15-16, 2022",
+      "summary": "A hit range identifying a discussion about school spanning December 15 to December 16, 2022.",
+      "date_description": "On December 15-16, 2022",
+      "display_text": "School-related discussion occurring between December 15 and December 16, 2022.",
+      "hit_message_id": "decipher_message_1:4361",
+      "start_message_id": "decipher_message_1:4366",
+      "end_message_id": "decipher_message_1:4352",
+      "source_range_keys": [
+        "decipher_message_1:4361::School Discussion between December 15-16, 2022"
+      ]
+    },
+    {
+      "title": "School Discussion on December 18-19, 2022 and February 23, 2023",
+      "summary": "A hit range identifying a discussion about school spanning December 18-19, 2022 and February 23, 2023.",
+      "date_description": "On December 18-19, 2022 and February 23, 2023",
+      "display_text": "School-related discussion occurring on December 18-19, 2022 and February 23, 2023.",
+      "hit_message_id": "decipher_message_1:4302",
+      "start_message_id": "decipher_message_1:4302",
+      "end_message_id": "decipher_message_1:3889",
+      "source_range_keys": [
+        "decipher_message_1:4302::School Discussion on December 18-19, 2022 and February 23, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion between January 2-5, 2023",
+      "summary": "A hit range identifying a discussion about school spanning January 2 to January 5, 2023.",
+      "date_description": "On January 2-5, 2023",
+      "display_text": "School-related discussion occurring between January 2 and January 5, 2023.",
+      "hit_message_id": "decipher_message_1:4167",
+      "start_message_id": "decipher_message_1:4168",
+      "end_message_id": "decipher_message_1:4144",
+      "source_range_keys": [
+        "decipher_message_1:4167::School Discussion between January 2-5, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on January 13, 2023",
+      "summary": "A hit range identifying a discussion about school on January 13, 2023.",
+      "date_description": "On January 13, 2023",
+      "display_text": "School-related discussion occurring on January 13, 2023.",
+      "hit_message_id": "decipher_message_1:4137",
+      "start_message_id": "decipher_message_1:4137",
+      "end_message_id": "decipher_message_1:4134",
+      "source_range_keys": [
+        "decipher_message_1:4137::School Discussion on January 13, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on January 13 and March 12-13, 2023",
+      "summary": "A hit range identifying a discussion about school spanning January 13 and March 12-13, 2023.",
+      "date_description": "On January 13 and March 12-13, 2023",
+      "display_text": "School-related discussion occurring on January 13 and March 12-13, 2023.",
+      "hit_message_id": "decipher_message_1:3715",
+      "start_message_id": "decipher_message_1:4132",
+      "end_message_id": "decipher_message_1:3689",
+      "source_range_keys": [
+        "decipher_message_1:3715::School Discussion on January 13 and March 12-13, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on March 14, 2023",
+      "summary": "A hit range identifying a discussion about school on March 14, 2023.",
+      "date_description": "On March 14, 2023",
+      "display_text": "School-related discussion occurring on March 14, 2023.",
+      "hit_message_id": "decipher_message_1:3650",
+      "start_message_id": "decipher_message_1:3652",
+      "end_message_id": "decipher_message_1:3649",
+      "source_range_keys": [
+        "decipher_message_1:3650::School Discussion on March 14, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on March 28, 2023 (Range 1)",
+      "summary": "A hit range identifying a discussion about school on March 28, 2023.",
+      "date_description": "On March 28, 2023",
+      "display_text": "School-related discussion occurring on March 28, 2023.",
+      "hit_message_id": "decipher_message_1:3571",
+      "start_message_id": "decipher_message_1:3572",
+      "end_message_id": "decipher_message_1:3544",
+      "source_range_keys": [
+        "decipher_message_1:3571::School Discussion on March 28, 2023 (Range 1)"
+      ]
+    },
+    {
+      "title": "School Discussion on March 28, 2023 (Range 2)",
+      "summary": "A second hit range identifying a discussion about school on March 28, 2023.",
+      "date_description": "On March 28, 2023",
+      "display_text": "School-related discussion occurring on March 28, 2023.",
+      "hit_message_id": "decipher_message_1:3523",
+      "start_message_id": "decipher_message_1:3533",
+      "end_message_id": "decipher_message_1:3514",
+      "source_range_keys": [
+        "decipher_message_1:3523::School Discussion on March 28, 2023 (Range 2)"
+      ]
+    },
+    {
+      "title": "School Discussion between May 11-14, 2023",
+      "summary": "A hit range identifying a discussion about school spanning May 11 to May 14, 2023.",
+      "date_description": "On May 11-14, 2023",
+      "display_text": "School-related discussion occurring between May 11 and May 14, 2023.",
+      "hit_message_id": "decipher_message_1:3245",
+      "start_message_id": "decipher_message_1:3245",
+      "end_message_id": "decipher_message_1:3189",
+      "source_range_keys": [
+        "decipher_message_1:3245::School Discussion between May 11-14, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on April 14 and 20, 2023",
+      "summary": "A hit range identifying a discussion about school on April 14 and April 20, 2023.",
+      "date_description": "On April 14 and 20, 2023",
+      "display_text": "School-related discussion occurring on April 14 and April 20, 2023.",
+      "hit_message_id": "decipher_message_1:3376",
+      "start_message_id": "decipher_message_1:3376",
+      "end_message_id": "decipher_message_1:3328",
+      "source_range_keys": [
+        "decipher_message_1:3376::School Discussion on April 14 and 20, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion between March 23-24, 2023",
+      "summary": "A hit range identifying a discussion about school spanning March 23 to March 24, 2023.",
+      "date_description": "On March 23-24, 2023",
+      "display_text": "School-related discussion occurring between March 23 and March 24, 2023.",
+      "hit_message_id": "decipher_message_1:3628",
+      "start_message_id": "decipher_message_1:3628",
+      "end_message_id": "decipher_message_1:3603",
+      "source_range_keys": [
+        "decipher_message_1:3628::School Discussion between March 23-24, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on July 25, 2023",
+      "summary": "A hit range identifying a discussion about school on July 25, 2023.",
+      "date_description": "On July 25, 2023",
+      "display_text": "School-related discussion occurring on July 25, 2023.",
+      "hit_message_id": "decipher_message_1:2655",
+      "start_message_id": "decipher_message_1:2655",
+      "end_message_id": "decipher_message_1:2618",
+      "source_range_keys": [
+        "decipher_message_1:2655::School Discussion on July 25, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion between September 22-24, 2023",
+      "summary": "A hit range identifying a discussion about school spanning September 22 to September 24, 2023.",
+      "date_description": "On September 22-24, 2023",
+      "display_text": "School-related discussion occurring between September 22 and September 24, 2023.",
+      "hit_message_id": "decipher_message_1:2118",
+      "start_message_id": "decipher_message_1:2139",
+      "end_message_id": "decipher_message_1:2073",
+      "source_range_keys": [
+        "decipher_message_1:2118::School Discussion between September 22-24, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on September 29, 2023 (Range 1)",
+      "summary": "A hit range identifying a discussion about school on September 29, 2023.",
+      "date_description": "On September 29, 2023",
+      "display_text": "School-related discussion occurring on September 29, 2023.",
+      "hit_message_id": "decipher_message_1:1833",
+      "start_message_id": "decipher_message_1:1840",
+      "end_message_id": "decipher_message_1:1816",
+      "source_range_keys": [
+        "decipher_message_1:1833::School Discussion on September 29, 2023 (Range 1)"
+      ]
+    },
+    {
+      "title": "School Discussion on September 29, 2023 (Range 2)",
+      "summary": "A second hit range identifying a discussion about school on September 29, 2023.",
+      "date_description": "On September 29, 2023",
+      "display_text": "School-related discussion occurring on September 29, 2023.",
+      "hit_message_id": "decipher_message_1:1851",
+      "start_message_id": "decipher_message_1:1851",
+      "end_message_id": "decipher_message_1:1829",
+      "source_range_keys": [
+        "decipher_message_1:1851::School Discussion on September 29, 2023 (Range 2)"
+      ]
+    },
+    {
+      "title": "School Discussion on September 29, 2023 (Range 3)",
+      "summary": "A third hit range identifying a discussion about school on September 29, 2023.",
+      "date_description": "On September 29, 2023",
+      "display_text": "School-related discussion occurring on September 29, 2023.",
+      "hit_message_id": "decipher_message_1:1769",
+      "start_message_id": "decipher_message_1:1772",
+      "end_message_id": "decipher_message_1:1733",
+      "source_range_keys": [
+        "decipher_message_1:1769::School Discussion on September 29, 2023 (Range 3)"
+      ]
+    },
+    {
+      "title": "School Discussion on September 29, 2023 (Range 4)",
+      "summary": "A fourth hit range identifying a discussion about school on September 29, 2023.",
+      "date_description": "On September 29, 2023",
+      "display_text": "School-related discussion occurring on September 29, 2023.",
+      "hit_message_id": "decipher_message_1:1733",
+      "start_message_id": "decipher_message_1:1733",
+      "end_message_id": "decipher_message_1:1711",
+      "source_range_keys": [
+        "decipher_message_1:1733::School Discussion on September 29, 2023 (Range 4)"
+      ]
+    },
+    {
+      "title": "School Discussion between October 2-3, 2023",
+      "summary": "A hit range identifying a discussion about school spanning October 2 to October 3, 2023.",
+      "date_description": "On October 2-3, 2023",
+      "display_text": "School-related discussion occurring between October 2 and October 3, 2023.",
+      "hit_message_id": "decipher_message_1:1666",
+      "start_message_id": "decipher_message_1:1666",
+      "end_message_id": "decipher_message_1:1595",
+      "source_range_keys": [
+        "decipher_message_1:1666::School Discussion between October 2-3, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion between October 20-21, 2023",
+      "summary": "A hit range identifying a discussion about school spanning October 20 to October 21, 2023.",
+      "date_description": "On October 20-21, 2023",
+      "display_text": "School-related discussion occurring between October 20 and October 21, 2023.",
+      "hit_message_id": "decipher_message_1:1384",
+      "start_message_id": "decipher_message_1:1384",
+      "end_message_id": "decipher_message_1:1383",
+      "source_range_keys": [
+        "decipher_message_1:1384::School Discussion between October 20-21, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion between October 26-27, 2023",
+      "summary": "A hit range identifying a discussion about school spanning October 26 to October 27, 2023.",
+      "date_description": "On October 26-27, 2023",
+      "display_text": "School-related discussion occurring between October 26 and October 27, 2023.",
+      "hit_message_id": "decipher_message_1:1212",
+      "start_message_id": "decipher_message_1:1222",
+      "end_message_id": "decipher_message_1:1195",
+      "source_range_keys": [
+        "decipher_message_1:1212::School Discussion between October 26-27, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on November 13, 2023",
+      "summary": "A hit range identifying a discussion about school on November 13, 2023.",
+      "date_description": "On November 13, 2023",
+      "display_text": "School-related discussion occurring on November 13, 2023.",
+      "hit_message_id": "decipher_message_1:986",
+      "start_message_id": "decipher_message_1:988",
+      "end_message_id": "decipher_message_1:970",
+      "source_range_keys": [
+        "decipher_message_1:986::School Discussion on November 13, 2023"
+      ]
+    },
+    {
+      "title": "School Discussion on March 29, 2024",
+      "summary": "A hit range identifying a discussion about school on March 29, 2024.",
+      "date_description": "On March 29, 2024",
+      "display_text": "School-related discussion occurring on March 29, 2024.",
+      "hit_message_id": "decipher_export_19:2",
+      "start_message_id": "decipher_export_19:1",
+      "end_message_id": "decipher_export_19:15",
+      "source_range_keys": [
+        "decipher_export_19:2::School Discussion on March 29, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on January 26, 2024",
+      "summary": "A hit range identifying a discussion about school on January 26, 2024.",
+      "date_description": "On January 26, 2024",
+      "display_text": "School-related discussion occurring on January 26, 2024.",
+      "hit_message_id": "decipher_message_1:377",
+      "start_message_id": "decipher_message_1:377",
+      "end_message_id": "decipher_message_1:376",
+      "source_range_keys": [
+        "decipher_message_1:377::School Discussion on January 26, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on June 26, 2024",
+      "summary": "A hit range identifying a discussion about school on June 26, 2024.",
+      "date_description": "On June 26, 2024",
+      "display_text": "School-related discussion occurring on June 26, 2024.",
+      "hit_message_id": "decipher_export_19:581",
+      "start_message_id": "decipher_export_19:576",
+      "end_message_id": "decipher_export_19:603",
+      "source_range_keys": [
+        "decipher_export_19:581::School Discussion on June 26, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on August 19, 2024",
+      "summary": "A hit range identifying a discussion about school on August 19, 2024.",
+      "date_description": "On August 19, 2024",
+      "display_text": "School-related discussion occurring on August 19, 2024.",
+      "hit_message_id": "decipher_export_19:934",
+      "start_message_id": "decipher_export_19:934",
+      "end_message_id": "decipher_export_19:936",
+      "source_range_keys": [
+        "decipher_export_19:934::School Discussion on August 19, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on August 26, 2024",
+      "summary": "A hit range identifying a discussion about school on August 26, 2024.",
+      "date_description": "On August 26, 2024",
+      "display_text": "School-related discussion occurring on August 26, 2024.",
+      "hit_message_id": "decipher_export_19:1006",
+      "start_message_id": "decipher_export_19:1006",
+      "end_message_id": "decipher_export_19:1006",
+      "source_range_keys": [
+        "decipher_export_19:1006::School Discussion on August 26, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on September 5, 2024 (Range 1)",
+      "summary": "A hit range identifying a discussion about school on September 5, 2024.",
+      "date_description": "On September 5, 2024",
+      "display_text": "School-related discussion occurring on September 5, 2024.",
+      "hit_message_id": "decipher_export_19:1068",
+      "start_message_id": "decipher_export_19:1068",
+      "end_message_id": "decipher_export_19:1070",
+      "source_range_keys": [
+        "decipher_export_19:1068::School Discussion on September 5, 2024 (Range 1)"
+      ]
+    },
+    {
+      "title": "School Discussion on September 5, 2024 (Range 2)",
+      "summary": "A second hit range identifying a discussion about school on September 5, 2024.",
+      "date_description": "On September 5, 2024",
+      "display_text": "School-related discussion occurring on September 5, 2024.",
+      "hit_message_id": "decipher_export_19:1073",
+      "start_message_id": "decipher_export_19:1073",
+      "end_message_id": "decipher_export_19:1076",
+      "source_range_keys": [
+        "decipher_export_19:1073::School Discussion on September 5, 2024 (Range 2)"
+      ]
+    },
+    {
+      "title": "School Discussion between September 18-19, 2024",
+      "summary": "A hit range identifying a discussion about school spanning September 18 to September 19, 2024.",
+      "date_description": "On September 18-19, 2024",
+      "display_text": "School-related discussion occurring between September 18 and September 19, 2024.",
+      "hit_message_id": "decipher_export_19:1115",
+      "start_message_id": "decipher_export_19:1115",
+      "end_message_id": "decipher_export_19:1134",
+      "source_range_keys": [
+        "decipher_export_19:1115::School Discussion between September 18-19, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on September 22, 2024",
+      "summary": "A hit range identifying a discussion about school on September 22, 2024.",
+      "date_description": "On September 22, 2024",
+      "display_text": "School-related discussion occurring on September 22, 2024.",
+      "hit_message_id": "decipher_export_19:1181",
+      "start_message_id": "decipher_export_19:1181",
+      "end_message_id": "decipher_export_19:1182",
+      "source_range_keys": [
+        "decipher_export_19:1181::School Discussion on September 22, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion between October 19-21, 2024",
+      "summary": "A hit range identifying a discussion about school spanning October 19 to October 21, 2024.",
+      "date_description": "On October 19-21, 2024",
+      "display_text": "School-related discussion occurring between October 19 and October 21, 2024.",
+      "hit_message_id": "decipher_export_19:1433",
+      "start_message_id": "decipher_export_19:1433",
+      "end_message_id": "decipher_export_19:1445",
+      "source_range_keys": [
+        "decipher_export_19:1433::School Discussion between October 19-21, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on November 7, 2024",
+      "summary": "A hit range identifying a discussion about school on November 7, 2024.",
+      "date_description": "On November 7, 2024",
+      "display_text": "School-related discussion occurring on November 7, 2024.",
+      "hit_message_id": "decipher_export_19:1613",
+      "start_message_id": "decipher_export_19:1607",
+      "end_message_id": "decipher_export_19:1613",
+      "source_range_keys": [
+        "decipher_export_19:1613::School Discussion on November 7, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on December 14, 2024",
+      "summary": "A hit range identifying a discussion about school on December 14, 2024.",
+      "date_description": "On December 14, 2024",
+      "display_text": "School-related discussion occurring on December 14, 2024.",
+      "hit_message_id": "decipher_export_19:1904",
+      "start_message_id": "decipher_export_19:1889",
+      "end_message_id": "decipher_export_19:1907",
+      "source_range_keys": [
+        "decipher_export_19:1904::School Discussion on December 14, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion on December 19, 2024",
+      "summary": "A hit range identifying a discussion about school on December 19, 2024.",
+      "date_description": "On December 19, 2024",
+      "display_text": "School-related discussion occurring on December 19, 2024.",
+      "hit_message_id": "decipher_export_19:1921",
+      "start_message_id": "decipher_export_19:1921",
+      "end_message_id": "decipher_export_19:1921",
+      "source_range_keys": [
+        "decipher_export_19:1921::School Discussion on December 19, 2024"
+      ]
+    },
+    {
+      "title": "School Discussion between March 14-15, 2025",
+      "summary": "A hit range identifying a discussion about school spanning March 14 to March 15, 2025.",
+      "date_description": "On March 14-15, 2025",
+      "display_text": "School-related discussion occurring between March 14 and March 15, 2025.",
+      "hit_message_id": "decipher_export_19:2532",
+      "start_message_id": "decipher_export_19:2532",
+      "end_message_id": "decipher_export_19:2546",
+      "source_range_keys": [
+        "decipher_export_19:2532::School Discussion between March 14-15, 2025"
+      ]
+    },
+    {
+      "title": "School Discussion on April 15, 2025",
+      "summary": "A hit range identifying a discussion about school on April 15, 2025.",
+      "date_description": "On April 15, 2025",
+      "display_text": "School-related discussion occurring on April 15, 2025.",
+      "hit_message_id": "decipher_export_19:2688",
+      "start_message_id": "decipher_export_19:2684",
+      "end_message_id": "decipher_export_19:2689",
+      "source_range_keys": [
+        "decipher_export_19:2688::School Discussion on April 15, 2025"
+      ]
+    },
+    {
+      "title": "School Discussion on July 16, 2025",
+      "summary": "A hit range identifying a discussion about school on July 16, 2025.",
+      "date_description": "On July 16, 2025",
+      "display_text": "School-related discussion occurring on July 16, 2025.",
+      "hit_message_id": "decipher_export_19:3370",
+      "start_message_id": "decipher_export_19:3370",
+      "end_message_id": "decipher_export_19:3384",
+      "source_range_keys": [
+        "decipher_export_19:3370::School Discussion on July 16, 2025"
+      ]
+    },
+    {
+      "title": "School Discussion on August 4, 2025",
+      "summary": "A hit range identifying a discussion about school on August 4, 2025.",
+      "date_description": "On August 4, 2025",
+      "display_text": "School-related discussion occurring on August 4, 2025.",
+      "hit_message_id": "decipher_export_19:3455",
+      "start_message_id": "decipher_export_19:3451",
+      "end_message_id": "decipher_export_19:3456",
+      "source_range_keys": [
+        "decipher_export_19:3455::School Discussion on August 4, 2025"
+      ]
+    },
+    {
+      "title": "School Discussion on December 23, 2025 (Range 1)",
+      "summary": "A hit range identifying a discussion about school on December 23, 2025.",
+      "date_description": "On December 23, 2025",
+      "display_text": "School-related discussion occurring on December 23, 2025.",
+      "hit_message_id": "decipher_export_19:4629",
+      "start_message_id": "decipher_export_19:4629",
+      "end_message_id": "decipher_export_19:4629",
+      "source_range_keys": [
+        "decipher_export_19:4629::School Discussion on December 23, 2025 (Range 1)"
+      ]
+    },
+    {
+      "title": "School Discussion on December 23, 2025 (Range 2)",
+      "summary": "A second hit range identifying a discussion about school on December 23, 2025.",
+      "date_description": "On December 23, 2025",
+      "display_text": "School-related discussion occurring on December 23, 2025.",
+      "hit_message_id": "decipher_export_19:4634",
+      "start_message_id": "decipher_export_19:4634",
+      "end_message_id": "decipher_export_19:4636",
+      "source_range_keys": [
+        "decipher_export_19:4634::School Discussion on December 23, 2025 (Range 2)"
+      ]
+    },
+    {
+      "title": "School Discussion on December 23, 2025 (Range 3)",
+      "summary": "A third hit range identifying a discussion about school on December 23, 2025.",
+      "date_description": "On December 23, 2025",
+      "display_text": "School-related discussion occurring on December 23, 2025.",
+      "hit_message_id": "decipher_export_19:4639",
+      "start_message_id": "decipher_export_19:4639",
+      "end_message_id": "decipher_export_19:4639",
+      "source_range_keys": [
+        "decipher_export_19:4639::School Discussion on December 23, 2025 (Range 3)"
+      ]
+    },
+    {
+      "title": "School Discussion on December 23, 2025 (Range 4)",
+      "summary": "A fourth hit range identifying a discussion about school on December 23, 2025.",
+      "date_description": "On December 23, 2025",
+      "display_text": "School-related discussion occurring on December 23, 2025.",
+      "hit_message_id": "decipher_export_19:4631",
+      "start_message_id": "decipher_export_19:4631",
+      "end_message_id": "decipher_export_19:4631",
+      "source_range_keys": [
+        "decipher_export_19:4631::School Discussion on December 23, 2025 (Range 4)"
+      ]
+    }
+  ],
+  "uncertainties": [
+    "The specific content, context, and participants of the school discussions are unknown because only message IDs and date ranges were provided, not the message text.",
+    "Several hit ranges feature start and end message IDs that appear inverted relative to their numerical sequence (e.g., start ID is higher than end ID); the chronological ordering within these ranges is uncertain.",
+    "It is uncertain whether overlapping date ranges (e.g., multiple hits on September 29, 2023 or March 28, 2023) represent distinct conversations, different facets of the same long conversation, or redundant hits.",
+    "The exact scope of the term 'school' as used in the underlying messages is unknown; it could refer to primary school, secondary school, university, or other training contexts."
+  ],
+  "coverage_summary": {
+    "mode": "partial_hit_scan",
+    "messages_considered": 67,
+    "source_thread_ids": [
+      "decipher_message_1",
+      "decipher_export_19"
+    ]
+  }
+}
+```

@@ -94,6 +94,137 @@ def test_ordinal_and_message_id_lookup(logger) -> None:
     assert model.message_id_for_ordinal(42) == "msg_00042"
 
 
+def test_update_overlay_slots_only_affects_target_block(logger) -> None:
+    thread_id = "thread_large"
+    messages = [_sample_message(index, thread_id) for index in range(50)]
+    blocks = [
+        EvidenceBlock(
+            evidence_block_id=1,
+            dataset_id=1,
+            category_id=1,
+            source_thread_id=thread_id,
+            title="Block A",
+            summary="",
+            core_hit_message_id="msg_00010",
+            context_start_slot=8,
+            relevant_start_slot=10,
+            relevant_end_slot=11,
+            context_end_slot=12,
+            created_by="manual",
+            created_at="2024-01-01T00:00:00+00:00",
+            updated_at="2024-01-01T00:00:00+00:00",
+            highlighted_message_ids=frozenset(),
+        ),
+        EvidenceBlock(
+            evidence_block_id=2,
+            dataset_id=1,
+            category_id=1,
+            source_thread_id=thread_id,
+            title="Block B",
+            summary="",
+            core_hit_message_id="msg_00030",
+            context_start_slot=28,
+            relevant_start_slot=30,
+            relevant_end_slot=31,
+            context_end_slot=32,
+            created_by="manual",
+            created_at="2024-01-01T00:00:00+00:00",
+            updated_at="2024-01-01T00:00:00+00:00",
+            highlighted_message_ids=frozenset(),
+        ),
+    ]
+    model = in_memory_model(
+        logger.conn,
+        logger,
+        dataset_id=1,
+        messages_by_thread={thread_id: messages},
+        blocks_by_thread={thread_id: blocks},
+    )
+    model.load_thread(thread_id)
+    model.update_overlay_slots(
+        2,
+        context_start=27,
+        relevant_start=29,
+        relevant_end=31,
+        context_end=33,
+    )
+    overlay_a = model.overlay_for_block(1)
+    overlay_b = model.overlay_for_block(2)
+    assert overlay_a is not None
+    assert overlay_b is not None
+    assert overlay_a.relevant_start_slot == 10
+    assert overlay_b.relevant_start_slot == 29
+
+
+def test_overlay_containing_ordinal(logger) -> None:
+    thread_id = "thread_large"
+    messages = [_sample_message(index, thread_id) for index in range(50)]
+    blocks = [
+        EvidenceBlock(
+            evidence_block_id=1,
+            dataset_id=1,
+            category_id=1,
+            source_thread_id=thread_id,
+            title="Block A",
+            summary="",
+            core_hit_message_id="msg_00010",
+            context_start_slot=8,
+            relevant_start_slot=10,
+            relevant_end_slot=11,
+            context_end_slot=12,
+            created_by="manual",
+            created_at="2024-01-01T00:00:00+00:00",
+            updated_at="2024-01-01T00:00:00+00:00",
+            highlighted_message_ids=frozenset(),
+        ),
+    ]
+    model = in_memory_model(
+        logger.conn,
+        logger,
+        dataset_id=1,
+        messages_by_thread={thread_id: messages},
+        blocks_by_thread={thread_id: blocks},
+    )
+    model.load_thread(thread_id)
+    overlay = model.overlay_containing_ordinal(10)
+    assert overlay is not None
+    assert overlay.evidence_block_id == 1
+    assert model.overlay_containing_ordinal(20) is None
+
+
+def test_remove_evidence_block_from_model(logger) -> None:
+    thread_id = "thread_large"
+    messages = [_sample_message(index, thread_id) for index in range(20)]
+    block = EvidenceBlock(
+        evidence_block_id=1,
+        dataset_id=1,
+        category_id=1,
+        source_thread_id=thread_id,
+        title="Block",
+        summary="",
+        core_hit_message_id="msg_00005",
+        context_start_slot=3,
+        relevant_start_slot=5,
+        relevant_end_slot=6,
+        context_end_slot=8,
+        created_by="manual",
+        created_at="2024-01-01T00:00:00+00:00",
+        updated_at="2024-01-01T00:00:00+00:00",
+        highlighted_message_ids=frozenset(),
+    )
+    model = in_memory_model(
+        logger.conn,
+        logger,
+        dataset_id=1,
+        messages_by_thread={thread_id: messages},
+        blocks_by_thread={thread_id: [block]},
+    )
+    model.load_thread(thread_id)
+    model.remove_evidence_block(1)
+    assert model.block_overlays() == []
+    assert model.overlay_containing_ordinal(5) is None
+
+
 def test_load_evidence_blocks_without_full_hydration(logger) -> None:
     thread_id = "thread_large"
     messages = [_sample_message(index, thread_id) for index in range(200)]
@@ -127,7 +258,7 @@ def test_load_evidence_blocks_without_full_hydration(logger) -> None:
     assert model.cached_message_count() == 0
 
 
-def test_load_thread_activates_first_evidence_block(logger) -> None:
+def test_load_thread_does_not_auto_activate_evidence_blocks(logger) -> None:
     thread_id = "thread_large"
     messages = [_sample_message(index, thread_id) for index in range(20)]
     block = EvidenceBlock(
@@ -155,7 +286,7 @@ def test_load_thread_activates_first_evidence_block(logger) -> None:
         blocks_by_thread={thread_id: [block]},
     )
     model.load_thread(thread_id)
-    assert model.active_evidence_block_id == 1
-    overlay = model.active_overlay()
-    assert overlay is not None
-    assert overlay.is_active
+    assert model.active_evidence_block_id is None
+    assert model.active_overlay() is None
+    assert len(model.block_overlays()) == 1
+    assert model.message_zone(5) == "relevant"

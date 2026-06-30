@@ -592,3 +592,69 @@ def update_evidence_block_metadata(
     block = get_evidence_block(conn, evidence_block_id)
     assert block is not None
     return block
+
+
+def delete_evidence_block(
+    conn: sqlite3.Connection,
+    logger: ProcessLogger,
+    *,
+    evidence_block_id: int,
+) -> None:
+    row = conn.execute(
+        "SELECT evidence_block_id FROM evidence_block WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    ).fetchone()
+    if row is None:
+        return
+    conn.execute(
+        "DELETE FROM evidence_block_highlight WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    )
+    conn.execute(
+        "DELETE FROM printable_artifact_evidence_block WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    )
+    conn.execute(
+        "DELETE FROM evidence_block WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    )
+    conn.commit()
+    logger.info(
+        component="db.evidence_blocks",
+        operation="evidence_block_delete",
+        message="Deleted evidence block",
+        details={"evidence_block_id": evidence_block_id},
+    )
+
+
+def delete_evidence_block(
+    conn: sqlite3.Connection,
+    logger: ProcessLogger,
+    *,
+    evidence_block_id: int,
+) -> None:
+    row = conn.execute(
+        "SELECT evidence_block_id FROM evidence_block WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    ).fetchone()
+    if row is None:
+        return
+    conn.execute(
+        "DELETE FROM evidence_block_highlight WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    )
+    conn.execute(
+        "DELETE FROM printable_artifact_evidence_block WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    )
+    conn.execute(
+        "DELETE FROM evidence_block WHERE evidence_block_id = ?",
+        (evidence_block_id,),
+    )
+    conn.commit()
+    logger.info(
+        component="db.evidence_blocks",
+        operation="evidence_block_delete",
+        message="Deleted evidence block",
+        details={"evidence_block_id": evidence_block_id},
+    )

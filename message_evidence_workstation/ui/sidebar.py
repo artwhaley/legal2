@@ -102,6 +102,7 @@ class CategoryDropTree(QTreeWidget):
 
 class Sidebar(QWidget):
     source_thread_selected = Signal(str, str)
+    evidence_block_activated = Signal(int)
     search_drop_evidence_block_created = Signal(object)
 
     def __init__(
@@ -134,7 +135,7 @@ class Sidebar(QWidget):
         self.category_tree.setHeaderHidden(True)
         self.category_tree.itemCollapsed.connect(self._on_category_item_collapsed)
         self.category_tree.itemExpanded.connect(self._on_category_item_expanded)
-        self.category_tree.itemDoubleClicked.connect(self._rename_category)
+        self.category_tree.itemDoubleClicked.connect(self._on_category_tree_double_clicked)
         layout.addWidget(self.category_tree, stretch=9)
 
         self.empty_label = QLabel("No dataset loaded.")
@@ -284,6 +285,14 @@ class Sidebar(QWidget):
             return
         repositories.create_category(self.conn, self.logger, self.dataset_id, name.strip())
         self._refresh_categories()
+
+    def _on_category_tree_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+        kind = item.data(0, ROLE_ITEM_KIND)
+        if kind == "evidence_block":
+            self.evidence_block_activated.emit(int(item.data(0, ROLE_ITEM_ID)))
+            return
+        if kind == "category":
+            self._rename_category(item, column)
 
     def _rename_category(self, item: QTreeWidgetItem, _column: int) -> None:
         if item.data(0, ROLE_ITEM_KIND) != "category":

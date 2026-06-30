@@ -61,7 +61,7 @@ from message_evidence_workstation.search.conversational_answer import (
 from message_evidence_workstation.search.result_models import GroupedSearchResult, SearchHit
 from message_evidence_workstation.ui.background_tasks import run_background
 from message_evidence_workstation.ui.embedding_worker import EmbeddingJobSpec, run_embedding_job
-from message_evidence_workstation.ui.evidence_block_transcript_widget import EvidenceBlockTranscriptWidget
+from message_evidence_workstation.ui.virtual_transcript_widget import VirtualTranscriptWidget
 from message_evidence_workstation.ui.simple_search_tab import MIME_SEARCH_RESULT
 
 
@@ -171,7 +171,7 @@ class ConversationalTab(QWidget):
         transcript_layout = QVBoxLayout(transcript_panel)
         transcript_layout.setContentsMargins(0, 0, 0, 0)
         transcript_layout.addWidget(QLabel("Evidence transcript"))
-        self.transcript_widget = EvidenceBlockTranscriptWidget(conn, logger, transcript_panel)
+        self.transcript_widget = VirtualTranscriptWidget(conn, logger, transcript_panel)
         self.transcript_widget.evidence_block_created.connect(self._on_evidence_block_created)
         transcript_layout.addWidget(self.transcript_widget, stretch=1)
         splitter.addWidget(transcript_panel)
@@ -618,24 +618,18 @@ class ConversationalTab(QWidget):
                 query,
                 dataset_id,
                 db_path,
-                transcript,
                 answer_settings,
                 budget,
             )
             return
         if answer_mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN:
             self.status_label.setText("Answering with exhaustive transcript window scan...")
-            self._ensure_message_embeddings_then(
+            self._run_exhaustive_window_scan_answer(
                 generation,
+                query,
                 dataset_id,
                 db_path,
-                lambda: self._run_exhaustive_window_scan_answer(
-                    generation,
-                    query,
-                    dataset_id,
-                    db_path,
-                    answer_settings,
-                ),
+                answer_settings,
             )
             return
         if answer_mode == ANSWER_MODE_SESSION_COVERAGE:
@@ -743,6 +737,16 @@ class ConversationalTab(QWidget):
     ) -> None:
         app_settings = load_settings()
         writing_model = resolve_role_model(app_settings, UserFacingModelRole.WRITING)
+        self.logger.info(
+            component="ui.conversational_tab",
+            operation="exhaustive_window_scan_answer_queued",
+            message="Queued exhaustive window scan conversational answer worker",
+            details={
+                "generation": generation,
+                "model_id": writing_model,
+            },
+            dataset_id=dataset_id,
+        )
 
         def answer_work() -> ConversationalAnswerResult:
             worker_conn = connect(db_path)
@@ -888,17 +892,12 @@ class ConversationalTab(QWidget):
         self._append_system_message(
             "Model context limit reached; automatically retrying with exhaustive window scan.",
         )
-        self._ensure_message_embeddings_then(
+        self._run_exhaustive_window_scan_answer(
             generation,
+            query,
             dataset_id,
             db_path,
-            lambda: self._run_exhaustive_window_scan_answer(
-                generation,
-                query,
-                dataset_id,
-                db_path,
-                answer_settings,
-            ),
+            answer_settings,
         )
         return True
 
@@ -908,17 +907,27 @@ class ConversationalTab(QWidget):
         query: str,
         dataset_id: int,
         db_path: Path,
-        transcript,
         answer_settings,
         budget: AnswerBudget,
     ) -> None:
         app_settings = load_settings()
+        self.logger.info(
+            component="ui.conversational_tab",
+            operation="whole_transcript_answer_queued",
+            message="Queued whole transcript conversational answer worker",
+            details={
+                "generation": generation,
+                "max_output_tokens": budget.max_output_tokens,
+            },
+            dataset_id=dataset_id,
+        )
 
         def answer_work() -> ConversationalAnswerResult:
             worker_conn = connect(db_path)
             try:
                 worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
                 router = ModelRouter(app_settings)
+                transcript = build_dataset_transcript(worker_conn, dataset_id)
                 return run_whole_transcript_answer(
                     worker_conn,
                     worker_logger,

@@ -1,0 +1,8 @@
+{
+  "strategy": "hierarchical_balanced",
+  "call_count": 1,
+  "latency_ms": 42086,
+  "has_error": false,
+  "error": null,
+  "range_count": 0
+}

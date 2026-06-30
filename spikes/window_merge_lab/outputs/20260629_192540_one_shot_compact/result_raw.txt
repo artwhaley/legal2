@@ -1,0 +1,538 @@
+```json
+{
+  "answer_summary": "Julie and Art discussed school extensively throughout the transcript, covering Olivia's preschool (Zoo School/Nature Explorers), kindergarten search and enrollment at Wildflower Acton Academy, the transition to a homeschool co-op (Spark Academy, then Dragon & Sunshine/Lumos), and ultimately full homeschooling, along with ongoing debates over curriculum, academic progress, and the priority of education versus gymnastics.",
+  "answer_format": "detailed",
+  "answer": "The parties discussed school frequently from February 2022 through December 2025. Early conversations covered Olivia's preschool at the Oklahoma City Zoo (\"zoo school\"), including reluctance to attend, Valentine's Day party prep, drop-off/pickup logistics, the Brightwheel app, tuition, spring break, and post-COVID low energy. As preschool ended, they discussed graduation, teacher gifts, and the kindergarten search (Keystone, Heritage Hall, Primrose, Deer Creek). Olivia was ultimately accepted at Wildflower Acton Academy after an application, portfolio, video, and family interview. Discussions then covered Wildflower tuition, back-to-school night, the first day of kindergarten, morning routine adjustments, car line rules, session breaks, and journey meetings. Conflicts arose over school absences due to illness, the disease pool at private vs. public school, and Wildflower's child-led reading curriculum. After Wildflower's ownership collapsed (the Heinigers, Miss Chris leaving), Julie moved Olivia to Spark Academy, which also collapsed. They then formed a homeschool co-op (Dragon & Sunshine Academy/Lumos), hiring teachers (Andrew Porter, Brylee, Weston), though tuition disputes and viability concerns arose. Olivia transitioned to full homeschool with curricula including education.com, IXL, Horizons, and Time4Learning. Julie reported strong academic progress (passing 1st grade on IXL, meeting OK standards, 3rd-grade reading level), but Art argued school was being neglected in favor of gymnastics, leading to a major disagreement. By late 2025, they argued over who monitored Olivia's schoolwork, with Art claiming he took over paying for her education due to Julie's neglect, and Julie defending her oversight except during medical hospitalizations.",
+  "answer_ranges": [
+    {
+      "title": "Preschool reluctance, cancellations, and Valentine's party",
+      "summary": "Olivia's anxiety and tummy aches about school, preschool cancellations and holiday schedule, and Valentine's Day party prep and instructions.",
+      "date_description": "On February 7-21, 2022",
+      "display_text": "School reluctance, cancellations, and Valentine's party",
+      "hit_message_id": "decipher_message_1:8692",
+      "start_message_id": "decipher_message_1:8938",
+      "end_message_id": "decipher_message_1:8768",
+      "source_range_keys": [
+        "julie_kramer__window_001::School reluctance and tummy aches",
+        "julie_kramer__window_001::School cancellations and schedule",
+        "julie_kramer__window_001::Valentine's Day party at school"
+      ]
+    },
+    {
+      "title": "Preschool logistics, Brightwheel, spring break, and post-COVID issues",
+      "summary": "School drop-off and pickup logistics, the Brightwheel app and tuition payment, spring break, and Olivia's low energy and school reluctance post-COVID.",
+      "date_description": "On February 28 - March 31, 2022",
+      "display_text": "Preschool logistics, Brightwheel, spring break, post-COVID",
+      "hit_message_id": "decipher_message_1:8603",
+      "start_message_id": "decipher_message_1:9587",
+      "end_message_id": "decipher_message_1:8131",
+      "source_range_keys": [
+        "julie_kramer__window_001::School drop-off and pickup logistics",
+        "julie_kramer__window_001::Brightwheel app and tuition",
+        "julie_kramer__window_001::Spring break and school return",
+        "julie_kramer__window_001::School after COVID and low energy"
+      ]
+    },
+    {
+      "title": "Keystone school tour and kindergarten options",
+      "summary": "Art signs them up for a tour at Keystone Farm School; Julie mentions they might put Olivia at Keystone and discusses other private options.",
+      "date_description": "On January 7 - May 4, 2022",
+      "display_text": "Keystone school tour and kindergarten options",
+      "hit_message_id": "decipher_message_1:9297",
+      "start_message_id": "decipher_message_1:9297",
+      "end_message_id": "decipher_message_1:7612",
+      "source_range_keys": [
+        "julie_kramer__window_001::Keystone school tour and kindergarten options"
+      ]
+    },
+    {
+      "title": "Last days of preschool, graduation, and teacher gifts",
+      "summary": "Julie realizes Olivia only has 11 days of preschool left, will be a full kindergartener, and RSVPs for graduation. Discussion of Tiny Grad portrait, graduation ceremony, and teacher gifts.",
+      "date_description": "On May 6-20, 2022",
+      "display_text": "Last days of preschool, graduation, and teacher gifts",
+      "hit_message_id": "decipher_message_1:7795",
+      "start_message_id": "decipher_message_1:7795",
+      "end_message_id": "decipher_message_1:7278",
+      "source_range_keys": [
+        "julie_kramer__window_001::Last days of preschool and graduation",
+        "julie_kramer__window_002::Pre-K graduation and teacher gifts",
+        "julie_kramer__window_002::Last day of Pre-K"
+      ]
+    },
+    {
+      "title": "Kindergarten school search: Wildflower and alternatives",
+      "summary": "Julie and Art discuss Wildflower Acton Academy, Heritage Hall, Primrose, Chisholm Creek Academy, and Deer Creek public schools for kindergarten, including criteria and concerns.",
+      "date_description": "On June 14-15, 2022",
+      "display_text": "Kindergarten school search and criteria",
+      "hit_message_id": "decipher_message_1:6780",
+      "start_message_id": "decipher_message_1:6780",
+      "end_message_id": "decipher_message_1:6745",
+      "source_range_keys": [
+        "julie_kramer__window_002::School search: Wildflower Acton Academy and alternatives"
+      ]
+    },
+    {
+      "title": "Wildflower application, portfolio, and video",
+      "summary": "Julie completes the Wildflower application, answering questions about Olivia's previous school, fears, and motivation, and prepares an art portfolio and family video.",
+      "date_description": "On June 20-28, 2022",
+      "display_text": "Wildflower application, portfolio, and video",
+      "hit_message_id": "decipher_message_1:6605",
+      "start_message_id": "decipher_message_1:6605",
+      "end_message_id": "decipher_message_1:5920",
+      "source_range_keys": [
+        "julie_kramer__window_002::Wildflower application and portfolio"
+      ]
+    },
+    {
+      "title": "Wildflower family interview and acceptance",
+      "summary": "Julie schedules and attends the in-person family interview at Wildflower, and Olivia is accepted for the 2022-2023 school year.",
+      "date_description": "On July 30-August 6, 2022",
+      "display_text": "Wildflower interview and acceptance",
+      "hit_message_id": "decipher_message_1:5907",
+      "start_message_id": "decipher_message_1:5907",
+      "end_message_id": "decipher_message_1:5785",
+      "source_range_keys": [
+        "julie_kramer__window_002::Wildflower family interview and acceptance"
+      ]
+    },
+    {
+      "title": "Wildflower enrollment, tuition, and back-to-school night",
+      "summary": "Julie signs paperwork, pays technology fee and tuition ($10,000 total), notes school starts September 6, and discusses mandatory back-to-school night conflicting with the county fair dog show.",
+      "date_description": "On August 8-25, 2022",
+      "display_text": "Wildflower enrollment, tuition, and back-to-school night",
+      "hit_message_id": "decipher_message_1:5778",
+      "start_message_id": "decipher_message_1:5778",
+      "end_message_id": "decipher_message_1:5490",
+      "source_range_keys": [
+        "julie_kramer__window_002::Wildflower enrollment and tuition",
+        "julie_kramer__window_002::Back-to-school night and school schedule conflict"
+      ]
+    },
+    {
+      "title": "First day of kindergarten and schedule adjustment",
+      "summary": "Olivia starts kindergarten at Wildflower, picks out her outfit, makes friends, and reports it was the 'best school ever.' Julie and Art discuss her difficulty adjusting to waking at 7:00am and using melatonin.",
+      "date_description": "On September 6-13, 2022",
+      "display_text": "First day of kindergarten and morning routine struggles",
+      "hit_message_id": "decipher_message_1:5456",
+      "start_message_id": "decipher_message_1:5456",
+      "end_message_id": "decipher_message_1:5403",
+      "source_range_keys": [
+        "julie_kramer__window_002::First day of kindergarten at Wildflower",
+        "julie_kramer__window_002::School schedule adjustment and morning routine"
+      ]
+    },
+    {
+      "title": "Wildflower car line pickup rules",
+      "summary": "Julie explains Wildflower's car line pickup rules to Art, including not getting out of the car, not leaving gaps, and arrival timing.",
+      "date_description": "On September 16, 2022",
+      "display_text": "School car line pickup rules",
+      "hit_message_id": "decipher_message_1:5353",
+      "start_message_id": "decipher_message_1:5353",
+      "end_message_id": "decipher_message_1:5351",
+      "source_range_keys": [
+        "julie_kramer__window_002::School pickup procedures and car line rules"
+      ]
+    },
+    {
+      "title": "Wildflower session breaks and journey meeting",
+      "summary": "Discussion of Wildflower's session schedule (5-6 weeks on, then a break), and the 'journey meeting' (parent-teacher conference) reviewing Olivia's evaluation and leadership self-assessment.",
+      "date_description": "On October 6-28, 2022",
+      "display_text": "School break schedule and journey meeting evaluation",
+      "hit_message_id": "decipher_message_1:5063",
+      "start_message_id": "decipher_message_1:5063",
+      "end_message_id": "decipher_message_1:4882",
+      "source_range_keys": [
+        "julie_kramer__window_002::School break and schedule",
+        "julie_kramer__window_002::Journey meeting and school evaluation"
+      ]
+    },
+    {
+      "title": "School fatigue and Wildflower policies",
+      "summary": "Julie notes Olivia is worn out from returning to school every day, and coordination of drop-offs/pickups including Wildflower's Monday launch policy and tardiness notifications.",
+      "date_description": "On December 2-5, 2022",
+      "display_text": "School fatigue and Wildflower Monday launch policy",
+      "hit_message_id": "decipher_message_1:4464",
+      "start_message_id": "decipher_message_1:4472",
+      "end_message_id": "decipher_message_1:4437",
+      "source_range_keys": [
+        "julie_kramer__window_003::School fatigue and schedule challenges",
+        "julie_kramer__window_003::School pickup coordination and Wildflower policies"
+      ]
+    },
+    {
+      "title": "School absences due to illness and disease pool debate",
+      "summary": "Olivia misses school due to flu, fever, and double ear infection. Art asks if Wildflower moms are anti-vaxxers causing a disease pool; Julie defends private school over public school as a larger disease pool.",
+      "date_description": "On December 8-15, 2022",
+      "display_text": "School absences and public vs. private disease pool debate",
+      "hit_message_id": "decipher_message_1:4389",
+      "start_message_id": "decipher_message_1:4428",
+      "end_message_id": "decipher_message_1:4370",
+      "source_range_keys": [
+        "julie_kramer__window_003::School absences due to illness (Flu A, ear infection)",
+        "julie_kramer__window_003::School disease pool and public vs. private school debate"
+      ]
+    },
+    {
+      "title": "School exhibition, winter break, and schedule complaints",
+      "summary": "Coordination for the school exhibition and delivering forgotten antibiotics. Julie expresses relief about two weeks off school and complains about the rushed evening schedule on school days.",
+      "date_description": "On December 15-19, 2022 and February 23, 2023",
+      "display_text": "School exhibition, winter break, and schedule complaints",
+      "hit_message_id": "decipher_message_1:4361",
+      "start_message_id": "decipher_message_1:4366",
+      "end_message_id": "decipher_message_1:3889",
+      "source_range_keys": [
+        "julie_kramer__window_003::School pickup logistics and Wildflower exhibition",
+        "julie_kramer__window_003::School winter break and schedule complaints"
+      ]
+    },
+    {
+      "title": "School return, friend moving, and pickup coordination",
+      "summary": "Olivia's first day back at school after break; discussion of her friend Kaidence moving and the impact on school life. Art plans to pick Olivia up from school.",
+      "date_description": "On January 2-13, 2023",
+      "display_text": "School return, Kaidence moving, and pickup coordination",
+      "hit_message_id": "decipher_message_1:4167",
+      "start_message_id": "decipher_message_1:4168",
+      "end_message_id": "decipher_message_1:4134",
+      "source_range_keys": [
+        "julie_kramer__window_003::School return and friend moving away",
+        "julie_kramer__window_003::School pickup and Kaidence moving"
+      ]
+    },
+    {
+      "title": "School absences, doctor appointments, and tardiness",
+      "summary": "Julie notifies Art about Olivia missing school due to fever and sore throat, takes Olivia to the doctor for ear/sinus issues causing late arrival, and instructs Art to notify the school if arriving late.",
+      "date_description": "On January 13 - March 24, 2023",
+      "display_text": "School absences, doctor appointments, and tardiness policy",
+      "hit_message_id": "decipher_message_1:3715",
+      "start_message_id": "decipher_message_1:4132",
+      "end_message_id": "decipher_message_1:3603",
+      "source_range_keys": [
+        "julie_kramer__window_003::School absence notification and illness",
+        "julie_kramer__window_003::School absence and doctor appointments",
+        "julie_kramer__window_003::School tardiness and notification policy"
+      ]
+    },
+    {
+      "title": "School schedule, weekend custody, and reading curriculum debate",
+      "summary": "Julie and Art argue about balancing school days, non-school days, and weekend time. Debate over Wildflower's child-led reading approach vs. pushing core skills; Julie signs the commitment letter for next year.",
+      "date_description": "On March 28, 2023",
+      "display_text": "Custody/school schedule debate and reading curriculum concerns",
+      "hit_message_id": "decipher_message_1:3571",
+      "start_message_id": "decipher_message_1:3572",
+      "end_message_id": "decipher_message_1:3514",
+      "source_range_keys": [
+        "julie_kramer__window_003::School schedule and weekend custody",
+        "julie_kramer__window_003::Wildflower vs. public school and reading curriculum"
+      ]
+    },
+    {
+      "title": "School pickup, end-of-year activities, and Young Entrepreneur Fair",
+      "summary": "Coordination for school pickup, last day before spring break, Hero's Night In event, and the Young Entrepreneur Fair.",
+      "date_description": "On April 14 - May 14, 2023",
+      "display_text": "School pickup, Hero's Night In, and Young Entrepreneur Fair",
+      "hit_message_id": "decipher_message_1:3376",
+      "start_message_id": "decipher_message_1:3376",
+      "end_message_id": "decipher_message_1:3189",
+      "source_range_keys": [
+        "julie_kramer__window_003::School pickup and end-of-year activities",
+        "julie_kramer__window_003::School pickup coordination and Young Entrepreneur Fair"
+      ]
+    },
+    {
+      "title": "Wildflower drama and transition to Spark Academy",
+      "summary": "Julie details the conflict with Wildflower's new owners (the Heinigers) and Miss Chris potentially leaving, leading to the formation of a new school (Spark Academy).",
+      "date_description": "On July 25, 2023",
+      "display_text": "Wildflower conflict and transition to Spark Academy",
+      "hit_message_id": "decipher_message_1:2655",
+      "start_message_id": "decipher_message_1:2655",
+      "end_message_id": "decipher_message_1:2618",
+      "source_range_keys": [
+        "julie_kramer__window_003::Wildflower school drama and transition to Spark Academy"
+      ]
+    },
+    {
+      "title": "Spark Academy collapse and Flamethrower Dragon Academy formation",
+      "summary": "Julie explains that Jami (the LLC owner) caused the school to collapse; the parents are forming a new homeschool co-op (Flamethrower Dragon Academy) at a new location.",
+      "date_description": "On September 22-24, 2023",
+      "display_text": "Spark Academy collapse and new co-op formation",
+      "hit_message_id": "decipher_message_1:2118",
+      "start_message_id": "decipher_message_1:2139",
+      "end_message_id": "decipher_message_1:2073",
+      "source_range_keys": [
+        "julie_kramer__window_003::Spark Academy collapse and Flamethrower Dragon Academy formation"
+      ]
+    },
+    {
+      "title": "School options: Keystone, Casady, homeschooling, and firing Chris & Emily",
+      "summary": "Discussion of alternative school options including Keystone, Casady ($19k/yr), and Art homeschooling Olivia. Julie fires Chris & Emily for lack of qualifications and discusses Olivia's reading progress.",
+      "date_description": "On September 29, 2023",
+      "display_text": "School options debate and firing Chris & Emily",
+      "hit_message_id": "decipher_message_1:1833",
+      "start_message_id": "decipher_message_1:1840",
+      "end_message_id": "decipher_message_1:1829",
+      "source_range_keys": [
+        "julie_kramer__window_003::School options: Keystone, Casady, homeschooling",
+        "julie_kramer__window_003::Firing Chris & Emily and educational concerns"
+      ]
+    },
+    {
+      "title": "Public school concerns and alternative school evaluation",
+      "summary": "Julie reports Olivia crying daily after school, Kaidence developing anxiety and reading below grade level, and extreme class sizes. They evaluate Back to Earth, Keystone, Wildflower, and Rivers & Roads.",
+      "date_description": "On September 29, 2023",
+      "display_text": "Public school struggles and alternative school tours",
+      "hit_message_id": "decipher_message_1:1769",
+      "start_message_id": "decipher_message_1:1772",
+      "end_message_id": "decipher_message_1:1733",
+      "source_range_keys": [
+        "julie_kramer__window_004::Public school concerns and alternative school evaluation"
+      ]
+    },
+    {
+      "title": "Starting education.com and Keystone waitlist attempt",
+      "summary": "Julie starts education.com for Olivia and reports Jordan may get Olivia, Addy, and Sully into Keystone by skipping the 3-year waitlist, pending board approval.",
+      "date_description": "On September 29, 2023",
+      "display_text": "Starting education.com and Keystone waitlist attempt",
+      "hit_message_id": "decipher_message_1:1733",
+      "start_message_id": "decipher_message_1:1733",
+      "end_message_id": "decipher_message_1:1711",
+      "source_range_keys": [
+        "julie_kramer__window_004::Starting education.com and Keystone waitlist attempt"
+      ]
+    },
+    {
+      "title": "Homeschool co-op formation and teacher search",
+      "summary": "Julie and Art discuss forming a small homeschool group with Addy, Cory, and Sully, teaching them at 'Dragon & Sunshine Academy,' and searching for a part-time certified teacher.",
+      "date_description": "On October 2-3, 2023",
+      "display_text": "Forming homeschool co-op and searching for a teacher",
+      "hit_message_id": "decipher_message_1:1666",
+      "start_message_id": "decipher_message_1:1666",
+      "end_message_id": "decipher_message_1:1595",
+      "source_range_keys": [
+        "julie_kramer__window_004::Homeschool co-op formation and teacher search"
+      ]
+    },
+    {
+      "title": "Hiring Andrew Porter and finding a permanent teacher",
+      "summary": "Julie reports hiring Andrew Porter (education major at UCO) for Thursdays and Fridays, and continues searching for a Tuesday/Wednesday teacher.",
+      "date_description": "On October 20-21, 2023",
+      "display_text": "Hiring teacher Andrew Porter and ongoing teacher search",
+      "hit_message_id": "decipher_message_1:1384",
+      "start_message_id": "decipher_message_1:1384",
+      "end_message_id": "decipher_message_1:1383",
+      "source_range_keys": [
+        "julie_kramer__window_004::Hiring Andrew Porter and finding a permanent teacher"
+      ]
+    },
+    {
+      "title": "Brylee interview and school schedule stabilization",
+      "summary": "Julie interviews Brylee (former Wonder Nature School teacher) and plans a schedule of Brylee (Mon/Tue) and Weston (Wed/Thu), 8:30-3:00, with Fridays off. Tuition disputes with Addy's family arise.",
+      "date_description": "On October 26-27, 2023",
+      "display_text": "Brylee interview and 4-day school schedule plan",
+      "hit_message_id": "decipher_message_1:1212",
+      "start_message_id": "decipher_message_1:1222",
+      "end_message_id": "decipher_message_1:1195",
+      "source_range_keys": [
+        "julie_kramer__window_004::Brylee interview and school schedule stabilization"
+      ]
+    },
+    {
+      "title": "Tuition dispute and school viability concerns",
+      "summary": "Julie reports Addy's family not paying fair share of tuition; Art expresses concern about instability and suggests homeschooling at home if the co-op doesn't work. Julie insists the setup is done and Olivia needs the social structure.",
+      "date_description": "On November 13, 2023",
+      "display_text": "Tuition dispute and debate over school viability vs. home-only schooling",
+      "hit_message_id": "decipher_message_1:986",
+      "start_message_id": "decipher_message_1:988",
+      "end_message_id": "decipher_message_1:970",
+      "source_range_keys": [
+        "julie_kramer__window_004::Tuition dispute and school viability concerns"
+      ]
+    },
+    {
+      "title": "Oklahoma academic standards review",
+      "summary": "Julie reports Olivia knows 100% of social studies and science standards and about 80% of English/reading and math; they will need to move to 2nd grade or Colorado standards before year end.",
+      "date_description": "On January 26, 2024",
+      "display_text": "Olivia meets 100% of OK social studies/science standards",
+      "hit_message_id": "decipher_message_1:377",
+      "start_message_id": "decipher_message_1:377",
+      "end_message_id": "decipher_message_1:376",
+      "source_range_keys": [
+        "julie_kramer__window_004::Oklahoma academic standards review"
+      ]
+    },
+    {
+      "title": "IXL testing results and academic progress",
+      "summary": "Julie reports Olivia passed first grade in everything except geometry and measurement on IXL testing (used by Deer Creek), and is at entry 3rd grade reading level. Data/statistics scores were at 6th-grade level.",
+      "date_description": "On March 29, 2024",
+      "display_text": "IXL test results: passed 1st grade, 3rd grade reading level",
+      "hit_message_id": "decipher_export_19:2",
+      "start_message_id": "decipher_export_19:1",
+      "end_message_id": "decipher_export_19:15",
+      "source_range_keys": [
+        "julie_kramer__window_004::IXL testing results and academic progress"
+      ]
+    },
+    {
+      "title": "School schedule adjustment for morning gymnastics",
+      "summary": "Julie proposes a new schedule aligning school (4 days/week, afternoons) with morning gymnastics practices. Art expresses concern about reduced school time and viability with twins arriving.",
+      "date_description": "On June 26, 2024",
+      "display_text": "Proposed school schedule change for morning gymnastics",
+      "hit_message_id": "decipher_export_19:581",
+      "start_message_id": "decipher_export_19:576",
+      "end_message_id": "decipher_export_19:603",
+      "source_range_keys": [
+        "julie_kramer__window_004::School schedule adjustment for morning gymnastics"
+      ]
+    },
+    {
+      "title": "New teacher Natalie for upcoming school year",
+      "summary": "Julie reports Natalie (Bethany's mom, longtime friend and homeschooling grandmother) will teach Olivia starting around September 9, and will help with gymnastics transport after twins arrive.",
+      "date_description": "On August 19, 2024",
+      "display_text": "Natalie hired as new teacher for upcoming school year",
+      "hit_message_id": "decipher_export_19:934",
+      "start_message_id": "decipher_export_19:934",
+      "end_message_id": "decipher_export_19:936",
+      "source_range_keys": [
+        "julie_kramer__window_004::New teacher Natalie for upcoming school year"
+      ]
+    },
+    {
+      "title": "School start date and switch to homeschool",
+      "summary": "Julie states Olivia will start school on September 9. Then explains Olivia is doing homeschool this semester because she cannot manage gym-school-home logistics, and Olivia dislikes 4 boys at Lumos school.",
+      "date_description": "On August 26 - September 5, 2024",
+      "display_text": "School start date and switch to homeschool this semester",
+      "hit_message_id": "decipher_export_19:1006",
+      "start_message_id": "decipher_export_19:1006",
+      "end_message_id": "decipher_export_19:1070",
+      "source_range_keys": [
+        "julie_kramer__window_005::School start date announcement",
+        "julie_kramer__window_005::Switch to homeschool this semester"
+      ]
+    },
+    {
+      "title": "Homeschool curriculum and progress",
+      "summary": "Julie lists Olivia's homeschool books (including Horizons grade 2) and reports she started math and science.",
+      "date_description": "On September 5, 2024",
+      "display_text": "Homeschool curriculum and progress",
+      "hit_message_id": "decipher_export_19:1073",
+      "start_message_id": "decipher_export_19:1073",
+      "end_message_id": "decipher_export_19:1076",
+      "source_range_keys": [
+        "julie_kramer__window_005::Homeschool curriculum and progress"
+      ]
+    },
+    {
+      "title": "Skipping school workbooks during NICU week",
+      "summary": "Julie lets Olivia skip school workbooks during the hectic week the babies are in NICU; considers sending workbooks to the farm but decides carefree time is better.",
+      "date_description": "On September 18-19, 2024",
+      "display_text": "Skipping school workbooks during NICU week",
+      "hit_message_id": "decipher_export_19:1115",
+      "start_message_id": "decipher_export_19:1115",
+      "end_message_id": "decipher_export_19:1134",
+      "source_range_keys": [
+        "julie_kramer__window_005::Skipping school workbooks during NICU week"
+      ]
+    },
+    {
+      "title": "School curriculum on weekends",
+      "summary": "Julie says Olivia will need to do her school curriculum on Friday but can take it to the farm; Art says she can do as much as she wants at the farm.",
+      "date_description": "On September 22, 2024",
+      "display_text": "School curriculum on weekends",
+      "hit_message_id": "decipher_export_19:1181",
+      "start_message_id": "decipher_export_19:1181",
+      "end_message_id": "decipher_export_19:1182",
+      "source_range_keys": [
+        "julie_kramer__window_005::School curriculum on weekends"
+      ]
+    },
+    {
+      "title": "Homeschool help request",
+      "summary": "Julie asks Art to come help drive Olivia around and help with her homeschool during a busy week.",
+      "date_description": "On October 19-21, 2024",
+      "display_text": "Homeschool help request",
+      "hit_message_id": "decipher_export_19:1433",
+      "start_message_id": "decipher_export_19:1433",
+      "end_message_id": "decipher_export_19:1445",
+      "source_range_keys": [
+        "julie_kramer__window_005::Homeschool help request"
+      ]
+    },
+    {
+      "title": "Homeschool progress update",
+      "summary": "Julie updates Art on Olivia's homeschool progress: excelling in reading, improving in handwriting, on track in math but needs practice, behind in history and science.",
+      "date_description": "On November 7, 2024",
+      "display_text": "Homeschool progress update",
+      "hit_message_id": "decipher_export_19:1613",
+      "start_message_id": "decipher_export_19:1607",
+      "end_message_id": "decipher_export_19:1613",
+      "source_range_keys": [
+        "julie_kramer__window_005::Homeschool progress update"
+      ]
+    },
+    {
+      "title": "Education.com and Time4Learning discussion",
+      "summary": "Julie and Art discuss switching from education.com to Time4Learning; Julie notes Olivia is almost halfway done with 2nd grade on education.com and that it covers common core standards.",
+      "date_description": "On December 14, 2024",
+      "display_text": "Education.com and Time4Learning discussion",
+      "hit_message_id": "decipher_export_19:1904",
+      "start_message_id": "decipher_export_19:1889",
+      "end_message_id": "decipher_export_19:1907",
+      "source_range_keys": [
+        "julie_kramer__window_005::Education.com and Time4Learning discussion"
+      ]
+    },
+    {
+      "title": "Homeschool progress and IXL transition",
+      "summary": "Julie reports Olivia finished 2nd grade reading on education.com and only has 2 more math goals; plans to switch to IXL (which Deer Creek uses) after.",
+      "date_description": "On December 19, 2024",
+      "display_text": "Homeschool progress and IXL transition",
+      "hit_message_id": "decipher_export_19:1921",
+      "start_message_id": "decipher_export_19:1921",
+      "end_message_id": "decipher_export_19:1921",
+      "source_range_keys": [
+        "julie_kramer__window_005::Homeschool progress and IXL transition"
+      ]
+    },
+    {
+      "title": "Detailed homeschool progress and ADHD discussion",
+      "summary": "Julie provides detailed update on Olivia's homeschool: reading is great, handwriting improving, math on track for 2nd grade but needs practice with time limits, concerns about history and science; suggests Time4Learning; then discusses considering ADHD evaluation for Olivia.",
+      "date_description": "On March 14-15, 2025",
+      "display_text": "Detailed homeschool progress and ADHD discussion",
+      "hit_message_id": "decipher_export_19:2532",
+      "start_message_id": "decipher_export_19:2532",
+      "end_message_id": "decipher_export_19:2546",
+      "source_range_keys": [
+        "julie_kramer__window_005::Detailed homeschool progress and ADHD discussion"
+      ]
+    },
+    {
+      "title": "Time4Learning setup and science/social studies focus",
+      "summary": "Art sets up Time4Learning account for Olivia; notes it has science and social studies which they should focus on; Julie asks about those subjects.",
+      "date_description": "On April 15, 2025",
+      "display_text": "Time4Learning setup and science/social studies focus",
+      "hit_message_id": "decipher_export_19:2688",
+      "start_message_id": "decipher_export_19:2684",
+      "end_message_id": "decipher_export_19:2689",
+      "source_range_keys": [
+        "julie_kramer__window_005::Time4Learning setup and science/social studies focus"
+      ]
+    },
+    {
+      "title": "Major disagreement on school vs. gymnastics priority",
+      "summary": "Art says Olivia should be out of gymnastics until education is on track, claiming she goes weeks without doing school; Julie disputes this, defends homeschool and says school never stopped being a priority; Art says she needs regularity with lessons.",
+      "date_description": "On July 16, 2025",
+      "display_text": "Major disagreement on school vs. gymnastics priority",
+      "hit_message_id": "decipher_export_19:3370",
+      "start_message_id": "decipher_export_19:3370",
+      "end_message_id": "decipher_export_19:3384",
+      "source_range_keys": [
+        "julie_kramer__window_005::Major disagreement on school vs. gymnastics priority"
+      ]
+    },
+    {
+      "title": "Voice lessons and school schedule conflict",
+      "summary": "Julie raises concern about voice lessons committing Olivia to be in Ada every Friday, noting Jared usually comes every other weekend and Olivia needs school time at both houses.",
+      "date_description": "On August 4, 2025",
+      "display_text": "Voice lessons and school schedule conflict",
+      "hit_message_id": "decipher_export_19:3455",
+      "start_message_id": "decipher_export_19:3451",
+      "end_message_id": "decipher_export_

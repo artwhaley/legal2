@@ -104,6 +104,26 @@ def test_virtual_widget_deep_jump(qapp) -> None:
     assert widget.cached_message_count < 15_000
 
 
+def test_create_evidence_block_preserves_scroll_position(qapp) -> None:
+    widget = _widget(qapp, count=500)
+    widget.scroll_to_ordinal(200)
+    qapp.processEvents()
+    anchor = widget._scroll_offset_y
+    block = widget.create_evidence_block_from_viewport_center(source_action="test")
+    qapp.processEvents()
+    assert block is not None
+    assert widget._scroll_offset_y == anchor
+
+
+def test_scroll_to_center_ordinal_aligns_viewport_center(qapp) -> None:
+    widget = _widget(qapp, count=200)
+    widget.scroll_to_ordinal(80)
+    qapp.processEvents()
+    assert widget.scroll_to_center_ordinal(120)
+    qapp.processEvents()
+    assert widget.viewport_center_ordinal() == 120
+
+
 def test_virtual_widget_create_block_near_end(qapp) -> None:
     widget = _widget(qapp, count=15_000)
     widget.scroll_to_ordinal(14_000)
@@ -152,8 +172,9 @@ def test_hit_and_highlight_controls_are_relevant_window_only(qapp) -> None:
     widget = _widget(qapp, count=100)
     block = widget.create_evidence_block_for_message("msg_00050", source_action="test")
     assert block is not None
+    widget.scroll_to_center_ordinal(50)
     qapp.processEvents()
-    overlay = widget.model.active_overlay()
+    overlay = widget.model.overlay_for_block(block.evidence_block_id)
     assert overlay is not None
 
     screen_layouts = {
@@ -165,6 +186,7 @@ def test_hit_and_highlight_controls_are_relevant_window_only(qapp) -> None:
     relevant_ordinal = overlay.relevant_start_slot
     assert zone_for_ordinal(overlay, context_ordinal) == "context"
     assert zone_for_ordinal(overlay, relevant_ordinal) == "relevant"
+    assert widget.model.message_zone(relevant_ordinal) == "relevant"
     assert context_ordinal in screen_layouts
     assert relevant_ordinal in screen_layouts
 
@@ -172,3 +194,113 @@ def test_hit_and_highlight_controls_are_relevant_window_only(qapp) -> None:
     relevant_highlight = highlight_icon_rect(screen_layouts[relevant_ordinal])
     assert relevant_hit.left() > screen_layouts[relevant_ordinal].content_left
     assert relevant_highlight.left() > relevant_hit.left()
+
+
+def test_multiple_blocks_all_visible_without_active_selection(qapp) -> None:
+    widget = _widget(qapp, count=100)
+    block_a = widget.create_evidence_block_for_message("msg_00020", source_action="test")
+    block_b = widget.create_evidence_block_for_message("msg_00060", source_action="test")
+    assert block_a is not None
+    assert block_b is not None
+    qapp.processEvents()
+    overlays = widget.model.block_overlays()
+    assert len(overlays) == 2
+    assert widget.model.message_zone(20) == "relevant"
+    assert widget.model.message_zone(60) == "relevant"
+    overlay_a = widget.model.overlay_for_block(block_a.evidence_block_id)
+    overlay_b = widget.model.overlay_for_block(block_b.evidence_block_id)
+    assert overlay_a is not None
+    assert overlay_b is not None
+
+    widget.scroll_to_ordinal(20)
+    qapp.processEvents()
+    handles_a = boundary_handles_for_layouts(overlay_a, widget._screen_layouts())
+    assert handles_a
+
+    widget.scroll_to_ordinal(60)
+    qapp.processEvents()
+    handles_b = boundary_handles_for_layouts(overlay_b, widget._screen_layouts())
+    assert handles_b
+
+
+def test_viewport_center_ordinal_tracks_scroll(qapp) -> None:
+    widget = _widget(qapp, count=500)
+    widget.scroll_to_ordinal(200)
+    qapp.processEvents()
+    center = widget.viewport_center_ordinal()
+    assert center is not None
+    start, end = widget.visible_ordinal_range
+    assert start <= center <= end
+    content_y = widget._viewport_center_content_y()
+    layout = next(layout for layout in widget._layout_rects if layout.ordinal == center)
+    assert layout.top <= content_y < layout.top + layout.height
+
+
+def test_viewport_center_ordinal_matches_marker_with_variable_heights(qapp) -> None:
+    conn = connect(Path(":memory:"))
+    logger = ProcessLogger(conn)
+    initialize_schema(conn, logger)
+    conn.execute(
+        """
+        INSERT INTO dataset (dataset_id, name, created_at, schema_version)
+        VALUES (1, 'test', '2024-01-01T00:00:00+00:00', 1)
+        """
+    )
+    conn.commit()
+    thread_id = "thread_large"
+    messages = []
+    for index in range(120):
+        body = f"body {index}" if index % 5 else ("long body " * 40) + str(index)
+        messages.append(
+            Message(
+                message_id=f"msg_{index:05d}",
+                dataset_id=1,
+                source_thread_id=thread_id,
+                source_platform="facebook",
+                source_message_id=f"s{index}",
+                timestamp=f"2024-01-01T10:{index % 60:02d}:00+00:00",
+                sender_id="a",
+                sender_display="Alice",
+                body=body,
+                body_normalized=body,
+                has_attachment=False,
+                attachment_summary="",
+                sort_index=index,
+                source_metadata_json={},
+                thread_ordinal=index,
+            )
+        )
+    from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
+
+    host = QWidget()
+    host.resize(900, 600)
+    layout = QVBoxLayout(host)
+    widget = VirtualTranscriptWidget(conn, logger, host)
+    layout.addWidget(widget)
+    widget.set_dataset(1)
+    widget.model._data_source = InMemoryTranscriptDataSource({thread_id: messages})
+    widget.load_source_thread(thread_id)
+    widget.scroll_to_ordinal(60)
+    qapp.processEvents()
+    center = widget.viewport_center_ordinal()
+    assert center is not None
+    content_y = widget._viewport_center_content_y()
+    layout_rect = next(item for item in widget._layout_rects if item.ordinal == center)
+    assert layout_rect.top <= content_y < layout_rect.top + layout_rect.height
+    create_ordinal = widget.viewport_center_ordinal()
+    assert create_ordinal == center
+
+
+def test_delete_evidence_block_at_center(qapp) -> None:
+    widget = _widget(qapp, count=100)
+    block = widget.create_evidence_block_for_message("msg_00050", source_action="test")
+    assert block is not None
+    widget.scroll_to_ordinal(50)
+    qapp.processEvents()
+    overlay = widget.evidence_block_at_viewport_center()
+    assert overlay is not None
+    assert overlay.evidence_block_id == block.evidence_block_id
+    widget._delete_evidence_block(block.evidence_block_id)
+    qapp.processEvents()
+    assert widget.model.overlay_for_block(block.evidence_block_id) is None
+    assert widget.evidence_block_at_viewport_center() is None

@@ -9,6 +9,7 @@ from message_evidence_workstation.db.evidence_blocks import (
     create_evidence_block,
     create_evidence_block_from_conversational_candidate,
     create_evidence_block_from_search,
+    delete_evidence_block,
     ensure_uncategorized_category,
     get_evidence_block,
     list_evidence_blocks,
@@ -210,6 +211,36 @@ def test_highlight_updates_persist(workspace_db) -> None:
     assert updated.highlighted_message_ids == frozenset({"msg_001", "msg_003"})
     blocks = list_evidence_blocks(conn, dataset_id, source_thread_id="thread_001")
     assert len(blocks) >= 1
+
+
+def test_delete_evidence_block_removes_row_and_highlights(workspace_db) -> None:
+    conn, logger, dataset_id = workspace_db
+    category = ensure_uncategorized_category(conn, logger, dataset_id)
+    messages = list_messages_for_thread(conn, dataset_id, "thread_001")
+    ordered_ids = [message.message_id for message in messages]
+    block = create_evidence_block(
+        conn,
+        logger,
+        dataset_id=dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Delete me",
+        core_hit_message_id="msg_001",
+        ordered_message_ids=ordered_ids,
+    )
+    set_evidence_block_highlights(
+        conn,
+        logger,
+        evidence_block_id=block.evidence_block_id,
+        highlighted_message_ids=["msg_001"],
+    )
+    delete_evidence_block(conn, logger, evidence_block_id=block.evidence_block_id)
+    assert get_evidence_block(conn, block.evidence_block_id) is None
+    highlight_rows = conn.execute(
+        "SELECT 1 FROM evidence_block_highlight WHERE evidence_block_id = ?",
+        (block.evidence_block_id,),
+    ).fetchall()
+    assert highlight_rows == []
 
 
 def test_validate_slot_bounds_rejects_invalid_ranges() -> None:

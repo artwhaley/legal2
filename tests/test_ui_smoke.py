@@ -16,7 +16,10 @@ from message_evidence_workstation.db import repositories
 from message_evidence_workstation.domain.constants import UNCATEGORIZED_CATEGORY_NAME
 from message_evidence_workstation.llm.types import UserFacingModelRole
 from message_evidence_workstation.search.conversational_answer import (
+    ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+    ANSWER_MODE_WHOLE_TRANSCRIPT,
     AnswerRangeDraft,
+    AnswerBudget,
     ConversationalAnswerResult,
     CoverageSummary,
 )
@@ -456,7 +459,7 @@ def test_simple_search_shows_transcript_for_selected_group(tmp_path, qapp, monke
     assert tab.results_list.count() >= 1
     assert "matching message(s)" in tab.results_list.item(0).text()
     assert tab.transcript_widget.transcript_surface is not None
-    assert tab.transcript_widget.model.message_count() == 100
+    assert tab.transcript_widget.message_count == 100
     assert tab.transcript_widget._source_thread_id == "thread_001"
 
 
@@ -585,6 +588,169 @@ def test_conversational_answer_stream_persists_and_drives_transcript_and_block_c
     assert created.context_end_slot == 6
 
 
+def test_conversational_submit_queues_whole_transcript_worker(tmp_path, qapp, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    tab = window.conversational_tab
+    budget = AnswerBudget(
+        model_id="writing-model",
+        context_window_tokens=1_000_000,
+        context_source="settings",
+        safety_ratio=0.8,
+        max_output_tokens=2048,
+        prompt_overhead_tokens=100,
+        usable_input_tokens=700_000,
+        transcript_tokens=10_000,
+        transcript_token_method="test",
+        decision=ANSWER_MODE_WHOLE_TRANSCRIPT,
+    )
+    settings = SimpleNamespace(
+        nim=SimpleNamespace(context_window_tokens=1_000_000, window_overlap_messages=4),
+        answer=SimpleNamespace(answer_strategy="whole_transcript"),
+        model_metadata={"writing-model": {}},
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.load_settings",
+        lambda: settings,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.is_role_configured",
+        lambda _settings, _role: True,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.resolve_role_model",
+        lambda _settings, _role: "writing-model",
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.compute_dataset_budget_stats",
+        lambda _conn, _dataset_id: object(),
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.resolve_answer_budget",
+        lambda *_args, **_kwargs: budget,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.log_answer_budget_resolved",
+        lambda *_args, **_kwargs: None,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_run_whole_transcript_answer(
+        generation,
+        query,
+        dataset_id,
+        db_path,
+        answer_settings,
+        queued_budget,
+    ) -> None:
+        captured.update(
+            {
+                "generation": generation,
+                "query": query,
+                "dataset_id": dataset_id,
+                "db_path": db_path,
+                "answer_settings": answer_settings,
+                "budget": queued_budget,
+            }
+        )
+
+    monkeypatch.setattr(tab, "_run_whole_transcript_answer", fake_run_whole_transcript_answer)
+    tab.query_input.setText("What happened?")
+    tab._submit_query()
+
+    assert captured["query"] == "What happened?"
+    assert captured["dataset_id"] == context.dataset_id
+    assert captured["budget"] is budget
+
+
+def test_conversational_submit_queues_exhaustive_worker_without_embedding_gate(
+    tmp_path, qapp, monkeypatch
+) -> None:
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    tab = window.conversational_tab
+    budget = AnswerBudget(
+        model_id="writing-model",
+        context_window_tokens=256_000,
+        context_source="settings",
+        safety_ratio=0.7,
+        max_output_tokens=2048,
+        prompt_overhead_tokens=100,
+        usable_input_tokens=166_000,
+        transcript_tokens=567_000,
+        transcript_token_method="test",
+        decision=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+    )
+    settings = SimpleNamespace(
+        nim=SimpleNamespace(context_window_tokens=256_000, window_overlap_messages=4),
+        answer=SimpleNamespace(answer_strategy="whole_transcript"),
+        model_metadata={"writing-model": {}},
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.load_settings",
+        lambda: settings,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.is_role_configured",
+        lambda _settings, _role: True,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.resolve_role_model",
+        lambda _settings, _role: "writing-model",
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.compute_dataset_budget_stats",
+        lambda _conn, _dataset_id: object(),
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.resolve_answer_budget",
+        lambda *_args, **_kwargs: budget,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.log_answer_budget_resolved",
+        lambda *_args, **_kwargs: None,
+    )
+    captured: dict[str, object] = {}
+
+    def fail_embedding_gate(*_args, **_kwargs) -> None:
+        raise AssertionError("exhaustive scan should not wait for message embeddings")
+
+    def fake_run_exhaustive_window_scan_answer(
+        generation,
+        query,
+        dataset_id,
+        db_path,
+        answer_settings,
+    ) -> None:
+        captured.update(
+            {
+                "generation": generation,
+                "query": query,
+                "dataset_id": dataset_id,
+                "db_path": db_path,
+                "answer_settings": answer_settings,
+            }
+        )
+
+    monkeypatch.setattr(tab, "_ensure_message_embeddings_then", fail_embedding_gate)
+    monkeypatch.setattr(
+        tab,
+        "_run_exhaustive_window_scan_answer",
+        fake_run_exhaustive_window_scan_answer,
+    )
+    tab.query_input.setText("Find every discussion about medical care.")
+    tab._submit_query()
+
+    assert captured["query"] == "Find every discussion about medical care."
+    assert captured["dataset_id"] == context.dataset_id
+
+
 def test_simple_search_add_evidence_block_uses_viewport_center(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
     context = _bootstrap_ui_context(tmp_path, monkeypatch)
@@ -593,7 +759,7 @@ def test_simple_search_add_evidence_block_uses_viewport_center(tmp_path, qapp, m
     tab.search_box.setText("allergy")
     _run_simple_search_and_wait(tab, qapp)
 
-    tab.transcript_widget.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
+    tab.transcript_widget.viewport_center_ordinal = lambda: 5  # type: ignore[method-assign]
     before = evidence_blocks.list_evidence_blocks(
         context.conn,
         context.dataset_id,
@@ -691,7 +857,7 @@ def test_simple_search_block_creation_stays_on_simple_search_tab(tmp_path, qapp,
     tab.search_box.setText("allergy")
     _run_simple_search_and_wait(tab, qapp)
 
-    tab.transcript_widget.transcript_surface.viewport_center_message_index = lambda: 5  # type: ignore[method-assign]
+    tab.transcript_widget.viewport_center_ordinal = lambda: 5  # type: ignore[method-assign]
     tab.add_evidence_block_button.click()
     qapp.processEvents()
 
@@ -859,6 +1025,34 @@ def test_sidebar_evidence_block_click_does_not_navigate_tabs(tmp_path, qapp, mon
     window.sidebar.category_tree.setCurrentItem(current)
     qapp.processEvents()
     assert window.tabs.currentWidget() is window.output_formatting_tab
+
+
+def test_sidebar_double_click_centers_block_on_virtual_tab(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    window.tabs.setCurrentWidget(window.virtual_transcript_widget_tab)
+    window.virtual_transcript_widget_tab.ensure_thread_loaded()
+    block = window.virtual_transcript_widget_tab.transcript_widget.create_evidence_block_for_message(
+        "msg_050",
+        source_action="test",
+    )
+    assert block is not None
+    window.virtual_transcript_widget_tab.transcript_widget.scroll_to_ordinal(10)
+    qapp.processEvents()
+    before = window.virtual_transcript_widget_tab.transcript_widget.viewport_center_ordinal()
+    window._on_sidebar_evidence_block_activated(block.evidence_block_id)
+    qapp.processEvents()
+    hit_ordinal = window.virtual_transcript_widget_tab.transcript_widget.model.ordinal_for_message_id(
+        block.core_hit_message_id
+    )
+    assert hit_ordinal is not None
+    assert window.virtual_transcript_widget_tab.transcript_widget.viewport_center_ordinal() == hit_ordinal
+    assert before != hit_ordinal
 
 
 def test_output_formatting_tab_initializes_tree(tmp_path, qapp, monkeypatch) -> None:

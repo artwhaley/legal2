@@ -111,6 +111,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.sidebar.source_thread_selected.connect(self._on_source_thread_selected)
+        self.sidebar.evidence_block_activated.connect(self._on_sidebar_evidence_block_activated)
 
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
@@ -175,6 +176,9 @@ class MainWindow(QMainWindow):
         )
         self.virtual_transcript_widget_tab.evidence_block_created.connect(
             self._on_transcript_evidence_block_created
+        )
+        self.virtual_transcript_widget_tab.evidence_block_deleted.connect(
+            self._refresh_workspaces
         )
         self.conversational_tab.set_category_refresh_handler(self._refresh_workspaces)
         self.conversational_tab.message_citation_selected.connect(
@@ -357,6 +361,23 @@ class MainWindow(QMainWindow):
             block,
             source_action="search_drop",
         )
+
+    def _on_sidebar_evidence_block_activated(self, evidence_block_id: int) -> None:
+        current = self.tabs.currentWidget()
+        if current is self.virtual_transcript_widget_tab and self.virtual_transcript_widget_tab is not None:
+            self.virtual_transcript_widget_tab.reveal_evidence_block(evidence_block_id)
+            return
+        if current is self.transcript_widget_tab and self.transcript_widget_tab is not None:
+            self.transcript_widget_tab.select_evidence_block(evidence_block_id)
+            return
+        if current is self.new_transcript_widget_tab and self.new_transcript_widget_tab is not None:
+            self.new_transcript_widget_tab.transcript_widget.select_evidence_block(evidence_block_id)
+            return
+        if current is self.simple_search_tab and self.simple_search_tab is not None:
+            self.simple_search_tab.transcript_widget.select_evidence_block(evidence_block_id)
+            return
+        if current is self.conversational_tab and self.conversational_tab is not None:
+            self.conversational_tab.transcript_widget.select_evidence_block(evidence_block_id)
 
     def _on_source_thread_selected(self, source_thread_id: str, display_title: str) -> None:
         if self.context.dataset_id is None:

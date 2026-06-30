@@ -1,0 +1,16 @@
+{
+  "strategy": "one_shot_compact",
+  "provider": "settings",
+  "model_override": "",
+  "max_output_tokens": 4096,
+  "timeout_seconds": 600.0,
+  "dry_run": false,
+  "no_api": false,
+  "include_raw_scan": false,
+  "compact_display": true,
+  "max_ranges_per_window": 0,
+  "batch_size": 3,
+  "evw_path": "C:\\Users\\artwh\\.message_evidence_workstation\\workspace.evw",
+  "input_path": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\spikes\\window_merge_lab\\inputs\\school_scan_windows.json",
+  "output_dir": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\spikes\\window_merge_lab\\outputs"
+}

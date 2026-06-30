@@ -1,0 +1,8 @@
+{
+  "strategy": "evidence_table_then_synthesis",
+  "call_count": 1,
+  "latency_ms": 123635,
+  "has_error": false,
+  "error": null,
+  "range_count": 67
+}

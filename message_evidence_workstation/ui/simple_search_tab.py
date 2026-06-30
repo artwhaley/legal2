@@ -33,7 +33,7 @@ from message_evidence_workstation.search.embedding_search import EmbeddingIndexN
 from message_evidence_workstation.search.grouping import group_hits
 from message_evidence_workstation.search.result_models import GroupedSearchResult
 from message_evidence_workstation.search.search_modes import SEARCH_MODE_LABELS, SearchMode
-from message_evidence_workstation.ui.evidence_block_transcript_widget import EvidenceBlockTranscriptWidget
+from message_evidence_workstation.ui.virtual_transcript_widget import VirtualTranscriptWidget
 from message_evidence_workstation.ui.search_worker import (
     SearchCancellationToken,
     SearchJobResult,
@@ -182,7 +182,7 @@ class SimpleSearchTab(QWidget):
         transcript_layout = QVBoxLayout(transcript_wrapper)
         transcript_layout.setContentsMargins(0, 0, 0, 0)
         transcript_layout.addLayout(transcript_controls)
-        self.transcript_widget = EvidenceBlockTranscriptWidget(conn, logger, transcript_wrapper)
+        self.transcript_widget = VirtualTranscriptWidget(conn, logger, transcript_wrapper)
         self.transcript_widget.evidence_block_created.connect(self.evidence_block_created.emit)
         transcript_layout.addWidget(self.transcript_widget, stretch=1)
         self.results_splitter.addWidget(transcript_wrapper)
