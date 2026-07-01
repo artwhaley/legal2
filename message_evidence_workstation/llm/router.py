@@ -17,12 +17,10 @@ from message_evidence_workstation.config.settings import (
 )
 from message_evidence_workstation.llm.errors import (
     ModelError,
-    is_retryable_model_error,
     model_error_from_nim,
 )
 from message_evidence_workstation.llm.providers.google_provider import GoogleModelProvider
 from message_evidence_workstation.llm.providers.nim_provider import NimModelProvider
-from message_evidence_workstation.llm.retry import call_with_retry
 from message_evidence_workstation.llm.task_roles import (
     task_role_for_run_type,
     user_facing_role_for_task_role,
@@ -137,7 +135,7 @@ class ModelRouter:
                 temperature=selected_temperature,
             )
 
-        return call_with_retry(operation, is_retryable=is_retryable_model_error)
+        return operation()
 
     def chat_for_run_type(
         self,

@@ -80,6 +80,5 @@ spikes/window_merge_lab/
 
 - The GUI does not stream partial responses.
 - API errors are captured but not automatically retried.
-- The "No API" checkbox and "Dry run" checkbox behave identically.
 - Provider selection uses the same `ModelRoleConfig` pattern as the production app but does not expose full settings UI.
 - The spike uses saved model runs 165-170 from the "Show me all the times we talked about school" query only.

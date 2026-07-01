@@ -1,0 +1,13 @@
+{
+  "strategy": "evidence_ledger_synthesis",
+  "provider": "settings",
+  "model_override": "",
+  "max_output_tokens": 16000,
+  "model_context_tokens": 128000,
+  "timeout_seconds": 600.0,
+  "dry_run": false,
+  "include_raw_scan": false,
+  "evw_path": "C:\\Users\\artwh\\.message_evidence_workstation\\workspace.evw",
+  "input_path": "C:\\Users\\artwh\\legal2\\spikes\\window_merge_lab\\inputs\\test.json",
+  "output_dir": "C:\\Users\\artwh\\legal2\\spikes\\window_merge_lab\\outputs"
+}

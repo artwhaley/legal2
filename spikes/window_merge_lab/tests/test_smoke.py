@@ -175,6 +175,35 @@ def test_evaluator_falls_back_when_source_keys_are_malformed():
     print("PASS: evaluator fallback for malformed source keys")
 
 
+def test_evaluator_uses_exact_ledger_provenance_keys():
+    from spikes.window_merge_lab.data_loader import load_compact_windows
+    from spikes.window_merge_lab.evaluator import _build_provenance
+    from spikes.window_merge_lab.ledger import build_ledger, ledger_to_dicts
+
+    windows = load_compact_windows()
+    records, _ = build_ledger(windows)
+    record_dicts = ledger_to_dicts(records)
+    selected = record_dicts[:2]
+
+    parsed = {
+        "answer_ranges": [
+            {
+                "range_id": record["range_id"],
+                "source_range_key": record["source_range_key"],
+                "title": f"Output {i}",
+                "hit_message_id": record["hit_message_id"],
+            }
+            for i, record in enumerate(selected, 1)
+        ]
+    }
+
+    provenance = _build_provenance(parsed, windows)
+    assert provenance["model_reported_provenance"]
+    assert provenance["matched_count"] == len(selected)
+    assert provenance["unmatched_output_count"] == 0
+    print("PASS: evaluator uses exact ledger provenance keys")
+
+
 def test_valid_message_ids():
     from spikes.window_merge_lab.data_loader import load_scan_windows, validate_message_ids
     windows = load_scan_windows()
@@ -371,6 +400,7 @@ if __name__ == "__main__":
         test_prompt_builders,
         test_evaluator,
         test_evaluator_falls_back_when_source_keys_are_malformed,
+        test_evaluator_uses_exact_ledger_provenance_keys,
         test_valid_message_ids,
         test_planner_selects_full_when_fits,
         test_planner_selects_compact_when_output_exceeds,

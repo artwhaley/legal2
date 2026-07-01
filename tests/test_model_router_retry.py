@@ -1,10 +1,9 @@
-"""Router retry and error normalization tests."""
+"""Router error normalization tests."""
 
 from __future__ import annotations
 
 import json
-from dataclasses import replace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -42,38 +41,30 @@ def _app_settings() -> AppSettings:
     return AppSettings(nim=nim, model_routing=routing)
 
 
-def test_router_retries_on_429_then_succeeds() -> None:
+def test_router_surfaces_first_429_without_retry() -> None:
     router = ModelRouter(_app_settings())
     attempts = {"count": 0}
 
     def flaky_chat(*_args, **_kwargs):
         attempts["count"] += 1
-        if attempts["count"] == 1:
-            raise NimClientError(
-                "rate limited",
-                error_type="http_error",
-                details={"status_code": 429},
-            )
-        return ModelChatResult(
-            content="ok",
-            provider=ModelProvider.NIM,
-            model="expansion-model",
-            task_role=ModelTaskRole.SEARCH_EXPANSION,
-            raw_response={"choices": [{"message": {"content": "ok"}}]},
-            latency_ms=1,
+        raise NimClientError(
+            "rate limited",
+            error_type="http_error",
+            details={"status_code": 429},
         )
 
     with patch(
         "message_evidence_workstation.llm.providers.nim_provider.NimClient.chat_completion",
         side_effect=flaky_chat,
     ):
-        with patch("message_evidence_workstation.llm.retry.time.sleep"):
-            result = router.chat(
+        with pytest.raises(ModelError) as exc_info:
+            router.chat(
                 task_role=ModelTaskRole.SEARCH_EXPANSION,
                 messages=[{"role": "user", "content": "hi"}],
             )
-    assert result.content == "ok"
-    assert attempts["count"] == 2
+    assert exc_info.value.error_type == "http_error"
+    assert exc_info.value.details.get("status_code") == 429
+    assert attempts["count"] == 1
 
 
 def test_router_does_not_retry_missing_api_key() -> None:

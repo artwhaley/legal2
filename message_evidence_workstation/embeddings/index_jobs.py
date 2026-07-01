@@ -9,6 +9,7 @@ import json
 import sqlite3
 import time
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Any, Iterator
 
 from message_evidence_workstation.embeddings.adapters import EmbeddingAdapter, EmbeddingAdapterInfo
@@ -310,6 +311,41 @@ def _iter_antijoin_message_batches(
         yield pending
 
 
+def _iter_message_table_batches(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    checkpoint: MessageSortKey | None = None,
+    batch_size: int = BATCH_SIZE,
+) -> Iterator[list[sqlite3.Row]]:
+    params: list[Any] = [dataset_id]
+    extra = ""
+    if checkpoint is not None:
+        extra = (
+            " AND (source_thread_id, timestamp, sort_index, message_id) "
+            "> (?, ?, ?, ?)"
+        )
+        params.extend(checkpoint.as_tuple())
+    cursor = conn.execute(
+        f"""
+        SELECT message_id, source_thread_id, body_normalized,
+               timestamp, sort_index
+        FROM message
+        WHERE dataset_id = ?{extra}
+        ORDER BY source_thread_id, timestamp, sort_index, message_id
+        """,
+        tuple(params),
+    )
+    pending: list[sqlite3.Row] = []
+    for row in cursor:
+        pending.append(row)
+        if len(pending) >= batch_size:
+            yield pending
+            pending = []
+    if pending:
+        yield pending
+
+
 def _has_message_holes_before_checkpoint(
     conn: sqlite3.Connection,
     dataset_id: int,
@@ -317,13 +353,17 @@ def _has_message_holes_before_checkpoint(
     *,
     model_name: str,
 ) -> bool:
-    return _count_pending_messages(
-        conn,
-        dataset_id,
-        model_name=model_name,
-        checkpoint=checkpoint,
-        before_or_at_checkpoint=True,
-    ) > 0
+    row = conn.execute(
+        """
+        SELECT COUNT(*)
+        FROM message
+        WHERE dataset_id = ?
+          AND (source_thread_id, timestamp, sort_index, message_id) <= (?, ?, ?, ?)
+        """,
+        (dataset_id, *checkpoint.as_tuple()),
+    ).fetchone()
+    messages_through_checkpoint = int(row[0])
+    return _embedded_message_count(conn, dataset_id, model_name) < messages_through_checkpoint
 
 
 def _resolve_message_resume_plan(
@@ -366,12 +406,10 @@ def _iter_pending_message_batches(
 ) -> Iterator[list[sqlite3.Row]]:
     checkpoint = resume_plan.checkpoint
     if resume_plan.strategy == "checkpoint" and checkpoint is not None:
-        yield from _iter_antijoin_message_batches(
+        yield from _iter_message_table_batches(
             conn,
             dataset_id,
-            model_name=model_name,
             checkpoint=checkpoint,
-            before_or_at_checkpoint=False,
             batch_size=batch_size,
         )
         return
@@ -384,18 +422,14 @@ def _iter_pending_message_batches(
             before_or_at_checkpoint=True,
             batch_size=batch_size,
         )
-        yield from _iter_antijoin_message_batches(
+        yield from _iter_message_table_batches(
             conn,
             dataset_id,
-            model_name=model_name,
             checkpoint=checkpoint,
-            before_or_at_checkpoint=False,
             batch_size=batch_size,
         )
         return
-    yield from _iter_antijoin_message_batches(
-        conn, dataset_id, model_name=model_name, batch_size=batch_size
-    )
+    yield from _iter_message_table_batches(conn, dataset_id, batch_size=batch_size)
 
 
 def _save_message_checkpoint(
@@ -918,6 +952,7 @@ def build_message_embedding_index(
     adapter: EmbeddingAdapter,
     adapter_info: EmbeddingAdapterInfo,
     force_restart: bool = False,
+    on_progress: Callable[[dict], None] | None = None,
 ) -> IndexBuildResult:
     started = time.perf_counter()
     model_name = adapter_info.model_name
@@ -996,6 +1031,21 @@ def build_message_embedding_index(
         resume=resume,
         already_embedded=already_embedded,
     )
+    _update_build_progress(
+        conn,
+        dataset_id=dataset_id,
+        granularity="message",
+        model_name=model_name,
+        message_count=already_embedded,
+        chunk_count=0,
+        progress=_progress_payload(
+            completed=already_embedded,
+            total=total_messages,
+            batch=0,
+            batch_total=max((max(total_messages - already_embedded, 0) + BATCH_SIZE - 1) // BATCH_SIZE, 0),
+            resumed=resume,
+        ),
+    )
     resume_plan = MessageResumePlan(strategy="fresh", embedded_count=0)
     try:
         if not resume:
@@ -1010,7 +1060,7 @@ def build_message_embedding_index(
         )
         embedded = resume_plan.embedded_count
         failures = 0
-        pending_total = _count_pending_messages(conn, dataset_id, model_name=model_name)
+        pending_total = max(total_messages - embedded, 0)
         batch_total = max((pending_total + BATCH_SIZE - 1) // BATCH_SIZE, 0)
 
         if resume and embedded:
@@ -1101,6 +1151,18 @@ def build_message_embedding_index(
                 },
                 dataset_id=dataset_id,
             )
+            if on_progress is not None:
+                on_progress(
+                    {
+                        "completed": embedded,
+                        "total": total_messages,
+                        "batch": batch_index,
+                        "batch_total": batch_total,
+                        "elapsed_ms": int(elapsed_so_far * 1000),
+                        "messages_per_second": round(rate, 2),
+                        "eta_seconds": eta_seconds,
+                    }
+                )
 
         stored = _embedded_message_count(conn, dataset_id, model_name)
         if stored != embedded:
@@ -1196,6 +1258,7 @@ def build_chunk_embedding_index(
     adapter_info: EmbeddingAdapterInfo,
     force_restart: bool = False,
     chunking_config: ChunkingConfig | dict[str, Any] | None = None,
+    on_progress: Callable[[dict], None] | None = None,
 ) -> IndexBuildResult:
     started = time.perf_counter()
     model_name = adapter_info.model_name
@@ -1481,6 +1544,18 @@ def build_chunk_embedding_index(
                     },
                     dataset_id=dataset_id,
                 )
+                if on_progress is not None:
+                    on_progress(
+                        {
+                            "completed": embedded,
+                            "total": total_chunks,
+                            "batch": batch_index,
+                            "batch_total": batch_total,
+                            "elapsed_ms": int(elapsed_so_far * 1000),
+                            "chunks_per_second": round(rate, 2),
+                            "eta_seconds": eta_seconds,
+                        }
+                    )
 
             if pending_batch:
                 batch_index += 1

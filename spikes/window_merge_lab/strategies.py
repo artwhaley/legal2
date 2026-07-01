@@ -128,6 +128,31 @@ def _parsed_to_readable(parsed: dict) -> str:
     if answer:
         lines.append(answer)
         lines.append("")
+    themes = parsed.get("themes", [])
+    if themes:
+        lines.append(f"## Themes ({len(themes)})")
+        lines.append("")
+        for i, theme in enumerate(themes, 1):
+            if not isinstance(theme, dict):
+                continue
+            lines.append(f"### {i}. {theme.get('title', 'Untitled theme')}")
+            lines.append(str(theme.get("summary", "")).strip())
+            range_ids = theme.get("range_ids", [])
+            if isinstance(range_ids, list) and range_ids:
+                lines.append(f"- **Range IDs:** {', '.join(f'`{rid}`' for rid in range_ids)}")
+            lines.append("")
+    notable_patterns = parsed.get("notable_patterns", [])
+    if notable_patterns:
+        lines.append("## Notable Patterns")
+        for pattern in notable_patterns:
+            lines.append(f"- {pattern}")
+        lines.append("")
+    contradictions = parsed.get("contradictions_or_tensions", [])
+    if contradictions:
+        lines.append("## Contradictions / Tensions")
+        for item in contradictions:
+            lines.append(f"- {item}")
+        lines.append("")
     ranges = parsed.get("answer_ranges", [])
     if ranges:
         lines.append(f"## Answer Ranges ({len(ranges)})")
@@ -154,6 +179,65 @@ def _parsed_to_readable(parsed: dict) -> str:
     return "\n".join(lines)
 
 
+def _deterministic_answer_ranges_from_ledger(ledger_records: list[dict]) -> list[dict[str, str]]:
+    ranges: list[dict[str, str]] = []
+    for record in ledger_records:
+        summary = str(record.get("input_summary", "") or "").strip()
+        title = str(record.get("input_title", "") or "").strip()
+        display_text = str(record.get("input_display_text", "") or "").strip()
+        if not display_text:
+            display_text = summary or title
+        ranges.append(
+            {
+                "range_id": str(record.get("range_id", "") or ""),
+                "source_range_key": str(record.get("source_range_key", "") or ""),
+                "title": title,
+                "summary": summary,
+                "date_description": str(record.get("date_description", "") or ""),
+                "display_text": display_text,
+                "hit_message_id": str(record.get("hit_message_id", "") or ""),
+                "start_message_id": str(record.get("start_message_id", "") or ""),
+                "end_message_id": str(record.get("end_message_id", "") or ""),
+            }
+        )
+    return ranges
+
+
+def _ledger_coverage_summary(
+    ledger_records: list[dict],
+    plan: SynthesisBudgetPlan,
+) -> dict[str, Any]:
+    return {
+        "mode": plan.mode,
+        "input_range_count": len(ledger_records),
+        "output_range_count": len(ledger_records),
+        "represented_range_count": len(ledger_records),
+        "source_thread_ids": sorted(
+            {str(record.get("source_thread_id", "") or "") for record in ledger_records if record.get("source_thread_id")}
+        ),
+    }
+
+
+def _assemble_ledger_analysis_result(
+    model_parsed: dict,
+    ledger_records: list[dict],
+    plan: SynthesisBudgetPlan,
+) -> dict:
+    return {
+        "answer_summary": str(model_parsed.get("answer_summary", "") or ""),
+        "answer_format": plan.answer_format,
+        "answer": str(model_parsed.get("answer", "") or ""),
+        "answer_ranges": _deterministic_answer_ranges_from_ledger(ledger_records),
+        "themes": list(model_parsed.get("themes", []) or []),
+        "notable_patterns": list(model_parsed.get("notable_patterns", []) or []),
+        "contradictions_or_tensions": list(
+            model_parsed.get("contradictions_or_tensions", []) or []
+        ),
+        "uncertainties": list(model_parsed.get("uncertainties", []) or []),
+        "coverage_summary": _ledger_coverage_summary(ledger_records, plan),
+        "planner_mode": plan.mode,
+    }
+
 # --- Strategy Implementations ---
 
 
@@ -163,7 +247,6 @@ def run_one_shot_compact(
     *,
     model_call: ModelCallFn = _noop_model_call,
     include_raw_scan: bool = False,
-    max_ranges_per_window: int = 0,
     model_context_tokens: int = 32768,
     max_output_tokens: int = 4096,
 ) -> StrategyResult:
@@ -187,8 +270,7 @@ def run_one_shot_compact(
         "fallback_reason": plan.fallback_reason,
     })
     messages = build_one_shot_messages(
-        user_query, windows, include_raw_scan=include_raw_scan,
-        max_ranges_per_window=max_ranges_per_window, plan=plan,
+        user_query, windows, include_raw_scan=include_raw_scan, plan=plan,
     )
     start = time.monotonic()
     try:
@@ -222,7 +304,6 @@ def run_hierarchical_balanced(
     windows: list[dict],
     *,
     model_call: ModelCallFn = _noop_model_call,
-    max_ranges_per_window: int = 0,
     model_context_tokens: int = 32768,
     max_output_tokens: int = 4096,
 ) -> StrategyResult:
@@ -257,7 +338,7 @@ def run_hierarchical_balanced(
         batch1 = windows[:3]
         plan1 = _call_planner(batch1, "batch_1")
         msgs1 = build_hierarchical_batch_messages(
-            user_query, batch1, depth=0, max_ranges_per_window=max_ranges_per_window, plan=plan1,
+            user_query, batch1, depth=0, plan=plan1,
         )
         messages_list.append(msgs1)
         resp1, _ = model_call(msgs1)
@@ -268,7 +349,7 @@ def run_hierarchical_balanced(
         batch2 = windows[3:]
         plan2 = _call_planner(batch2, "batch_2")
         msgs2 = build_hierarchical_batch_messages(
-            user_query, batch2, depth=0, max_ranges_per_window=max_ranges_per_window, plan=plan2,
+            user_query, batch2, depth=0, plan=plan2,
         )
         messages_list.append(msgs2)
         resp2, _ = model_call(msgs2)
@@ -282,7 +363,7 @@ def run_hierarchical_balanced(
         ]
         plan3 = _call_planner(interim_windows, "final")
         msgs3 = build_hierarchical_batch_messages(
-            user_query, interim_windows, depth=1, max_ranges_per_window=0, plan=plan3,
+            user_query, interim_windows, depth=1, plan=plan3,
         )
         messages_list.append(msgs3)
         resp3, _ = model_call(msgs3)
@@ -317,7 +398,6 @@ def run_rolling_synthesis(
     windows: list[dict],
     *,
     model_call: ModelCallFn = _noop_model_call,
-    max_ranges_per_window: int = 0,
     model_context_tokens: int = 32768,
     max_output_tokens: int = 4096,
 ) -> StrategyResult:
@@ -351,8 +431,7 @@ def run_rolling_synthesis(
                 "fallback_reason": plan.fallback_reason,
             })
             msgs = build_rolling_synthesis_messages(
-                user_query, current_synthesis, w,
-                max_ranges_per_window=max_ranges_per_window, plan=plan,
+                user_query, current_synthesis, w, plan=plan,
             )
             messages_list.append(msgs)
             resp, _ = model_call(msgs)
@@ -387,7 +466,6 @@ def run_evidence_table_then_synthesis(
     windows: list[dict],
     *,
     model_call: ModelCallFn = _noop_model_call,
-    max_ranges_per_window: int = 0,
     model_context_tokens: int = 32768,
     max_output_tokens: int = 4096,
 ) -> StrategyResult:
@@ -411,7 +489,7 @@ def run_evidence_table_then_synthesis(
         "fallback_reason": plan.fallback_reason,
     })
     messages = build_evidence_table_messages(
-        user_query, windows, max_ranges_per_window=max_ranges_per_window, plan=plan,
+        user_query, windows, plan=plan,
     )
     start = time.monotonic()
     try:
@@ -479,19 +557,22 @@ def run_evidence_ledger_synthesis(
         "fallback_reason": plan.fallback_reason,
     })
 
-    if plan.mode == "full":
-        messages = provisional_messages
-    else:
-        messages = build_evidence_ledger_synthesis_messages(
-            user_query, record_dicts,
-            source_batch_contexts=batch_dicts,
-            plan=plan,
-        )
+    messages = build_evidence_ledger_synthesis_messages(
+        user_query,
+        record_dicts,
+        source_batch_contexts=batch_dicts,
+        plan=plan,
+    )
     start = time.monotonic()
     try:
         response, _ = model_call(messages)
         elapsed = int((time.monotonic() - start) * 1000)
-        parsed = _parse_fenced_json(response)
+        raw_parsed = _parse_fenced_json(response)
+        parsed = (
+            _assemble_ledger_analysis_result(raw_parsed, record_dicts, plan)
+            if raw_parsed is not None
+            else None
+        )
         return StrategyResult(
             strategy_name="evidence_ledger_synthesis",
             messages_per_call=[messages],

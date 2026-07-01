@@ -25,7 +25,12 @@ from message_evidence_workstation.dataset_load_pipeline import (
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.ui.background_tasks import run_background
-from message_evidence_workstation.ui.embedding_worker import EmbeddingJobSpec, preload_embedding_model, run_embedding_job
+from message_evidence_workstation.ui.embedding_worker import (
+    EmbeddingJobSpec,
+    get_service,
+    preload_embedding_model,  # Backward compatibility for tests patching this symbol.
+    run_embedding_job,
+)
 
 
 class HomeTab(QWidget):
@@ -59,8 +64,6 @@ class HomeTab(QWidget):
         self._pending_dataset_id: int | None = None
         self._auto_run_pending = auto_run_on_show
         self._dataset_loaded_this_session = False
-        self._preload_started = False
-
         layout = QVBoxLayout(self)
         layout.addWidget(
             QLabel(
@@ -109,20 +112,10 @@ class HomeTab(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        if not self._preload_started:
-            self._preload_started = True
-            self._start_embedding_preload()
         if self._auto_run_pending:
             self._auto_run_pending = False
             self._start_load()
-
-    def _start_embedding_preload(self) -> None:
-        preload_embedding_model(
-            self,
-            db_path=self.db_path,
-            on_success=lambda _result: self._append_status("Embedding model preload complete."),
-            on_error=lambda exc: self._append_status(f"Embedding model preload failed: {exc}"),
-        )
+            return
 
     def _format_path_label(self) -> str:
         if self._selected_path is None:
@@ -272,6 +265,14 @@ class HomeTab(QWidget):
                 ),
                 handoff=True,
             )
+            return
+
+        if not get_service().is_loaded:
+            self._append_status(
+                "Cannot build embeddings — model not loaded. "
+                "Go to Settings and click 'Download embedding model' or 'Reload embedding model'."
+            )
+            self._finish_embedding(dataset_id, import_result, available=False, error="Model not loaded")
             return
 
         job = EmbeddingJobSpec(

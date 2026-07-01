@@ -1,0 +1,8 @@
+{"ts": "2026-06-30T21:40:26+00:00", "thread": "MainThread", "component": "diagnostics", "operation": "installed", "message": "", "details": {"path": "C:\\Users\\artwh\\legal2\\.tmp_mew\\crash_trace.log", "python": "3.14.4 (tags/v3.14.4:23116f9, Apr  7 2026, 14:10:54) [MSC v.1944 64 bit (AMD64)]"}}
+{"ts": "2026-06-30T21:40:26+00:00", "thread": "MainThread", "component": "app", "operation": "main_enter", "message": "", "details": {"trace_path": "C:\\Users\\artwh\\legal2\\.tmp_mew\\crash_trace.log"}}
+{"ts": "2026-06-30T21:40:30+00:00", "thread": "MainThread", "component": "embedding_worker", "operation": "worker_thread_started", "message": "", "details": {}}
+{"ts": "2026-06-30T21:40:30+00:00", "thread": "MainThread", "component": "embedding_worker", "operation": "enqueue", "message": "", "details": {"job_type": "load", "queue_depth": 0}}
+{"ts": "2026-06-30T21:40:30+00:00", "thread": "mew-embedding", "component": "embedding_worker", "operation": "run_job_enter", "message": "", "details": {"job_type": "load"}}
+{"ts": "2026-06-30T21:40:30+00:00", "thread": "mew-embedding", "component": "embedding_worker", "operation": "run_job_exception", "message": "", "details": {"error": "sentence-transformers is not installed; pip install sentence-transformers"}}
+{"ts": "2026-06-30T21:40:30+00:00", "thread": "mew-embedding", "component": "embedding_worker", "operation": "deliver_error_ui", "message": "", "details": {"error": "sentence-transformers is not installed; pip install sentence-transformers"}}
+{"ts": "2026-06-30T21:40:30+00:00", "thread": "MainThread", "component": "app", "operation": "exec_begin", "message": "", "details": {}}

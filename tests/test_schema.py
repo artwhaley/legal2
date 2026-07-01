@@ -121,3 +121,30 @@ def test_legacy_workstation_tables_absent_after_migrate(temp_conn: sqlite3.Conne
     assert "conversation_range" not in tables
     assert "message_highlight_override" not in tables
     assert get_schema_version(temp_conn) == SCHEMA_VERSION
+
+
+def test_v7_dataset_columns_migration_is_idempotent(temp_conn: sqlite3.Connection) -> None:
+    logger = ProcessLogger(temp_conn)
+    temp_conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
+        INSERT INTO schema_version (version) VALUES (6);
+
+        CREATE TABLE IF NOT EXISTS dataset (
+            dataset_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            schema_version INTEGER NOT NULL,
+            notes TEXT NOT NULL DEFAULT '',
+            import_validity TEXT NOT NULL DEFAULT 'ready',
+            import_error TEXT NOT NULL DEFAULT '',
+            normalized_format_version INTEGER
+        );
+        """
+    )
+
+    initialize_schema(temp_conn, logger)
+
+    columns = {row[1] for row in temp_conn.execute("PRAGMA table_info(dataset)").fetchall()}
+    assert {"import_validity", "import_error", "normalized_format_version"}.issubset(columns)
+    assert get_schema_version(temp_conn) == SCHEMA_VERSION

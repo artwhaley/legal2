@@ -217,6 +217,44 @@ def validate_synthesis_output(
                     f"range {rid}: display_text is empty in full mode", range_id=rid,
                 ))
 
+    themes = parsed_response.get("themes")
+    if themes is not None:
+        if not isinstance(themes, list):
+            issues.append(ValidationIssue(
+                "warning", "invalid_themes",
+                "themes is present but is not a list",
+            ))
+        else:
+            for idx, theme in enumerate(themes):
+                if not isinstance(theme, dict):
+                    issues.append(ValidationIssue(
+                        "warning", "invalid_theme_entry",
+                        f"themes[{idx}] is not an object",
+                    ))
+                    continue
+                range_ids = theme.get("range_ids")
+                if range_ids is None:
+                    continue
+                if not isinstance(range_ids, list):
+                    issues.append(ValidationIssue(
+                        "warning", "invalid_theme_range_ids",
+                        f"themes[{idx}].range_ids is not a list",
+                    ))
+                    continue
+                for rid in range_ids:
+                    if not isinstance(rid, str) or not rid.strip():
+                        issues.append(ValidationIssue(
+                            "warning", "blank_theme_range_id",
+                            f"themes[{idx}] contains a blank range_id",
+                        ))
+                        continue
+                    if rid not in input_ranges:
+                        issues.append(ValidationIssue(
+                            "error", "unknown_theme_range_id",
+                            f"themes[{idx}] references unknown range_id '{rid}'",
+                            range_id=rid,
+                        ))
+
     cov = parsed_response.get("coverage_summary") or {}
     if not isinstance(cov, dict) or not cov.get("mode"):
         issues.append(ValidationIssue(

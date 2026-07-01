@@ -22,6 +22,7 @@ def _make_record(range_id: str, **kw) -> dict:
         "source_thread_id": "thread_a",
         "input_title": "Tummy aches",
         "input_summary": "Olivia tummy aches",
+        "input_display_text": "Olivia says her stomach hurts before school.",
         "date_description": "On Feb 21",
         "hit_message_id": "msg_001",
         "start_message_id": "msg_000",
@@ -61,12 +62,14 @@ def test_ledger_builds_records():
     assert r.range_id == "r000001"
     assert r.source_range_key == "w_001::r000001::m1"
     assert r.input_title == "First range"
+    assert r.input_display_text == ""
     assert r.hit_message_id == "m1"
 
     dicts = ledger_to_dicts(records)
     assert len(dicts) == 1
     assert dicts[0]["range_id"] == "r000001"
     assert dicts[0]["source_range_key"] == "w_001::r000001::m1"
+    assert dicts[0]["input_display_text"] == ""
     print("PASS: ledger builds records with stable range_id")
 
 
@@ -322,6 +325,33 @@ def test_validator_missing_answer_ranges():
     print("PASS: validator rejects missing answer_ranges")
 
 
+def test_validator_rejects_unknown_theme_range_id():
+    from spikes.window_merge_lab.validator import validate_synthesis_output
+    records = [_make_record("r000001")]
+    response = {
+        "answer_summary": "Theme test",
+        "answer_format": "detailed",
+        "answer": "Narrative",
+        "answer_ranges": [
+            {"range_id": "r000001", "source_range_key": "w_001::r000001::msg_001",
+             "title": "Tummy aches", "summary": "desc", "date_description": "On Feb 21",
+             "display_text": "Some text", "hit_message_id": "msg_001",
+             "start_message_id": "msg_000", "end_message_id": "msg_002"},
+        ],
+        "themes": [
+            {"title": "Missing theme reference", "summary": "oops", "range_ids": ["r999999"]},
+        ],
+        "uncertainties": [],
+        "coverage_summary": {"mode": "full", "input_range_count": 1,
+                            "output_range_count": 1, "represented_range_count": 1,
+                            "source_thread_ids": ["thread_a"]},
+    }
+    vr = validate_synthesis_output(response, records, "full")
+    assert not vr.ok
+    assert any(i.code == "unknown_theme_range_id" for i in vr.issues)
+    print("PASS: validator rejects unknown theme range_id")
+
+
 # ---------------------------------------------------------------------------
 # End-to-end ledger synthesis dry-run test
 # ---------------------------------------------------------------------------
@@ -345,29 +375,54 @@ def test_ledger_synthesis_dry_run():
 
 
 def test_ledger_synthesis_provisional_build_flow():
+    import json
+
     from spikes.window_merge_lab.data_loader import load_compact_windows
     from spikes.window_merge_lab.strategies import run_evidence_ledger_synthesis
     windows = load_compact_windows()
-    # Use a noop model call that returns valid JSON
+    first_range = windows[0]["answer_ranges"][0]
+    captured_messages: list[list[dict[str, str]]] = []
+
+    def model_call(messages):
+        captured_messages.append(messages)
+        return ('{"answer_summary": "x", '
+                '"answer": "y", '
+                '"themes": [{"title": "School routines", '
+                '"summary": "Grouped school-related evidence.", '
+                '"range_ids": ["r000001"]}], '
+                '"notable_patterns": ["Recurring school logistics."], '
+                '"contradictions_or_tensions": ["Some records suggest stress."], '
+                '"uncertainties": ["Timing remains approximate."]}', 0)
+
     result = run_evidence_ledger_synthesis(
         "test query", windows,
-        model_call=lambda m: ('{"answer_summary": "x", "answer_format": "detailed", '
-                              '"answer": "y", "answer_ranges": [], '
-                              '"uncertainties": [], "coverage_summary": {'
-                              '"mode": "full", "input_range_count": 0, '
-                              '"output_range_count": 0, "represented_range_count": 0, '
-                              '"source_thread_ids": []}}', 0),
+        model_call=model_call,
         model_context_tokens=262144,
         max_output_tokens=65536,
     )
     plan = result.planner_plans[0]
     assert plan.get("mode") == "full", f"Expected full with big context, got {plan.get('mode')}"
     assert plan.get("estimated_input_tokens", 0) > 0
+    assert result.last_parsed is not None
+    assert result.last_parsed["answer_summary"] == "x"
+    assert result.last_parsed["answer_format"] == "detailed"
+    assert result.last_parsed["themes"][0]["range_ids"] == ["r000001"]
+    assert len(result.last_parsed["answer_ranges"]) == 67
+    assert result.last_parsed["coverage_summary"]["input_range_count"] == 67
+    rebuilt_first = result.last_parsed["answer_ranges"][0]
+    assert rebuilt_first["title"] == first_range["title"]
+    assert rebuilt_first["summary"] == first_range["summary"]
+    assert rebuilt_first["display_text"] == first_range["display_text"]
+    sent_payload = json.loads(captured_messages[0][1]["content"])
+    assert sent_payload["planner_mode"] == "full"
     print("PASS: evidence_ledger_synthesis provisional-build flow works")
 
 
 def test_ledger_synthesis_uses_anti_window_language():
-    from spikes.window_merge_lab.prompts import build_evidence_ledger_synthesis_messages
+    from spikes.window_merge_lab.prompts import (
+        LEDGER_ANALYSIS_JSON_SCHEMA,
+        build_evidence_ledger_synthesis_messages,
+    )
     records = [
         {
             "range_id": "r000001",
@@ -376,6 +431,7 @@ def test_ledger_synthesis_uses_anti_window_language():
             "source_thread_id": "t_a",
             "input_title": "Test",
             "input_summary": "Test summary",
+            "input_display_text": "Test display text",
             "date_description": "On Jan 1",
             "hit_message_id": "m1",
             "start_message_id": "m0",
@@ -386,6 +442,9 @@ def test_ledger_synthesis_uses_anti_window_language():
     content = (msgs[0]["content"] + msgs[1]["content"]).lower()
     assert "source batch" in content.lower()
     assert "ledger records" in content.lower()
+    assert "do not reconstruct answer_ranges" in content
+    assert "themes" in LEDGER_ANALYSIS_JSON_SCHEMA.lower()
+    assert '"range_ids"' in LEDGER_ANALYSIS_JSON_SCHEMA
     print("PASS: evidence_ledger uses ledger and source-batch language")
 
 
@@ -535,6 +594,38 @@ def test_planner_evidence_messages_estimation():
     assert plan.mode == "full"
     assert plan.estimated_input_tokens > 0
     print("PASS: planner uses evidence_messages for estimation")
+
+
+def test_planner_counts_ledger_records_without_forcing_fake_compaction():
+    from spikes.window_merge_lab.budget_planner import (
+        SynthesisBudgetRequest,
+        plan_synthesis_budget,
+    )
+    from spikes.window_merge_lab.data_loader import load_compact_windows
+    from spikes.window_merge_lab.ledger import build_ledger, ledger_to_dicts
+    from spikes.window_merge_lab.prompts import build_evidence_ledger_synthesis_messages
+
+    windows = load_compact_windows()
+    records, _ = build_ledger(windows)
+    record_dicts = ledger_to_dicts(records)
+    messages = build_evidence_ledger_synthesis_messages("test", record_dicts)
+    plan = plan_synthesis_budget(
+        SynthesisBudgetRequest(
+            evidence_records=record_dicts,
+            evidence_messages=messages,
+            user_query="test",
+            strategy_name="evidence_ledger_synthesis",
+            call_label="final",
+            model_context_tokens=128000,
+            max_output_tokens=16000,
+        )
+    )
+
+    assert plan.range_count == len(record_dicts)
+    assert plan.mode == "full", f"Expected full, got {plan.mode}"
+    assert plan.fallback_reason is None
+    assert plan.estimated_output_tokens < plan.available_output_tokens
+    print("PASS: planner counts ledger records without forcing fake compaction")
 
 
 # ---------------------------------------------------------------------------

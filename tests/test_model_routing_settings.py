@@ -102,6 +102,17 @@ def test_settings_round_trip_preserves_role_models(isolated_settings) -> None:
     assert reloaded.model_routing.research.provider == PROVIDER_GOOGLE
 
 
+def test_settings_round_trip_preserves_provider_model_lists(isolated_settings) -> None:
+    settings = load_settings()
+    settings.provider_model_lists = {
+        PROVIDER_NIM: ["meta/llama-3.1-8b-instruct"],
+        PROVIDER_GOOGLE: ["gemini-2.0-flash"],
+    }
+    save_settings(settings)
+    reloaded = load_settings()
+    assert reloaded.provider_model_lists == settings.provider_model_lists
+
+
 def test_default_model_routing_copies_connection_defaults() -> None:
     nim = NimSettings(api_key="k", temperature=0.3)
     routing = default_model_routing(nim)

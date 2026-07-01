@@ -188,10 +188,17 @@ def _metadata_model_name(
 
 def migrate_legacy_vec_tables_to_partitions(conn: sqlite3.Connection, logger: Any) -> None:
     """Rebuild pre-v11 vec tables with model_name partition keys."""
-    load_sqlite_vec(conn)
-    if _table_exists(conn, MESSAGE_VEC_TABLE) and not _vec_table_has_model_partition(
+    needs_message_migration = _table_exists(conn, MESSAGE_VEC_TABLE) and not _vec_table_has_model_partition(
         conn, MESSAGE_VEC_TABLE
-    ):
+    )
+    needs_chunk_migration = _table_exists(conn, CHUNK_VEC_TABLE) and not _vec_table_has_model_partition(
+        conn, CHUNK_VEC_TABLE
+    )
+    if not needs_message_migration and not needs_chunk_migration:
+        return
+
+    load_sqlite_vec(conn)
+    if needs_message_migration:
         dimensions = _table_dimensions(conn, MESSAGE_VEC_TABLE)
         if dimensions is None:
             conn.execute(f"DROP TABLE IF EXISTS {MESSAGE_VEC_TABLE}")
@@ -227,7 +234,7 @@ def migrate_legacy_vec_tables_to_partitions(conn: sqlite3.Connection, logger: An
                 details={"row_count": len(rows), "dimensions": dimensions},
             )
 
-    if _table_exists(conn, CHUNK_VEC_TABLE) and not _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE):
+    if needs_chunk_migration:
         dimensions = _table_dimensions(conn, CHUNK_VEC_TABLE)
         if dimensions is None:
             conn.execute(f"DROP TABLE IF EXISTS {CHUNK_VEC_TABLE}")

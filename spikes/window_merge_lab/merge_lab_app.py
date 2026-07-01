@@ -89,6 +89,7 @@ class MergeLabWindow(QtWidgets.QMainWindow):
     log_signal = QtCore.Signal(str)
     display_result_signal = QtCore.Signal(object)
     error_signal = QtCore.Signal(str)
+    run_state_signal = QtCore.Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -100,6 +101,7 @@ class MergeLabWindow(QtWidgets.QMainWindow):
         self._last_result: Any = None
         self._last_output_dir: Path | None = None
         self._abort_flag = False
+        self._run_in_progress = False
 
         self._built_messages_per_call: list[list[dict[str, str]]] | None = None
         self._built_strategy_name: str | None = None
@@ -109,6 +111,7 @@ class MergeLabWindow(QtWidgets.QMainWindow):
         self.log_signal.connect(self._log.log)
         self.display_result_signal.connect(self._display_results)
         self.error_signal.connect(self._result_error_text.setPlainText)
+        self.run_state_signal.connect(self._set_run_in_progress)
         self._log.log("Window Merge Lab started")
 
     def _build_ui(self) -> None:
@@ -169,7 +172,9 @@ class MergeLabWindow(QtWidgets.QMainWindow):
         right_layout.addWidget(prompt_label)
         self._prompt_tabs = QtWidgets.QTabWidget()
         self._prompt_preview_text = QtWidgets.QPlainTextEdit()
+        self._prompt_preview_text.setReadOnly(True)
         self._payload_json_text = QtWidgets.QPlainTextEdit()
+        self._payload_json_text.setReadOnly(True)
         self._compact_input_text = QtWidgets.QPlainTextEdit()
         self._compact_input_text.setReadOnly(True)
         self._prompt_tabs.addTab(self._prompt_preview_text, "Prompt Preview")
@@ -276,35 +281,12 @@ class MergeLabWindow(QtWidgets.QMainWindow):
         grid.addWidget(self._dry_run_cb, row, 0, 1, 2)
 
         row += 1
-        self._no_api_cb = QtWidgets.QCheckBox("No API")
-        grid.addWidget(self._no_api_cb, row, 0, 1, 2)
-
-        row += 1
         self._include_raw_cb = QtWidgets.QCheckBox("Include raw scan text")
         grid.addWidget(self._include_raw_cb, row, 0, 1, 2)
 
         row += 1
-        self._compact_display_cb = QtWidgets.QCheckBox("Compact display text")
-        self._compact_display_cb.setChecked(True)
-        grid.addWidget(self._compact_display_cb, row, 0, 1, 2)
-
-        row += 1
-        grid.addWidget(QtWidgets.QLabel("Max ranges per window:"), row, 0)
-        self._max_ranges = QtWidgets.QSpinBox()
-        self._max_ranges.setRange(0, 100)
-        self._max_ranges.setValue(0)
-        self._max_ranges.setSpecialValueText("Unlimited")
-        grid.addWidget(self._max_ranges, row, 1)
-
-        row += 1
-        grid.addWidget(QtWidgets.QLabel("Merge batch size:"), row, 0)
-        self._batch_size = QtWidgets.QSpinBox()
-        self._batch_size.setRange(1, 10)
-        self._batch_size.setValue(3)
-        grid.addWidget(self._batch_size, row, 1)
-
         # Buttons
-        btn_row = row + 1
+        btn_row = row
         btn_widget = QtWidgets.QWidget()
         btn_layout = QtWidgets.QHBoxLayout(btn_widget)
         btn_layout.setContentsMargins(0, 0, 0, 0)
@@ -462,7 +444,6 @@ class MergeLabWindow(QtWidgets.QMainWindow):
         strategy = self._strategy_combo.currentData()
         if strategy == "one_shot_compact":
             kwargs["include_raw_scan"] = self._include_raw_cb.isChecked()
-        kwargs["max_ranges_per_window"] = self._max_ranges.value()
         kwargs["model_context_tokens"] = self._model_context.value()
         kwargs["max_output_tokens"] = self._max_tokens.value()
         return kwargs
@@ -528,32 +509,19 @@ class MergeLabWindow(QtWidgets.QMainWindow):
             "model_context_tokens": self._model_context.value(),
             "timeout_seconds": self._timeout.value(),
             "dry_run": self._dry_run_cb.isChecked(),
-            "no_api": self._no_api_cb.isChecked(),
             "include_raw_scan": self._include_raw_cb.isChecked(),
-            "compact_display": self._compact_display_cb.isChecked(),
-            "max_ranges_per_window": self._max_ranges.value(),
-            "batch_size": self._batch_size.value(),
             "evw_path": self._evw_path.text(),
             "input_path": self._input_path.text(),
             "output_dir": self._output_dir.text(),
         }
 
-    def _resolve_messages_from_gui(self) -> list[list[dict[str, str]]] | None:
-        edited = self._payload_json_text.toPlainText().strip()
-        if not edited:
-            return self._built_messages_per_call
-        try:
-            parsed = json.loads(edited)
-            if isinstance(parsed, list) and len(parsed) > 0:
-                return parsed
-        except json.JSONDecodeError:
-            pass
-        return None
-
     def _on_run_strategy(self) -> None:
         data = self._compact_windows or self._windows
         if not data:
             self._log.log("ERROR: No windows loaded. Load input first.")
+            return
+        if self._run_in_progress:
+            self._log.log("Run already in progress. Wait for completion before starting another run.")
             return
 
         strategy = self._strategy_combo.currentData()
@@ -565,7 +533,7 @@ class MergeLabWindow(QtWidgets.QMainWindow):
             self._log.log("Deterministic baseline requires no API call — click Build Prompt to preview.")
             return
 
-        dry_run = self._dry_run_cb.isChecked() or self._no_api_cb.isChecked()
+        dry_run = self._dry_run_cb.isChecked()
         provider = self._provider_combo.currentText()
         settings_snapshot = self._collect_settings_snapshot()
         output_base = Path(self._output_dir.text())
@@ -624,6 +592,7 @@ class MergeLabWindow(QtWidgets.QMainWindow):
 
         def run():
             self._abort_flag = False
+            self.run_state_signal.emit(True)
             self.log_signal.emit(f"Running {strategy} ({'dry-run' if dry_run else provider})...")
             try:
                 _call_num = [0]
@@ -662,8 +631,14 @@ class MergeLabWindow(QtWidgets.QMainWindow):
                 _persist_crash(e)
                 self.log_signal.emit(f"ERROR: {e}")
                 self.error_signal.emit(traceback.format_exc())
+            finally:
+                self.run_state_signal.emit(False)
 
         Thread(target=run, daemon=True).start()
+
+    def _set_run_in_progress(self, in_progress: bool) -> None:
+        self._run_in_progress = in_progress
+        self._btn_run_strategy.setEnabled(not in_progress)
 
     def _display_results(self, result) -> None:
         self._result_raw_text.setPlainText(
@@ -717,6 +692,31 @@ class MergeLabWindow(QtWidgets.QMainWindow):
         answer = parsed.get("answer", "")
         if answer:
             lines.append(answer)
+            lines.append("")
+        themes = parsed.get("themes", [])
+        if themes:
+            lines.append(f"## Themes ({len(themes)})")
+            lines.append("")
+            for i, theme in enumerate(themes, 1):
+                if not isinstance(theme, dict):
+                    continue
+                lines.append(f"### {i}. {theme.get('title', 'Untitled theme')}")
+                lines.append(str(theme.get("summary", "")).strip())
+                range_ids = theme.get("range_ids", [])
+                if isinstance(range_ids, list) and range_ids:
+                    lines.append(f"- **Range IDs:** {', '.join(f'`{rid}`' for rid in range_ids)}")
+                lines.append("")
+        notable_patterns = parsed.get("notable_patterns", [])
+        if notable_patterns:
+            lines.append("## Notable Patterns")
+            for item in notable_patterns:
+                lines.append(f"- {item}")
+            lines.append("")
+        contradictions = parsed.get("contradictions_or_tensions", [])
+        if contradictions:
+            lines.append("## Contradictions / Tensions")
+            for item in contradictions:
+                lines.append(f"- {item}")
             lines.append("")
         ranges = parsed.get("answer_ranges", [])
         if ranges:

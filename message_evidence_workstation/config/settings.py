@@ -104,6 +104,7 @@ class AppSettings:
     transcript: TranscriptSettings = field(default_factory=TranscriptSettings)
     search: SearchSettings = field(default_factory=SearchSettings)
     model_metadata: dict[str, dict] = field(default_factory=dict)
+    provider_model_lists: dict[str, list[str]] = field(default_factory=dict)
     model_routing: ModelRoutingSettings | None = None
 
 
@@ -301,6 +302,11 @@ def load_settings() -> AppSettings:
         transcript=TranscriptSettings(**{**asdict(TranscriptSettings()), **data.get("transcript", {})}),
         search=SearchSettings(**{**asdict(SearchSettings()), **data.get("search", {})}),
         model_metadata=model_metadata,
+        provider_model_lists={
+            str(provider): [str(model_id) for model_id in model_ids]
+            for provider, model_ids in dict(data.get("provider_model_lists", {})).items()
+            if isinstance(model_ids, list)
+        },
         model_routing=routing,
     )
     should_save = bumped_timeout or bumped_output_tokens or migrated_tokens
@@ -333,6 +339,7 @@ def save_settings(settings: AppSettings) -> None:
         "transcript": asdict(settings.transcript),
         "search": asdict(settings.search),
         "model_metadata": settings.model_metadata or {},
+        "provider_model_lists": settings.provider_model_lists or {},
         "model_routing": {
             "expansion": asdict(routing.expansion),
             "research": asdict(routing.research),

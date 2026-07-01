@@ -1,0 +1,24 @@
+{
+  "strategy": "evidence_ledger_synthesis",
+  "call_count": 0,
+  "latency_ms": 452385,
+  "has_error": true,
+  "error": "Google response hit the max output token limit before completing",
+  "range_count": 0,
+  "planner_mode": "compact",
+  "planner_modes": [
+    "compact"
+  ],
+  "planner_calls": [
+    {
+      "call_label": "final",
+      "mode": "compact",
+      "answer_format": "brief",
+      "estimated_input_tokens": 13129,
+      "estimated_output_tokens": 8070,
+      "available_input_tokens": 106800,
+      "available_output_tokens": 14000,
+      "fallback_reason": "full output ~14230 > available ~14000"
+    }
+  ]
+}

@@ -61,11 +61,7 @@ Fields:
 - Max output tokens
 - Timeout seconds
 - Dry run checkbox
-- No API checkbox
 - Include raw scan text checkbox
-- Compact display text checkbox
-- Max ranges per window
-- Merge batch size, where relevant
 
 Buttons:
 

@@ -242,13 +242,7 @@ def _migrate_to_version(
             message="Applying schema migration to version 7 (dataset import validity)",
             details={"from_version": current},
         )
-        conn.executescript(
-            """
-            ALTER TABLE dataset ADD COLUMN import_validity TEXT NOT NULL DEFAULT 'ready';
-            ALTER TABLE dataset ADD COLUMN import_error TEXT NOT NULL DEFAULT '';
-            ALTER TABLE dataset ADD COLUMN normalized_format_version INTEGER;
-            """
-        )
+        _ensure_dataset_import_columns(conn)
     if current < 8 <= target:
         logger.info(
             component="db.migrations",
@@ -341,6 +335,19 @@ def _ensure_embedding_checkpoint_columns(conn: sqlite3.Connection) -> None:
         conn.execute(
             f"ALTER TABLE embedding_index_metadata ADD COLUMN {column_name} {column_def}"
         )
+
+
+def _ensure_dataset_import_columns(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(dataset)").fetchall()}
+    additions = [
+        ("import_validity", "TEXT NOT NULL DEFAULT 'ready'"),
+        ("import_error", "TEXT NOT NULL DEFAULT ''"),
+        ("normalized_format_version", "INTEGER"),
+    ]
+    for column_name, column_def in additions:
+        if column_name in existing:
+            continue
+        conn.execute(f"ALTER TABLE dataset ADD COLUMN {column_name} {column_def}")
 
 
 def _mark_existing_datasets_ready(conn: sqlite3.Connection) -> None:

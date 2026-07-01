@@ -57,25 +57,30 @@ def estimate_json_tokens(value: object) -> int:
     return math.ceil(len(serialized) / 3.5)
 
 
-def estimate_full_output_tokens(range_count: int) -> int:
+def estimate_full_output_tokens(range_count: int, *, strategy_name: str = "") -> int:
+    if strategy_name == "evidence_ledger_synthesis":
+        return 2_500 + range_count * 40
     return 1_500 + range_count * 190
 
 
-def estimate_compact_output_tokens(range_count: int) -> int:
+def estimate_compact_output_tokens(range_count: int, *, strategy_name: str = "") -> int:
+    if strategy_name == "evidence_ledger_synthesis":
+        return 1_400 + range_count * 20
     return 700 + range_count * 110
 
 
 def _count_ranges(records: list[dict]) -> int:
     total = 0
     for r in records:
-        ranges = (
-            r.get("answer_ranges")
-            or r.get("hit_ranges")
-            or r.get("ledger_ranges")
-            or []
-        )
-        if isinstance(ranges, list):
-            total += len(ranges)
+        answer_ranges = r.get("answer_ranges")
+        hit_ranges = r.get("hit_ranges")
+        ledger_ranges = r.get("ledger_ranges")
+        if isinstance(answer_ranges, list):
+            total += len(answer_ranges)
+        elif isinstance(hit_ranges, list):
+            total += len(hit_ranges)
+        elif isinstance(ledger_ranges, list):
+            total += len(ledger_ranges)
         elif r.get("hit_message_id"):
             total += 1
     return total
@@ -83,8 +88,8 @@ def _count_ranges(records: list[dict]) -> int:
 
 def plan_synthesis_budget(request: SynthesisBudgetRequest) -> SynthesisBudgetPlan:
     range_count = _count_ranges(request.evidence_records)
-    full_output = estimate_full_output_tokens(range_count)
-    compact_output = estimate_compact_output_tokens(range_count)
+    full_output = estimate_full_output_tokens(range_count, strategy_name=request.strategy_name)
+    compact_output = estimate_compact_output_tokens(range_count, strategy_name=request.strategy_name)
 
     if request.evidence_messages:
         estimated_input = _estimate_messages_tokens(request.evidence_messages)

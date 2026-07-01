@@ -1,0 +1,8 @@
+=== 2026-06-30 16:03:42 ===
+Strategy: evidence_ledger_synthesis
+Traceback (most recent call last):
+  File "C:\Users\artwh\legal2\spikes\window_merge_lab\merge_lab_app.py", line 635, in run
+    result = fn("Show me all the times we talked about school", data, model_call=logged_model_call, **kwargs)
+TypeError: run_evidence_ledger_synthesis() got an unexpected keyword argument 'max_ranges_per_window'
+
+

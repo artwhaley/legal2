@@ -89,7 +89,6 @@ def main() -> None:
     parser.add_argument("--model", default=None, help="Override model name")
     parser.add_argument("--max-tokens", type=int, default=4096)
     parser.add_argument("--timeout", type=float, default=600.0)
-    parser.add_argument("--max-ranges", type=int, default=0, help="Max ranges per window (0=unlimited)")
     parser.add_argument("--include-raw", action="store_true", help="Include raw scan text in payloads")
     parser.add_argument("--no-api", action="store_true", help="Do not call any API (same as dry-run)")
     parser.add_argument("--input", default=None, help="Path to compact input JSON")
@@ -117,7 +116,6 @@ def main() -> None:
     kwargs: dict = {}
     if args.strategy == "one_shot_compact":
         kwargs["include_raw_scan"] = args.include_raw
-    kwargs["max_ranges_per_window"] = args.max_ranges
 
     if dry_run:
         print(f"\nRunning {args.strategy} in DRY RUN mode (no API calls)")

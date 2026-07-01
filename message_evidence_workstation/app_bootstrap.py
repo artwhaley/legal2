@@ -32,7 +32,7 @@ class AppContext:
 class StartupLoadOptions:
     dataset_path: Path
     reload: bool = False
-    skip_embedding: bool = True
+    skip_embedding: bool = False
 
 
 def _ready_dataset_id(conn: sqlite3.Connection) -> int | None:

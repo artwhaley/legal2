@@ -22,6 +22,9 @@ class EmbeddingAdapter(ABC):
     def load(self) -> EmbeddingAdapterInfo:
         raise NotImplementedError
 
+    def download(self) -> EmbeddingAdapterInfo:
+        raise NotImplementedError("This adapter does not support network download")
+
     @abstractmethod
     def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
         raise NotImplementedError
@@ -59,14 +62,7 @@ class SentenceTransformerAdapter(EmbeddingAdapter):
         self._model = None
         self._info: EmbeddingAdapterInfo | None = None
 
-    def load(self) -> EmbeddingAdapterInfo:
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError as exc:
-            raise RuntimeError(
-                "sentence-transformers is not installed; pip install sentence-transformers"
-            ) from exc
-        self._model = SentenceTransformer(self.model_name)
+    def _build_info(self) -> EmbeddingAdapterInfo:
         sample = self._model.encode(["dimension probe"], normalize_embeddings=True)
         dimensions = int(len(sample[0]))
         self._info = EmbeddingAdapterInfo(
@@ -77,9 +73,35 @@ class SentenceTransformerAdapter(EmbeddingAdapter):
         )
         return self._info
 
+    def load(self) -> EmbeddingAdapterInfo:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise RuntimeError(
+                "sentence-transformers is not installed; pip install sentence-transformers"
+            ) from exc
+        try:
+            self._model = SentenceTransformer(self.model_name, local_files_only=True)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Embedding model '{self.model_name}' not found in local cache. "
+                "Use the 'Download embedding model' button in Settings to download it once."
+            ) from exc
+        return self._build_info()
+
+    def download(self) -> EmbeddingAdapterInfo:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise RuntimeError(
+                "sentence-transformers is not installed; pip install sentence-transformers"
+            ) from exc
+        self._model = SentenceTransformer(self.model_name)
+        return self._build_info()
+
     def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
         if self._model is None or self._info is None:
-            raise RuntimeError("SentenceTransformerAdapter.load() must be called first")
+            raise RuntimeError("SentenceTransformerAdapter.load() or .download() must be called first")
         vectors = self._model.encode(list(texts), normalize_embeddings=True)
         return [vector.tolist() for vector in vectors]
 

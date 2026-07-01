@@ -1,6 +1,7 @@
 """Application entry point."""
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
@@ -10,6 +11,47 @@ from message_evidence_workstation.diagnostics.trace_log import install_diagnosti
 from message_evidence_workstation.ui.main_window import MainWindow
 
 
+@dataclass(slots=True)
+class CliOptions:
+    dataset_path: Path | None = None
+    db_path: Path | None = None
+    reload_dataset: bool = False
+    skip_embedding: bool = False
+
+
+def parse_cli_options(args: list[str]) -> CliOptions:
+    options = CliOptions()
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--dataset" and index + 1 < len(args):
+            options.dataset_path = Path(args[index + 1])
+            index += 2
+            continue
+        if arg == "--db" and index + 1 < len(args):
+            options.db_path = Path(args[index + 1])
+            index += 2
+            continue
+        if arg == "--workspace" and index + 1 < len(args):
+            options.db_path = Path(args[index + 1])
+            index += 2
+            continue
+        if arg == "--reload-dataset":
+            options.reload_dataset = True
+            index += 1
+            continue
+        if arg == "--skip-embedding":
+            options.skip_embedding = True
+            index += 1
+            continue
+        if arg == "--with-embedding":
+            options.skip_embedding = False
+            index += 1
+            continue
+        index += 1
+    return options
+
+
 def main() -> int:
     trace_path = install_diagnostics()
     trace("app", "main_enter", trace_path=str(trace_path))
@@ -17,45 +59,17 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Message Evidence Workstation")
 
-    dataset_path: Path | None = None
-    db_path: Path | None = None
-    reload_dataset = False
-    with_embedding = False
-    args = sys.argv[1:]
-    index = 0
-    while index < len(args):
-        arg = args[index]
-        if arg == "--dataset" and index + 1 < len(args):
-            dataset_path = Path(args[index + 1])
-            index += 2
-            continue
-        if arg == "--db" and index + 1 < len(args):
-            db_path = Path(args[index + 1])
-            index += 2
-            continue
-        if arg == "--workspace" and index + 1 < len(args):
-            db_path = Path(args[index + 1])
-            index += 2
-            continue
-        if arg == "--reload-dataset":
-            reload_dataset = True
-            index += 1
-            continue
-        if arg == "--with-embedding":
-            with_embedding = True
-            index += 1
-            continue
-        index += 1
+    options = parse_cli_options(sys.argv[1:])
 
     startup_load = None
-    if dataset_path is not None:
+    if options.dataset_path is not None:
         startup_load = StartupLoadOptions(
-            dataset_path=dataset_path,
-            reload=reload_dataset,
-            skip_embedding=not with_embedding,
+            dataset_path=options.dataset_path,
+            reload=options.reload_dataset,
+            skip_embedding=options.skip_embedding,
         )
 
-    context = bootstrap_app(db_path=db_path, startup_load=startup_load)
+    context = bootstrap_app(db_path=options.db_path, startup_load=startup_load)
     window = MainWindow(context, startup_load=startup_load)
     window.show()
     app.processEvents()

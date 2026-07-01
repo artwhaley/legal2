@@ -673,7 +673,7 @@ class ConversationalTab(QWidget):
                 (dataset_id,),
             ).fetchone()[0]
         )
-        vector_count = message_vector_count(self.conn, dataset_id, spec.model_name)
+        vector_count = message_vector_count(self.conn, dataset_id, spec.model_id)
         if vector_count >= message_count:
             continuation()
             return

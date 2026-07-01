@@ -1,0 +1,24 @@
+{
+  "strategy": "evidence_ledger_synthesis",
+  "call_count": 0,
+  "latency_ms": 606383,
+  "has_error": true,
+  "error": "NIM HTTP 504: POST https://integrate.api.nvidia.com/v1/chat/completions | model=google/gemma-4-31b-it",
+  "range_count": 0,
+  "planner_mode": "full",
+  "planner_modes": [
+    "full"
+  ],
+  "planner_calls": [
+    {
+      "call_label": "final",
+      "mode": "full",
+      "answer_format": "detailed",
+      "estimated_input_tokens": 13129,
+      "estimated_output_tokens": 1500,
+      "available_input_tokens": 106800,
+      "available_output_tokens": 14000,
+      "fallback_reason": null
+    }
+  ]
+}

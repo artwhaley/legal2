@@ -33,6 +33,15 @@ ANSWER_JSON_SCHEMA = (
     '"source_thread_ids": ["thread_001"]}}'
 )
 
+LEDGER_ANALYSIS_JSON_SCHEMA = (
+    '{"answer_summary": "...", "answer": "...", '
+    '"themes": [{"title": "...", "summary": "...", '
+    '"range_ids": ["r000001", "r000014"]}], '
+    '"notable_patterns": ["..."], '
+    '"contradictions_or_tensions": ["..."], '
+    '"uncertainties": ["..."]}'
+)
+
 
 def _system_prompt(*, plan: SynthesisBudgetPlan | None = None) -> str:
     fmt = plan.answer_format if plan else "detailed"
@@ -68,7 +77,6 @@ def build_one_shot_messages(
     windows: list[dict],
     *,
     include_raw_scan: bool = False,
-    max_ranges_per_window: int = 0,
     plan: SynthesisBudgetPlan | None = None,
 ) -> list[dict[str, str]]:
     findings = []
@@ -78,7 +86,7 @@ def build_one_shot_messages(
             "source_thread_id": w.get("source_thread_id", ""),
             "estimated_tokens": w.get("estimated_tokens", 0),
             "answer_summary": w.get("answer_summary", ""),
-            "answer_ranges": _limit_ranges(w.get("answer_ranges", []), max_ranges_per_window),
+            "answer_ranges": list(w.get("answer_ranges", [])),
             "cited_message_ids": list(w.get("cited_message_ids", [])),
         }
         if include_raw_scan:
@@ -116,7 +124,6 @@ def build_hierarchical_batch_messages(
     batch: list[dict],
     depth: int = 0,
     *,
-    max_ranges_per_window: int = 0,
     plan: SynthesisBudgetPlan | None = None,
 ) -> list[dict[str, str]]:
     findings = []
@@ -125,7 +132,7 @@ def build_hierarchical_batch_messages(
             "window_id": w.get("window_id", ""),
             "source_thread_id": w.get("source_thread_id", ""),
             "answer_summary": w.get("answer_summary", ""),
-            "answer_ranges": _limit_ranges(w.get("answer_ranges", []), max_ranges_per_window),
+            "answer_ranges": list(w.get("answer_ranges", [])),
             "cited_message_ids": list(w.get("cited_message_ids", [])),
         }
         findings.append(entry)
@@ -173,7 +180,6 @@ def build_rolling_synthesis_messages(
     current_synthesis: dict | None,
     next_window: dict,
     *,
-    max_ranges_per_window: int = 0,
     plan: SynthesisBudgetPlan | None = None,
 ) -> list[dict[str, str]]:
     fmt = plan.answer_format if plan else "detailed"
@@ -199,7 +205,7 @@ def build_rolling_synthesis_messages(
         "window_id": next_window.get("window_id", ""),
         "source_thread_id": next_window.get("source_thread_id", ""),
         "answer_summary": next_window.get("answer_summary", ""),
-        "answer_ranges": _limit_ranges(next_window.get("answer_ranges", []), max_ranges_per_window),
+        "answer_ranges": list(next_window.get("answer_ranges", [])),
         "cited_message_ids": list(next_window.get("cited_message_ids", [])),
     }
     user_content = json.dumps(payload, ensure_ascii=False)
@@ -233,33 +239,36 @@ def build_evidence_ledger_synthesis_messages(
     ledger input shape.
     """
     fmt = plan.answer_format if plan else "detailed"
-    is_full = plan and plan.mode == "full" or (not plan)
 
     lines = [
         f"{LEGAL_EVIDENCE_POLICY} ",
-        "Task: produce a synthesis of evidence from the supplied ledger records. ",
+        "Task: analyze the supplied ledger records and explain what they show. ",
         "Each ledger record identifies a distinct relevant passage from the message "
         "corpus via its range_id, message IDs, date context, and prior analysis. ",
-        "CRITICAL: Every ledger record must appear as a distinct entry in the output "
-        "answer_ranges. Do not merge any records together. ",
-        "Echo the exact range_id from each input ledger record in the corresponding "
-        "output answer_range. Do not invent, reorder, or omit range_id values. ",
-        "Echo the exact source_range_key from each input ledger record in the "
-        "corresponding output answer_range. ",
-        "Do not change hit_message_id, start_message_id, or end_message_id from the "
-        "values in the ledger record. ",
+        "The application already owns the deterministic evidence payload. ",
+        "Do not reconstruct answer_ranges, do not echo record metadata back, and do not "
+        "repeat the ledger as a rewritten inventory. ",
+        "Use the ledger only as evidence context for synthesis and thematic analysis. ",
         "Source batches (windows) are token-packed implementation artifacts — organize "
         "the answer by evidence content, chronology, and themes, not by window number. ",
         "Do not say 'in window 1' or similar. ",
-        "Use input_title and input_summary as compact evidence context, but rewrite "
-        "titles and summaries as needed for cohesion. ",
-        "Prefer substantive titles like 'Tummy aches and school attendance' over "
-        "metadata-only titles like 'Conversation on January 21.' ",
-        "Preserve all material citations. Do not drop contradictory or weak evidence. ",
+        "Read across all records and surface organic categories, trends, tensions, and "
+        "patterns in the evidence. ",
+        "Use input_title, input_summary, date_description, and source-batch summaries as "
+        "compact evidence context. ",
+        "For each theme, cite the relevant ledger records by range_id. ",
+        "Do not invent range_id values, and do not cite a range_id that is not present "
+        "in the input. ",
+        "Preserve contradictory, weak, and minority evidence when it matters. ",
         "Return answer_summary as a quick one- or two-sentence overview. ",
+        "Return answer as the main synthesis narrative. ",
+        "Themes should be reviewer-meaningful semantic groupings, not predefined buckets. ",
+        "notable_patterns should capture cross-record trends or repetitions. ",
+        "contradictions_or_tensions should call out conflicts, ambiguities, or competing interpretations. ",
         "Include all uncertainties the source evidence supports. ",
-        f"Set answer_format to {fmt}. ",
-        f"Return JSON only:\n{ANSWER_JSON_SCHEMA}",
+        f"Use the {fmt} analysis profile: brief means tighter prose and fewer themes; "
+        "detailed means richer thematic explanation. ",
+        f"Return JSON only:\n{LEDGER_ANALYSIS_JSON_SCHEMA}",
     ]
     system_content = "".join(lines)
 
@@ -284,7 +293,6 @@ def build_evidence_table_messages(
     user_query: str,
     windows: list[dict],
     *,
-    max_ranges_per_window: int = 0,
     plan: SynthesisBudgetPlan | None = None,
 ) -> list[dict[str, str]]:
     """Build messages that present compact evidence records and
@@ -292,7 +300,7 @@ def build_evidence_table_messages(
     the supplied ranges and their prior analysis context."""
     rows = []
     for w in windows:
-        for r in _limit_ranges(w.get("answer_ranges", []), max_ranges_per_window):
+        for r in w.get("answer_ranges", []):
             if isinstance(r, dict):
                 title = r.get("title", "")
                 rows.append(
@@ -358,9 +366,3 @@ def build_evidence_table_messages(
         {"role": "system", "content": system_content},
         {"role": "user", "content": user_content},
     ]
-
-
-def _limit_ranges(ranges: list, max_per_window: int) -> list:
-    if max_per_window <= 0:
-        return ranges
-    return list(ranges[:max_per_window])

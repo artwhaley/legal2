@@ -47,7 +47,12 @@ from message_evidence_workstation.domain.constants import (
 )
 from message_evidence_workstation.llm.errors import ModelError, model_error_user_message
 from message_evidence_workstation.llm.router import ModelRouter
-from message_evidence_workstation.llm.types import ModelTaskRole, ModelTestResult, UserFacingModelRole
+from message_evidence_workstation.llm.types import (
+    ModelInfo,
+    ModelTaskRole,
+    ModelTestResult,
+    UserFacingModelRole,
+)
 from message_evidence_workstation.logging_ui.log_bus import LogBus
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, fetch_process_logs
 from message_evidence_workstation.nim.client import (
@@ -213,6 +218,10 @@ class SettingsTab(QWidget):
         self.save_routing_button.clicked.connect(self._save_api_settings)
         routing_buttons.addWidget(self.save_routing_button)
         routing_form.addRow("", routing_buttons)
+        self.model_list_status = QLabel("No provider model lists loaded yet.")
+        self.model_list_status.setWordWrap(True)
+        self.model_list_status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        routing_form.addRow("Model list status", self.model_list_status)
         layout.addWidget(routing_group)
 
         answer_group = QGroupBox("Conversational answer strategy")
@@ -293,7 +302,9 @@ class SettingsTab(QWidget):
         self.embedding_model.blockSignals(False)
         self.embedding_model.currentIndexChanged.connect(self._on_embedding_model_changed)
         embedding_form.addRow("Model", self.embedding_model)
-        self.embedding_status = QLabel("Starting up…")
+        self.embedding_status = QLabel(
+            "Idle. The embedding model loads when embedding work starts or when you click Reload embedding model."
+        )
         embedding_form.addRow("Status", self.embedding_status)
         chunking_group = QGroupBox("Semantic chunking")
         chunking_form = QFormLayout(chunking_group)
@@ -350,6 +361,9 @@ class SettingsTab(QWidget):
         layout.addWidget(chunking_group)
 
         embedding_buttons = QHBoxLayout()
+        self.download_embedding_button = QPushButton("Download embedding model")
+        self.download_embedding_button.clicked.connect(self._download_embedding_model)
+        embedding_buttons.addWidget(self.download_embedding_button)
         self.load_embedding_button = QPushButton("Reload embedding model")
         self.load_embedding_button.clicked.connect(self._load_embedding_model)
         embedding_buttons.addWidget(self.load_embedding_button)
@@ -408,6 +422,9 @@ class SettingsTab(QWidget):
             self._on_live_entry,
             Qt.ConnectionType.QueuedConnection,
         )
+        self._wire_api_settings_autosave()
+        self._hydrate_cached_provider_models()
+        self._apply_cached_models_to_ui()
         self._load_selected_prompt()
         self._chunk_preview_timer = QTimer(self)
         self._chunk_preview_timer.setSingleShot(True)
@@ -470,7 +487,7 @@ class SettingsTab(QWidget):
     def _on_embedding_model_preload_failed(self, exc: BaseException) -> None:
         self._embedding_model_ready = False
         self.load_embedding_button.setEnabled(True)
-        self.embedding_status.setText(f"Model load failed: {exc} — click Reload to retry")
+        self.embedding_status.setText(f"{exc}")
         self.logger.error(
             component="ui.settings_tab",
             operation="embedding_model_preload_failed",
@@ -675,6 +692,33 @@ class SettingsTab(QWidget):
             },
         )
 
+    def _wire_api_settings_autosave(self) -> None:
+        self.nim_base_url.editingFinished.connect(self._autosave_api_settings)
+        self.nim_api_key.editingFinished.connect(self._autosave_api_settings)
+        self.google_api_key.editingFinished.connect(self._autosave_api_settings)
+        self.nim_temperature.valueChanged.connect(self._autosave_api_settings)
+        self.nim_max_tokens.valueChanged.connect(self._autosave_api_settings)
+        self.context_window_tokens.valueChanged.connect(self._autosave_api_settings)
+        self.context_safety_ratio.valueChanged.connect(self._autosave_api_settings)
+        self.prompt_overhead_tokens.valueChanged.connect(self._autosave_api_settings)
+        self.nim_timeout.valueChanged.connect(self._autosave_api_settings)
+        self.nim_streaming.toggled.connect(self._autosave_api_settings)
+        for role in (
+            UserFacingModelRole.EXPANSION,
+            UserFacingModelRole.RESEARCH,
+            UserFacingModelRole.WRITING,
+        ):
+            self.role_provider[role].currentIndexChanged.connect(self._autosave_api_settings)
+            self.role_model[role].currentTextChanged.connect(self._autosave_api_settings)
+            line_edit = self.role_model[role].lineEdit()
+            if line_edit is not None:
+                line_edit.editingFinished.connect(self._autosave_api_settings)
+
+    def _autosave_api_settings(self, *_args: object) -> None:
+        if self._initializing:
+            return
+        self._save_api_settings()
+
     def _router_from_ui(self) -> ModelRouter:
         self.settings.nim = self._current_nim_settings()
         self._apply_role_routing_to_settings()
@@ -878,6 +922,32 @@ class SettingsTab(QWidget):
             combo.setCurrentText(models[0].id)
         combo.blockSignals(False)
 
+    def _hydrate_cached_provider_models(self) -> None:
+        for provider, model_ids in (self.settings.provider_model_lists or {}).items():
+            unique_ids = [str(model_id).strip() for model_id in model_ids if str(model_id).strip()]
+            if not unique_ids:
+                continue
+            self._models_by_provider[provider] = [ModelInfo(id=model_id) for model_id in unique_ids]
+
+        if PROVIDER_NIM not in self._models_by_provider and self.settings.model_metadata:
+            self._models_by_provider[PROVIDER_NIM] = [
+                ModelInfo(id=str(model_id), metadata=dict(metadata or {}))
+                for model_id, metadata in sorted(self.settings.model_metadata.items())
+                if str(model_id).strip()
+            ]
+
+        nim_count = len(self._models_by_provider.get(PROVIDER_NIM, []))
+        google_count = len(self._models_by_provider.get(PROVIDER_GOOGLE, []))
+        if nim_count or google_count:
+            parts = []
+            if nim_count:
+                parts.append(f"NIM {nim_count} cached")
+            if google_count:
+                parts.append(f"Google {google_count} cached")
+            self.model_list_status.setText(
+                "Loaded cached provider model lists (" + ", ".join(parts) + ")"
+            )
+
     def _apply_cached_models_to_ui(self) -> None:
         nim_models = self._models_by_provider.get(PROVIDER_NIM, [])
         if nim_models:
@@ -941,6 +1011,7 @@ class SettingsTab(QWidget):
             models_by_provider, errors = result  # type: ignore[misc]
             for provider, models in models_by_provider.items():
                 self._models_by_provider[provider] = list(models)
+                self.settings.provider_model_lists[provider] = [model.id for model in models]
             if models_by_provider:
                 self._apply_cached_models_to_ui()
                 save_settings(self.settings)
@@ -958,6 +1029,7 @@ class SettingsTab(QWidget):
                 summary = "No model lists returned"
             if errors:
                 summary += " — " + "; ".join(f"{provider}: {message}" for provider, message in errors.items())
+            self.model_list_status.setText(summary)
             self.embedding_status.setText(summary)
             self.logger.info(
                 component="ui.settings_tab",
@@ -980,6 +1052,7 @@ class SettingsTab(QWidget):
                 )
                 for combo in self.role_model.values():
                     combo.setEditable(True)
+                self.model_list_status.setText(f"Model list refresh failed: {message}")
                 self.embedding_status.setText(f"Model list refresh failed: {message}")
                 self.logger.error(
                     component="ui.settings_tab",
@@ -989,6 +1062,7 @@ class SettingsTab(QWidget):
                     exc=exc,
                 )
             else:
+                self.model_list_status.setText(f"Model list refresh failed: {exc}")
                 self.embedding_status.setText(f"Model list refresh failed: {exc}")
                 self.logger.error(
                     component="ui.settings_tab",
@@ -1175,6 +1249,59 @@ class SettingsTab(QWidget):
 
         run_embedding_job(self, job, on_success=on_success, on_error=on_error)
 
+    def _download_embedding_model(self) -> None:
+        model_id = self.embedding_model.currentData()
+        from message_evidence_workstation.embeddings.model_registry import get_model_spec
+        from message_evidence_workstation.ui.embedding_worker import (
+            EmbeddingJobSpec,
+            invalidate_embedding_model_cache,
+            run_embedding_job,
+        )
+
+        spec = get_model_spec(model_id)
+        if spec is None:
+            self.embedding_status.setText("Unknown model selection")
+            return
+        invalidate_embedding_model_cache(self)
+        self.download_embedding_button.setEnabled(False)
+        self.load_embedding_button.setEnabled(False)
+        self.embedding_status.setText("Downloading embedding model from HuggingFace (network required)…")
+        self.logger.info(
+            component="ui.settings_tab",
+            operation="embedding_model_download_requested",
+            message=f"Downloading embedding model {model_id}",
+            dataset_id=self.dataset_id,
+        )
+
+        job = EmbeddingJobSpec(
+            job_type="download",
+            db_path=self.db_path,
+            dataset_id=self.dataset_id or 0,
+            adapter_key=spec.adapter_key,
+            model_id=spec.model_id,
+        )
+
+        def on_success(result: object) -> None:
+            self.download_embedding_button.setEnabled(True)
+            self.load_embedding_button.setEnabled(True)
+            self._on_embedding_model_ready(result)
+            self.settings.embedding_model = model_id
+            save_settings(self.settings)
+
+        def on_error(exc: BaseException) -> None:
+            self.download_embedding_button.setEnabled(True)
+            self.load_embedding_button.setEnabled(True)
+            self.embedding_status.setText(f"Download failed: {exc}")
+            self.logger.error(
+                component="ui.settings_tab",
+                operation="embedding_model_download_failed",
+                message=str(exc),
+                exc=exc,
+                dataset_id=self.dataset_id,
+            )
+
+        run_embedding_job(self, job, on_success=on_success, on_error=on_error)
+
     def _validate_sqlite_vec(self) -> None:
         from message_evidence_workstation.embeddings.sqlite_vec_backend import (
             record_validation_status,
@@ -1291,7 +1418,7 @@ class SettingsTab(QWidget):
         from message_evidence_workstation.embeddings.model_registry import get_model_spec
 
         spec = get_model_spec(model_id)
-        embedding_model_name = spec.model_name if spec else None
+        embedding_model_name = spec.model_id if spec else None
 
         def compute_preview() -> str:
             from message_evidence_workstation.db.connection import connect
@@ -1360,7 +1487,7 @@ class SettingsTab(QWidget):
             self.embedding_status.setText("Load a dataset before building embedding indexes.")
             return
         if not self._embedding_model_ready:
-            self.embedding_status.setText("Wait for the embedding model to finish loading at startup.")
+            self.embedding_status.setText("Load an embedding model first — click 'Download embedding model' or 'Reload embedding model' above.")
             return
         model_id = self.embedding_model.currentData()
         from message_evidence_workstation.embeddings.index_jobs import IndexBuildResult
@@ -1384,7 +1511,7 @@ class SettingsTab(QWidget):
                     (self.dataset_id,),
                 ).fetchone()[0]
             )
-            vector_count = message_vector_count(self.conn, self.dataset_id, spec.model_name)
+            vector_count = message_vector_count(self.conn, self.dataset_id, spec.model_id)
             if vector_count < message_count:
                 self.embedding_status.setText(
                     f"Build message embeddings first ({vector_count}/{message_count} message vectors ready)."
@@ -1472,7 +1599,24 @@ class SettingsTab(QWidget):
                 dataset_id=self.dataset_id,
             )
 
-        run_embedding_job(self, job, on_success=on_success, on_error=on_error)
+        import time as _time
+
+        _last_progress = 0.0
+
+        def _on_progress(info: dict) -> None:
+            nonlocal _last_progress
+            now = _time.monotonic()
+            if now - _last_progress < 0.3:
+                return
+            _last_progress = now
+            completed = info.get("completed", 0)
+            total = info.get("total", 0)
+            label = "messages" if granularity == "message" else "chunks"
+            self.embedding_status.setText(
+                f"Building {granularity} embedding index: {completed}/{total} {label}…"
+            )
+
+        run_embedding_job(self, job, on_success=on_success, on_error=on_error, on_progress=_on_progress)
 
     def _build_message_index(self) -> None:
         self._start_index_job("message")

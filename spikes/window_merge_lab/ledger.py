@@ -14,6 +14,7 @@ class EvidenceLedgerRecord:
     source_thread_id: str
     input_title: str
     input_summary: str
+    input_display_text: str
     date_description: str
     hit_message_id: str
     start_message_id: str
@@ -62,6 +63,7 @@ def build_ledger(
                 source_thread_id=thread_id,
                 input_title=title,
                 input_summary=str(r.get("summary", "") or ""),
+                input_display_text=str(r.get("display_text", "") or ""),
                 date_description=str(r.get("date_description", "") or ""),
                 hit_message_id=str(r.get("hit_message_id", "") or ""),
                 start_message_id=str(r.get("start_message_id", "") or ""),
@@ -89,6 +91,7 @@ def ledger_to_dicts(records: list[EvidenceLedgerRecord]) -> list[dict[str, Any]]
             "source_thread_id": r.source_thread_id,
             "input_title": r.input_title,
             "input_summary": r.input_summary,
+            "input_display_text": r.input_display_text,
             "date_description": r.date_description,
             "hit_message_id": r.hit_message_id,
             "start_message_id": r.start_message_id,

@@ -118,6 +118,8 @@ class MainWindow(QMainWindow):
         self._set_dataset_tabs_enabled(False)
         self.tabs.setCurrentWidget(self.home_tab)
 
+        self.settings_tab.start_embedding_model_preload()
+
         context.logger.info(
             component="ui.main_window",
             operation="window_ready",

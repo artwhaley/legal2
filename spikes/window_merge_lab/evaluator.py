@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from spikes.window_merge_lab.ledger import build_ledger, ledger_to_dicts
 from spikes.window_merge_lab.validator import validate_synthesis_output
 
 
@@ -57,10 +58,9 @@ def evaluate_strategy_outputs(
     # Deterministic validation (evidence_ledger_synthesis only)
     vr: Any = None
     ledgers: list[dict] = []
-    for w in source_windows:
-        for r in w.get("answer_ranges", []):
-            if isinstance(r, dict) and r.get("range_id"):
-                ledgers.append(r)
+    if strategy_name and "evidence_ledger" in strategy_name:
+        ledger_records, _ = build_ledger(source_windows)
+        ledgers = ledger_to_dicts(ledger_records)
     if ledgers and strategy_name and "evidence_ledger" in strategy_name:
         mode_for_val: str = "full" if "full" in inferred_mode else "compact"
         vr = validate_synthesis_output(parsed, ledgers, mode=mode_for_val)
@@ -294,9 +294,12 @@ def _build_provenance(parsed: dict, source_windows: list[dict]) -> dict:
     """Cross-reference input ranges vs output ranges to trace merges and drops."""
     output_ranges = parsed.get("answer_ranges", []) or []
 
-    # Index all input ranges by (window_id, title, hit_message_id)
+    # Index all input ranges by exact ledger/provenance identifiers first,
+    # then retain legacy heuristics as fallback for older strategy outputs.
     input_index: dict[str, dict] = {}
     input_order: list[str] = []
+    input_by_range_id: dict[str, str] = {}
+    input_by_source_range_key: dict[str, str] = {}
     for w in source_windows:
         wid = w.get("window_id", "")
         for r in w.get("answer_ranges", []):
@@ -312,6 +315,12 @@ def _build_provenance(parsed: dict, source_windows: list[dict]) -> dict:
                 "summary": r.get("summary", ""),
             }
             input_order.append(key)
+            range_id = str(r.get("range_id", "") or "").strip()
+            if range_id:
+                input_by_range_id[range_id] = key
+            source_range_key = str(r.get("source_range_key", "") or "").strip()
+            if source_range_key:
+                input_by_source_range_key[source_range_key] = key
 
     matched: set[str] = set()
     merged_groups: list[dict] = []
@@ -324,13 +333,38 @@ def _build_provenance(parsed: dict, source_windows: list[dict]) -> dict:
             continue
         out_title = out_r.get("title", "")
         out_hit = out_r.get("hit_message_id", "")
-        srk = out_r.get("source_range_keys", [])
+        rid = str(out_r.get("range_id", "") or "").strip()
+        single_source_key = str(out_r.get("source_range_key", "") or "").strip()
+        source_keys = out_r.get("source_range_keys", [])
+        if isinstance(source_keys, list):
+            srk_list = [str(v).strip() for v in source_keys if str(v).strip()]
+        else:
+            srk_list = []
+        if single_source_key:
+            srk_list.insert(0, single_source_key)
 
-        if srk:
+        exact_match_key = None
+        if rid and rid in input_by_range_id:
+            exact_match_key = input_by_range_id[rid]
+            model_reported = True
+        elif single_source_key and single_source_key in input_by_source_range_key:
+            exact_match_key = input_by_source_range_key[single_source_key]
+            model_reported = True
+
+        if exact_match_key:
+            matched.add(exact_match_key)
+            continue
+
+        if srk_list:
             # Model self-reported provenance
             model_reported = True
             sources_found: list[str] = []
-            for sk in srk:
+            for sk in srk_list:
+                exact_source_key_match = input_by_source_range_key.get(sk)
+                if exact_source_key_match:
+                    sources_found.append(exact_source_key_match)
+                    matched.add(exact_source_key_match)
+                    continue
                 # source_range_keys format: "window_id::Range Title"
                 parts = sk.split("::", 1)
                 if len(parts) == 2:

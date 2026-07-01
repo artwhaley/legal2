@@ -1,0 +1,24 @@
+{
+  "strategy": "evidence_ledger_synthesis",
+  "call_count": 1,
+  "latency_ms": 4727,
+  "has_error": false,
+  "error": null,
+  "range_count": 67,
+  "planner_mode": "full",
+  "planner_modes": [
+    "full"
+  ],
+  "planner_calls": [
+    {
+      "call_label": "final",
+      "mode": "full",
+      "answer_format": "detailed",
+      "estimated_input_tokens": 15458,
+      "estimated_output_tokens": 5180,
+      "available_input_tokens": 106800,
+      "available_output_tokens": 14000,
+      "fallback_reason": null
+    }
+  ]
+}
