@@ -751,6 +751,93 @@ def test_conversational_submit_queues_exhaustive_worker_without_embedding_gate(
     assert captured["dataset_id"] == context.dataset_id
 
 
+def test_exhaustive_scan_worker_logs_start_and_complete(tmp_path, qapp, monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    tab = MainWindow(context).conversational_tab
+    tab.set_dataset(context.dataset_id)
+
+    settings = SimpleNamespace(
+        nim=SimpleNamespace(max_output_tokens=2048),
+        model_metadata={"writing-model": {}},
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.load_settings",
+        lambda: settings,
+    )
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.resolve_role_model",
+        lambda _settings, _role: "writing-model",
+    )
+
+    def run_now(_parent, fn, *, on_success, on_error):
+        try:
+            result = fn()
+        except BaseException as exc:
+            on_error(exc)
+        else:
+            on_success(result)
+        return None
+
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.run_background",
+        run_now,
+    )
+
+    def fake_answer(*_args, **_kwargs) -> ConversationalAnswerResult:
+        return ConversationalAnswerResult(
+            answer="done",
+            cited_message_ids=[],
+            candidate_evidence_blocks=[],
+            uncertainties=[],
+            coverage_summary=CoverageSummary(
+                mode="exhaustive_window_scan",
+                messages_considered=0,
+                source_thread_ids=[],
+                windows_inspected=0,
+                token_budget={},
+            ),
+            mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+            answer_ranges=[],
+        )
+
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.conversational_tab.run_exhaustive_window_scan_answer",
+        fake_answer,
+    )
+
+    tab._run_exhaustive_window_scan_answer(
+        generation=1,
+        query="test query",
+        dataset_id=context.dataset_id,
+        db_path=context.db_path,
+        answer_settings=SimpleNamespace(),
+    )
+
+    operations = [
+        row[0]
+        for row in context.conn.execute(
+            """
+            SELECT operation
+            FROM process_log
+            WHERE operation IN (
+                'exhaustive_window_scan_answer_queued',
+                'exhaustive_window_scan_answer_worker_started',
+                'exhaustive_window_scan_answer_worker_completed'
+            )
+            ORDER BY process_log_id
+            """
+        ).fetchall()
+    ]
+    assert operations == [
+        "exhaustive_window_scan_answer_queued",
+        "exhaustive_window_scan_answer_worker_started",
+        "exhaustive_window_scan_answer_worker_completed",
+    ]
+
+
 def test_simple_search_add_evidence_block_uses_viewport_center(tmp_path, qapp, monkeypatch) -> None:
     monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
     context = _bootstrap_ui_context(tmp_path, monkeypatch)

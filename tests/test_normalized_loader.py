@@ -412,32 +412,21 @@ def test_progress_callback_reports_phases(tmp_path) -> None:
     assert "messages" in phases
     assert "fts" in phases
     assert "spellfix" in phases
-    assert "sessions" in phases
     assert events[-1][2] >= events[0][2]
 
 
-def test_post_import_steps_use_baseline_sessions_without_semantic_chunking(tmp_path, monkeypatch) -> None:
-    dataset_dir = tmp_path / "baseline_sessions"
-    _write_chunked_dataset(dataset_dir, message_count=5, name="Baseline Sessions Dataset")
+def test_post_import_steps_do_not_create_transcript_sessions(tmp_path) -> None:
+    dataset_dir = tmp_path / "no_sessions"
+    _write_chunked_dataset(dataset_dir, message_count=5, name="No Sessions Dataset")
 
     conn = connect(tmp_path / "test.db")
     logger = ProcessLogger(conn)
     initialize_schema(conn, logger)
 
-    def fail_semantic_chunking(*_args, **_kwargs):
-        raise AssertionError("normalized loader post-import steps must not use semantic chunking")
-
-    monkeypatch.setattr(
-        "message_evidence_workstation.search.session_map.iter_dataset_chunks",
-        fail_semantic_chunking,
-    )
-
     dataset_id = load_normalized_dataset(conn, logger, dataset_dir)
 
     rows = conn.execute(
-        "SELECT start_message_id, end_message_id, message_count FROM transcript_session WHERE dataset_id = ?",
-        (dataset_id,),
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'transcript_session'"
     ).fetchall()
-    assert rows
-    assert all(row["start_message_id"] and row["end_message_id"] for row in rows)
-    assert all(int(row["message_count"]) > 0 for row in rows)
+    assert dataset_id > 0
+    assert rows == []

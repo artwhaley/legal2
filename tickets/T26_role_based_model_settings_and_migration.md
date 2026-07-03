@@ -51,7 +51,7 @@ Migration requirements:
 
 The old `NimSettings` object can remain for compatibility during the migration window, but new feature work should prefer the role-based settings object.
 
-Research-model task roles (confirmed): `session_summary`, `session_classification`, `coverage_audit` — used only in explicit `session_coverage` answer mode.
+Obsolete `session_coverage`-only research prep calls (`session_summary`, `session_classification`, `coverage_audit`) were removed.
 
 ## Suggested Execution Plan
 
@@ -88,4 +88,3 @@ Research-model task roles (confirmed): `session_summary`, `session_classificatio
 - No central router yet.
 - No provider-specific request logic yet.
 - No per-role UI controls yet.
-

@@ -1,9 +1,10 @@
-"""Conversational search tab — coverage-aware answering."""
+"""Conversational search tab."""
 
 from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,7 +29,7 @@ from message_evidence_workstation.config.settings import (
     resolve_role_model,
 )
 from message_evidence_workstation.db.connection import connect
-from message_evidence_workstation.embeddings.model_registry import get_model_spec
+from message_evidence_workstation.diagnostics.trace_log import trace
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.llm.types import UserFacingModelRole
@@ -44,7 +45,6 @@ from message_evidence_workstation.nim.client import (
 from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
-    ANSWER_MODE_SESSION_COVERAGE,
     ANSWER_MODE_WHOLE_TRANSCRIPT,
     ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
     AnswerBudget,
@@ -56,11 +56,9 @@ from message_evidence_workstation.search.conversational_answer import (
     resolve_answer_budget,
     run_exhaustive_window_scan_answer,
     run_whole_transcript_answer,
-    run_session_coverage_answer,
 )
 from message_evidence_workstation.search.result_models import GroupedSearchResult, SearchHit
 from message_evidence_workstation.ui.background_tasks import run_background
-from message_evidence_workstation.ui.embedding_worker import EmbeddingJobSpec, run_embedding_job
 from message_evidence_workstation.ui.virtual_transcript_widget import VirtualTranscriptWidget
 from message_evidence_workstation.ui.simple_search_tab import MIME_SEARCH_RESULT
 
@@ -141,15 +139,6 @@ class ConversationalTab(QWidget):
         self.status_label = QLabel("Load a dataset to search.")
         layout.addWidget(self.status_label)
 
-        self.embedding_warning_label = QLabel(
-            "Conversational interface relies on message embeddings for thoroughness verification "
-            "on some searches. Responses may be degraded until embeddings are completely calculated."
-        )
-        self.embedding_warning_label.setWordWrap(True)
-        self.embedding_warning_label.setStyleSheet("color: #8a6d3b;")
-        self.embedding_warning_label.hide()
-        layout.addWidget(self.embedding_warning_label)
-
         splitter = QSplitter(Qt.Orientation.Vertical)
         stream_panel = QWidget()
         stream_layout = QVBoxLayout(stream_panel)
@@ -205,27 +194,7 @@ class ConversationalTab(QWidget):
         self.send_button.setEnabled(True)
 
     def update_embedding_gating(self, state) -> None:
-        from message_evidence_workstation.domain.embedding_state import EmbeddingState
-
-        if not isinstance(state, EmbeddingState):
-            return
-        if state.message_incomplete:
-            if state.message_total > 0:
-                self.embedding_warning_label.setText(
-                    "Conversational interface relies on message embeddings for thoroughness "
-                    f"verification on some searches. Message embeddings: "
-                    f"{state.message_progress}/{state.message_total}. "
-                    "Responses may be degraded until embeddings are completely calculated."
-                )
-            else:
-                self.embedding_warning_label.setText(
-                    "Conversational interface relies on message embeddings for thoroughness "
-                    "verification on some searches. Responses may be degraded until embeddings "
-                    "are completely calculated."
-                )
-            self.embedding_warning_label.show()
-        else:
-            self.embedding_warning_label.hide()
+        del state
 
     def set_category_refresh_handler(self, handler: Callable[[], None]) -> None:
         self._category_refresh_handler = handler
@@ -632,101 +601,6 @@ class ConversationalTab(QWidget):
                 answer_settings,
             )
             return
-        if answer_mode == ANSWER_MODE_SESSION_COVERAGE:
-            self.status_label.setText("Answering with session summary triage...")
-            self._ensure_message_embeddings_then(
-                generation,
-                dataset_id,
-                db_path,
-                lambda: self._run_session_coverage_answer(
-                    generation,
-                    query,
-                    dataset_id,
-                    db_path,
-                    answer_settings,
-                ),
-            )
-            return
-
-    def _ensure_message_embeddings_then(
-        self,
-        generation: int,
-        dataset_id: int,
-        db_path: Path,
-        continuation: Callable[[], None],
-    ) -> None:
-        from message_evidence_workstation.embeddings.chunking import message_vector_count
-        from message_evidence_workstation.embeddings.model_registry import get_model_spec
-
-        embedding_model = load_settings().embedding_model
-        spec = get_model_spec(embedding_model)
-        if spec is None:
-            self.status_label.setText(
-                "Cannot build message embeddings automatically: unknown embedding model."
-            )
-            self.send_button.setEnabled(True)
-            return
-
-        message_count = int(
-            self.conn.execute(
-                "SELECT COUNT(*) FROM message WHERE dataset_id = ?",
-                (dataset_id,),
-            ).fetchone()[0]
-        )
-        vector_count = message_vector_count(self.conn, dataset_id, spec.model_id)
-        if vector_count >= message_count:
-            continuation()
-            return
-
-        self.status_label.setText(
-            f"Building message embeddings for semantic session boundaries "
-            f"({vector_count}/{message_count} ready)..."
-        )
-        job = EmbeddingJobSpec(
-            job_type="message_index",
-            db_path=db_path,
-            dataset_id=dataset_id,
-            adapter_key=spec.adapter_key,
-            model_id=spec.model_id,
-        )
-
-        def on_success(result: object) -> None:
-            if generation != self._request_generation:
-                return
-            success = bool(getattr(result, "success", False))
-            count = int(getattr(result, "count", 0))
-            total = int(getattr(result, "total_target", message_count) or message_count)
-            if not success:
-                error = str(getattr(result, "error", "unknown embedding build failure"))
-                self.status_label.setText(f"Message embedding build failed: {error}")
-                self._append_system_message(
-                    "Session-based answering needs message embeddings for semantic boundaries. "
-                    f"Embedding build failed after {count}/{total} messages: {error}"
-                )
-                self.send_button.setEnabled(True)
-                return
-            self.status_label.setText(
-                f"Message embeddings ready ({count}/{total}). Continuing answer..."
-            )
-            continuation()
-
-        def on_error(exc: BaseException) -> None:
-            if generation != self._request_generation:
-                return
-            message = f"Automatic message embedding build failed: {exc}"
-            self.status_label.setText(message)
-            self._append_system_message(message)
-            self.logger.error(
-                component="ui.conversational_tab",
-                operation="auto_message_embeddings_failed",
-                message=message,
-                exc=exc,
-                dataset_id=dataset_id,
-            )
-            self.send_button.setEnabled(True)
-
-        run_embedding_job(self, job, on_success=on_success, on_error=on_error)
-
     def _run_exhaustive_window_scan_answer(
         self,
         generation: int,
@@ -737,11 +611,13 @@ class ConversationalTab(QWidget):
     ) -> None:
         app_settings = load_settings()
         writing_model = resolve_role_model(app_settings, UserFacingModelRole.WRITING)
+        answer_run_id = str(uuid.uuid4())
         self.logger.info(
             component="ui.conversational_tab",
             operation="exhaustive_window_scan_answer_queued",
             message="Queued exhaustive window scan conversational answer worker",
             details={
+                "answer_run_id": answer_run_id,
                 "generation": generation,
                 "model_id": writing_model,
             },
@@ -749,21 +625,84 @@ class ConversationalTab(QWidget):
         )
 
         def answer_work() -> ConversationalAnswerResult:
+            trace(
+                "ui.conversational_tab",
+                "exhaustive_window_scan_answer_worker_enter",
+                answer_run_id=answer_run_id,
+                generation=generation,
+                dataset_id=dataset_id,
+                model_id=writing_model,
+                db_path=str(db_path),
+            )
             worker_conn = connect(db_path)
+            worker_logger: ProcessLogger | None = None
             try:
-                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
+                worker_logger = ProcessLogger(
+                    worker_conn,
+                    log_bus=self.logger.log_bus,
+                    dataset_id=dataset_id,
+                )
+                worker_logger.info(
+                    component="ui.conversational_tab",
+                    operation="exhaustive_window_scan_answer_worker_started",
+                    message="Started exhaustive window scan conversational answer worker",
+                    details={
+                        "answer_run_id": answer_run_id,
+                        "generation": generation,
+                        "model_id": writing_model,
+                    },
+                    dataset_id=dataset_id,
+                )
                 router = ModelRouter(app_settings)
-                return run_exhaustive_window_scan_answer(
+                result = run_exhaustive_window_scan_answer(
                     worker_conn,
                     worker_logger,
                     router,
                     user_query=query,
                     dataset_id=dataset_id,
-                    session_gap_minutes=answer_settings.session_gap_minutes,
                     answer_settings=answer_settings,
                     model_id=writing_model,
                     provider_metadata=app_settings.model_metadata.get(writing_model, {}),
                 )
+                worker_logger.info(
+                    component="ui.conversational_tab",
+                    operation="exhaustive_window_scan_answer_worker_completed",
+                    message="Completed exhaustive window scan conversational answer worker",
+                    details={
+                        "answer_run_id": answer_run_id,
+                        "generation": generation,
+                        "model_id": writing_model,
+                        "answer_range_count": len(result.answer_ranges),
+                        "mode": result.mode,
+                    },
+                    dataset_id=dataset_id,
+                )
+                return result
+            except Exception as exc:
+                if worker_logger is not None:
+                    worker_logger.error(
+                        component="ui.conversational_tab",
+                        operation="exhaustive_window_scan_answer_worker_failed",
+                        message="Exhaustive window scan conversational answer worker failed",
+                        details={
+                            "answer_run_id": answer_run_id,
+                            "generation": generation,
+                            "model_id": writing_model,
+                        },
+                        exc=exc,
+                        dataset_id=dataset_id,
+                    )
+                else:
+                    trace(
+                        "ui.conversational_tab",
+                        "exhaustive_window_scan_answer_worker_failed_before_logger",
+                        answer_run_id=answer_run_id,
+                        generation=generation,
+                        dataset_id=dataset_id,
+                        model_id=writing_model,
+                        error=str(exc),
+                    )
+                raise
             finally:
                 worker_conn.close()
 
@@ -801,66 +740,6 @@ class ConversationalTab(QWidget):
 
         run_background(self, answer_work, on_success=on_success, on_error=on_error)
 
-    def _run_session_coverage_answer(
-        self,
-        generation: int,
-        query: str,
-        dataset_id: int,
-        db_path: Path,
-        answer_settings,
-    ) -> None:
-        app_settings = load_settings()
-
-        def answer_work() -> ConversationalAnswerResult:
-            worker_conn = connect(db_path)
-            try:
-                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
-                router = ModelRouter(app_settings)
-                return run_session_coverage_answer(
-                    worker_conn,
-                    worker_logger,
-                    router,
-                    user_query=query,
-                    dataset_id=dataset_id,
-                    session_gap_minutes=answer_settings.session_gap_minutes,
-                    max_tokens=app_settings.nim.max_output_tokens,
-                )
-            finally:
-                worker_conn.close()
-
-        def on_success(result: object) -> None:
-            if generation != self._request_generation:
-                return
-            answer = result  # type: ignore[assignment]
-            self._show_answer_result(answer)
-            self.status_label.setText(
-                f"Answer complete — mode: {answer.mode}; "
-                f"{len(answer.answer_ranges)} answer hit(s)."
-            )
-            self.send_button.setEnabled(True)
-
-        def on_error(exc: BaseException) -> None:
-            if generation != self._request_generation:
-                return
-            if isinstance(exc, ConversationalAnswerParseError):
-                message = f"Session coverage answer invalid: {exc}"
-            elif isinstance(exc, NimClientError):
-                message = f"NIM session coverage call failed: {nim_error_user_message(exc)}"
-            else:
-                message = f"Session coverage answer failed: {exc}"
-            self.status_label.setText(message)
-            self._append_system_message(message)
-            self.logger.error(
-                component="ui.conversational_tab",
-                operation="session_coverage_answer_failed",
-                message=message,
-                details=nim_error_log_details(exc) if isinstance(exc, NimClientError) else None,
-                exc=exc,
-                dataset_id=self.dataset_id,
-            )
-            self.send_button.setEnabled(True)
-
-        run_background(self, answer_work, on_success=on_success, on_error=on_error)
 
     def _recover_from_context_limit_error(
         self,
@@ -911,24 +790,54 @@ class ConversationalTab(QWidget):
         budget: AnswerBudget,
     ) -> None:
         app_settings = load_settings()
+        model_id = resolve_role_model(app_settings, UserFacingModelRole.WRITING)
+        answer_run_id = str(uuid.uuid4())
         self.logger.info(
             component="ui.conversational_tab",
             operation="whole_transcript_answer_queued",
             message="Queued whole transcript conversational answer worker",
             details={
+                "answer_run_id": answer_run_id,
                 "generation": generation,
+                "model_id": model_id,
                 "max_output_tokens": budget.max_output_tokens,
             },
             dataset_id=dataset_id,
         )
 
         def answer_work() -> ConversationalAnswerResult:
+            trace(
+                "ui.conversational_tab",
+                "whole_transcript_answer_worker_enter",
+                answer_run_id=answer_run_id,
+                generation=generation,
+                dataset_id=dataset_id,
+                model_id=model_id,
+                db_path=str(db_path),
+            )
             worker_conn = connect(db_path)
+            worker_logger: ProcessLogger | None = None
             try:
-                worker_logger = ProcessLogger(worker_conn, dataset_id=dataset_id)
+                worker_logger = ProcessLogger(
+                    worker_conn,
+                    log_bus=self.logger.log_bus,
+                    dataset_id=dataset_id,
+                )
+                worker_logger.info(
+                    component="ui.conversational_tab",
+                    operation="whole_transcript_answer_worker_started",
+                    message="Started whole transcript conversational answer worker",
+                    details={
+                        "answer_run_id": answer_run_id,
+                        "generation": generation,
+                        "model_id": model_id,
+                        "max_output_tokens": budget.max_output_tokens,
+                    },
+                    dataset_id=dataset_id,
+                )
                 router = ModelRouter(app_settings)
                 transcript = build_dataset_transcript(worker_conn, dataset_id)
-                return run_whole_transcript_answer(
+                result = run_whole_transcript_answer(
                     worker_conn,
                     worker_logger,
                     router,
@@ -937,6 +846,46 @@ class ConversationalTab(QWidget):
                     transcript=transcript,
                     max_tokens=budget.max_output_tokens,
                 )
+                worker_logger.info(
+                    component="ui.conversational_tab",
+                    operation="whole_transcript_answer_worker_completed",
+                    message="Completed whole transcript conversational answer worker",
+                    details={
+                        "answer_run_id": answer_run_id,
+                        "generation": generation,
+                        "model_id": model_id,
+                        "answer_range_count": len(result.answer_ranges),
+                        "mode": result.mode,
+                    },
+                    dataset_id=dataset_id,
+                )
+                return result
+            except Exception as exc:
+                if worker_logger is not None:
+                    worker_logger.error(
+                        component="ui.conversational_tab",
+                        operation="whole_transcript_answer_worker_failed",
+                        message="Whole transcript conversational answer worker failed",
+                        details={
+                            "answer_run_id": answer_run_id,
+                            "generation": generation,
+                            "model_id": model_id,
+                            "max_output_tokens": budget.max_output_tokens,
+                        },
+                        exc=exc,
+                        dataset_id=dataset_id,
+                    )
+                else:
+                    trace(
+                        "ui.conversational_tab",
+                        "whole_transcript_answer_worker_failed_before_logger",
+                        answer_run_id=answer_run_id,
+                        generation=generation,
+                        dataset_id=dataset_id,
+                        model_id=model_id,
+                        error=str(exc),
+                    )
+                raise
             finally:
                 worker_conn.close()
 

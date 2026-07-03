@@ -38,7 +38,7 @@ Window planner logic exists but effective budgets were wrong because context win
 - Optional topic-aware breaks: **not in scope**.
 
 ## Guardrails
-- Do not invest in session-coverage redesign.
+- Do not invest in removed or obsolete conversational modes.
 - Do not load full dataset or full giant thread into memory for scan planning.
 - One LLM call per packed window; do not batch multiple windows per call.
 - Window text may materialize one bounded window at a time only.

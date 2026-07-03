@@ -1,11 +1,14 @@
-"""Transcript serialization for coverage-aware conversational answering."""
+"""Transcript serialization for conversational answering."""
 
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
+
+_log = logging.getLogger(__name__)
 
 from message_evidence_workstation.db import repositories
 from message_evidence_workstation.db.repositories import _json_loads
@@ -39,12 +42,14 @@ class SerializedTranscript:
 
 def _display_timestamp(timestamp: str) -> str:
     if not timestamp:
+        _log.warning("Empty timestamp value")
         return "unknown"
     normalized = timestamp.replace("Z", "+00:00")
     try:
         parsed = datetime.fromisoformat(normalized)
         return parsed.strftime("%Y-%m-%d %H:%M")
     except ValueError:
+        _log.warning("Malformed timestamp value: %r", timestamp)
         match = re.match(r"^(\d{4}-\d{2}-\d{2})", timestamp)
         if match:
             return match.group(1)

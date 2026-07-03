@@ -7,7 +7,6 @@ Finalize the condensed conversational output refactor with live prompt migration
 - Update live testing EVW prompt rows after code prompt changes.
 - Target run types:
   - `whole_transcript_answer`
-  - `coverage_session_answer`
   - `exhaustive_window_scan`
   - `exhaustive_window_merge`
 - Expected new active prompt version: next version after current live version.
@@ -37,4 +36,3 @@ Finalize the condensed conversational output refactor with live prompt migration
   - `answer_summary`
   - one `answer_ranges` object per displayed result row
   - result row text is not duplicated in three UI panes
-

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 from message_evidence_workstation.config.settings import load_settings, save_settings
 from message_evidence_workstation.nim.client import NimClientError
@@ -31,7 +34,11 @@ def parse_context_window_from_error(body: str) -> int | None:
                 return parsed
     try:
         payload = json.loads(body)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        _log.warning(
+            "Non-JSON body in context-limit error parsing: %s",
+            exc,
+        )
         return None
     if not isinstance(payload, dict):
         return None

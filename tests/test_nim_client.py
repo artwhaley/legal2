@@ -12,8 +12,11 @@ TEST_MODEL = "meta/llama3-8b-instruct"
 GEMMA_MODEL = "google/gemma-2-2b-it"
 
 
+_TEST_NIM_URL = "https://integrate.api.nvidia.com/v1"
+
+
 def test_chat_completion_success() -> None:
-    client = NimClient(NimSettings(api_key="test-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key"))
     payload = {
         "choices": [{"message": {"content": "hello from nim"}}],
     }
@@ -39,7 +42,7 @@ def test_chat_completion_success() -> None:
 def test_model_list_http_error() -> None:
     import urllib.error
 
-    client = NimClient(NimSettings(api_key="bad-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="bad-key"))
 
     def raise_http(*_args, **_kwargs):
         raise urllib.error.HTTPError(
@@ -57,7 +60,7 @@ def test_model_list_http_error() -> None:
 
 
 def test_missing_api_key_fails_loudly() -> None:
-    client = NimClient(NimSettings(api_key=""))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key=""))
     with pytest.raises(NimClientError) as exc_info:
         client.list_models()
     assert exc_info.value.error_type == "missing_api_key"
@@ -73,7 +76,7 @@ def test_timeout_user_message() -> None:
 def test_url_error_timeout_maps_to_timeout_type() -> None:
     import urllib.error
 
-    client = NimClient(NimSettings(api_key="test-key", timeout_seconds=5.0))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key", timeout_seconds=5.0))
 
     with patch(
         "urllib.request.urlopen",
@@ -88,7 +91,7 @@ def test_url_error_timeout_maps_to_timeout_type() -> None:
 
 
 def test_list_models_preserves_metadata() -> None:
-    client = NimClient(NimSettings(api_key="test-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key"))
     payload = {
         "data": [
             {
@@ -117,7 +120,7 @@ def test_list_models_preserves_metadata() -> None:
 
 
 def test_list_models_supports_name_or_id() -> None:
-    client = NimClient(NimSettings(api_key="test-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key"))
     payload = {"models": [{"name": "legacy/name-model", "max_model_len": 4096}]}
 
     class FakeResponse:
@@ -139,7 +142,7 @@ def test_list_models_supports_name_or_id() -> None:
 def test_http_error_includes_request_metadata() -> None:
     import urllib.error
 
-    client = NimClient(NimSettings(api_key="test-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key"))
 
     def raise_http(*_args, **_kwargs):
         raise urllib.error.HTTPError(
@@ -185,7 +188,7 @@ def test_nim_error_user_message_http_404() -> None:
 
 
 def test_test_model_success() -> None:
-    client = NimClient(NimSettings(api_key="test-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key"))
     payload = {"choices": [{"message": {"content": "ok"}}]}
 
     class FakeResponse:
@@ -210,7 +213,7 @@ def test_test_model_success() -> None:
 def test_test_model_failure_returns_details() -> None:
     import urllib.error
 
-    client = NimClient(NimSettings(api_key="test-key"))
+    client = NimClient(NimSettings(api_base_url=_TEST_NIM_URL, api_key="test-key"))
 
     def raise_http(*_args, **_kwargs):
         raise urllib.error.HTTPError(

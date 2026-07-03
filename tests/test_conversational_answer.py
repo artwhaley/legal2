@@ -1,4 +1,4 @@
-"""Coverage-aware conversational answer tests (T2-T3)."""
+"""Conversational answer tests."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pytest
 from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
-from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.logging_ui.process_log import ProcessLogger, fetch_process_logs
 from message_evidence_workstation.config.settings import (
     AnswerSettings,
     LEGACY_ANSWER_STRATEGIES,
@@ -21,16 +21,16 @@ from message_evidence_workstation.config.settings import (
 from tests.router_helpers import router_with_role_models
 from message_evidence_workstation.nim.client import NimChatResult
 from message_evidence_workstation.nim.prompts import (
+    RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS,
+    RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS,
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
 )
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
-    ANSWER_MODE_SESSION_COVERAGE,
     ANSWER_MODE_WHOLE_TRANSCRIPT,
     ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
-    ANSWER_STRATEGY_SESSION_COVERAGE,
     ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
     ConversationalAnswerParseError,
     build_dataset_transcript,
@@ -45,11 +45,13 @@ from message_evidence_workstation.search.conversational_answer import (
     run_exhaustive_window_scan_answer,
     run_whole_transcript_answer,
 )
+from message_evidence_workstation.search.exhaustive_hints import ExhaustiveHintCollection
 from message_evidence_workstation.search.dataset_budget import (
     DatasetBudgetStats,
     compute_dataset_budget_stats,
 )
 from message_evidence_workstation.search.transcript import serialize_thread_transcript
+from message_evidence_workstation.search.window_planner import TranscriptWindow
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
 
@@ -61,6 +63,13 @@ def answer_db(tmp_path):
     initialize_schema(conn, logger)
     dataset_id = load_normalized_dataset(conn, logger, FIXTURE_DIR)
     return conn, logger, dataset_id
+
+
+EMPTY_HINT_COLLECTION = ExhaustiveHintCollection(
+    planner_terms=(),
+    all_blocks=(),
+    window_blocks_by_id={},
+)
 
 
 def test_resolve_answer_budget_ignores_provider_metadata_without_user_setting(answer_db) -> None:
@@ -157,16 +166,6 @@ def test_resolve_answer_mode_explicit_strategies_still_work(answer_db) -> None:
     nim = NimSettings(context_window_tokens=1_000_000)
     assert (
         resolve_answer_mode(
-            strategy=ANSWER_STRATEGY_SESSION_COVERAGE,
-            stats=stats,
-            answer_settings=settings,
-            nim_settings=nim,
-            model_id="test-model",
-        )
-        == ANSWER_MODE_SESSION_COVERAGE
-    )
-    assert (
-        resolve_answer_mode(
             strategy=ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
             stats=stats,
             answer_settings=settings,
@@ -189,7 +188,6 @@ def test_resolve_answer_budget_never_returns_retrieval_fallback(answer_db) -> No
     for strategy in (
         ANSWER_STRATEGY_WHOLE_TRANSCRIPT,
         ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN,
-        ANSWER_STRATEGY_SESSION_COVERAGE,
     ):
         budget = resolve_answer_budget(
             stats,
@@ -241,32 +239,32 @@ def test_build_whole_transcript_cache_payload_splits_context_and_query(answer_db
 
 
 def test_build_exhaustive_window_merge_user_content_reports_full_coverage(answer_db) -> None:
-    conn, logger, dataset_id = answer_db
-    from message_evidence_workstation.search.session_map import list_sessions, rebuild_dataset_sessions
-
-    sessions = rebuild_dataset_sessions(conn, logger, dataset_id, gap_minutes=30)
+    conn, _logger, dataset_id = answer_db
+    rows = conn.execute(
+        "SELECT DISTINCT source_thread_id FROM message WHERE dataset_id = ? ORDER BY source_thread_id",
+        (dataset_id,),
+    ).fetchall()
+    source_thread_ids = [str(row["source_thread_id"]) for row in rows]
     payload = json.loads(
         build_exhaustive_window_merge_user_content(
             "travel chess set",
-            sessions=sessions,
+            source_thread_ids=source_thread_ids,
             window_results=[
                 {
-                    "session_id": session.session_id,
-                    "source_thread_id": session.source_thread_id,
-                    "message_ids": [session.start_message_id, session.end_message_id],
+                    "source_thread_id": source_thread_ids[0],
+                    "message_ids": ["msg_001", "msg_003"],
                     "answer": "No relevant evidence.",
                     "cited_message_ids": [],
                     "candidate_evidence_blocks": [],
                     "uncertainties": [],
                 }
-                for session in sessions
+                for _ in range(2)
             ],
         )
     )
     assert payload["coverage_summary"]["mode"] == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
-    assert payload["coverage_summary"]["sessions_considered"] == len(sessions)
-    assert payload["coverage_summary"]["sessions_inspected"] == len(sessions)
-    assert payload["coverage_summary"]["sessions_skipped"] == 0
+    assert payload["coverage_summary"]["source_thread_ids"] == source_thread_ids
+    assert payload["coverage_summary"]["windows_inspected"] == 2
 
 
 def test_parse_whole_transcript_answer_response_valid() -> None:
@@ -399,9 +397,17 @@ def test_parse_whole_transcript_answer_response_rejects_invalid_answer_range() -
         message_order_by_thread={"thread_001": ["msg_001", "msg_002", "msg_003", "msg_004"]},
     )
 
-    assert result.answer_ranges == []
-    assert result.candidate_evidence_blocks == []
-    assert any("Skipped candidate evidence block" in item for item in result.uncertainties)
+    assert len(result.answer_ranges) == 1
+    assert result.answer_ranges[0].hit_message_id == "msg_004"
+    assert result.answer_ranges[0].start_message_id == "msg_004"
+    assert result.answer_ranges[0].end_message_id == "msg_004"
+    assert result.answer_ranges[0].title == "Bad range"
+    assert len(result.repaired_answer_ranges) == 1
+    assert result.repaired_answer_ranges[0].reason == "range_order"
+    assert result.repaired_answer_ranges[0].original_start_message_id == "msg_001"
+    assert result.repaired_answer_ranges[0].original_end_message_id == "msg_003"
+    assert result.repaired_answer_ranges[0].repaired_start_message_id == "msg_004"
+    assert any("Repaired 1 range(s)" in item for item in result.uncertainties)
 
 
 def test_parse_whole_transcript_answer_response_rejects_invented_ids() -> None:
@@ -521,124 +527,11 @@ def test_run_whole_transcript_answer_passes_full_transcript_to_nim(answer_db) ->
     assert result.cited_message_ids == ["msg_002"]
 
 
-def test_run_session_coverage_answer_considers_all_sessions(answer_db) -> None:
-    conn, logger, dataset_id = answer_db
-    from message_evidence_workstation.search.session_map import list_sessions, rebuild_dataset_sessions
-
-    rebuild_dataset_sessions(conn, logger, dataset_id, gap_minutes=30)
-    assert list_sessions(conn, dataset_id)
-    call_index = {"count": 0}
-
-    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content, dataset_id=None, **kwargs):
-        call_index["count"] += 1
-        if run_type.endswith("session_summary"):
-            return NimChatResult(
-                content=json.dumps(
-                    {
-                        "topics": ["topic"],
-                        "people": [],
-                        "events": [],
-                        "commitments": [],
-                        "conflicts": [],
-                        "appointments": [],
-                        "money": [],
-                        "parenting_school": [],
-                        "medical": [],
-                        "travel": [],
-                        "notable_quotes": [],
-                    }
-                ),
-                raw_response={},
-                latency_ms=1,
-            )
-        if run_type.endswith("session_classification"):
-            payload = json.loads(user_content)
-            classifications = [
-                {
-                    "session_id": item["session_id"],
-                    "classification": "relevant" if index == 0 else "not_relevant",
-                    "reason": "test",
-                }
-                for index, item in enumerate(payload["session_summaries"])
-            ]
-            return NimChatResult(
-                content=json.dumps({"session_classifications": classifications}),
-                raw_response={},
-                latency_ms=1,
-            )
-        if run_type.endswith("coverage_audit"):
-            return NimChatResult(
-                content=json.dumps(
-                    {
-                        "additional_session_ids": [],
-                        "residual_uncertainties": [],
-                        "audit_notes": "",
-                    }
-                ),
-                raw_response={},
-                latency_ms=1,
-            )
-        payload = json.loads(user_content)
-        assert payload["inspected_transcript_windows"]
-        assert "[msg_" in payload["inspected_transcript_windows"][0]["transcript"]
-        return NimChatResult(
-            content=json.dumps(
-                {
-                    "answer": "Coverage answer from inspected session windows.",
-                    "cited_message_ids": ["msg_001"],
-                    "candidate_evidence_blocks": [],
-                    "uncertainties": [],
-                    "coverage_summary": {
-                        "mode": "session_coverage",
-                        "messages_considered": 10,
-                        "source_thread_ids": ["thread_001"],
-                        "sessions_considered": len(payload["session_summaries"]),
-                        "sessions_inspected": len(payload["inspected_transcript_windows"]),
-                        "sessions_skipped": len(payload["session_summaries"])
-                        - len(payload["inspected_transcript_windows"]),
-                    },
-                }
-            ),
-            raw_response={},
-            latency_ms=1,
-        )
-
-    from message_evidence_workstation.search.conversational_answer import run_session_coverage_answer
-
-    router = router_with_role_models()
-    with (
-        patch(
-            "message_evidence_workstation.search.conversational_answer.run_nim_chat",
-            side_effect=fake_run_nim_chat,
-        ),
-        patch(
-            "message_evidence_workstation.search.coverage_audit.run_nim_chat",
-            side_effect=fake_run_nim_chat,
-        ),
-        patch(
-            "message_evidence_workstation.search.session_summaries.run_nim_chat",
-            side_effect=fake_run_nim_chat,
-        ),
-    ):
-        result = run_session_coverage_answer(
-            conn,
-            logger,
-            router,
-            user_query="allergy paperwork",
-            dataset_id=dataset_id,
-        )
-    assert result.mode == ANSWER_MODE_SESSION_COVERAGE
-    rebuilt_sessions = list_sessions(conn, dataset_id)
-    assert result.coverage_summary.sessions_considered == len(rebuilt_sessions)
-    assert result.coverage_summary.sessions_inspected >= 1
-    assert call_index["count"] >= 2
-
-
 def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_db) -> None:
     conn, logger, dataset_id = answer_db
     from message_evidence_workstation.config.settings import AnswerSettings, NimSettings
     from message_evidence_workstation.nim.prompts import (
-        RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
+        RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS,
         RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     )
 
@@ -650,12 +543,35 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
     )
     calls: list[tuple[str, dict, dict]] = []
     scan_count = 0
+    planned_windows = [
+        TranscriptWindow(
+            window_id="thread_001__window_001",
+            source_thread_id="thread_001",
+            start_message_id="msg_001",
+            end_message_id="msg_003",
+            message_ids=["msg_001", "msg_002", "msg_003"],
+            estimated_tokens=200,
+            text="window 1",
+        ),
+        TranscriptWindow(
+            window_id="thread_001__window_002",
+            source_thread_id="thread_001",
+            start_message_id="msg_004",
+            end_message_id="msg_006",
+            message_ids=["msg_004", "msg_005", "msg_006"],
+            estimated_tokens=200,
+            text="window 2",
+        ),
+    ]
 
-    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content, dataset_id=None, **kwargs):
+    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content=None, messages=None, dataset_id=None, **kwargs):
         nonlocal scan_count
-        payload = json.loads(user_content)
-        calls.append((run_type, payload, kwargs))
         if run_type == RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN:
+            payload = json.loads(user_content)
+            calls.append((run_type, payload, kwargs))
+            n = payload["messages_considered"]
+            offset = scan_count * 3
+            ids = [f"msg_{offset + i + 1:03d}" for i in range(n)]
             scan_count += 1
             assert "window_id" in payload
             assert "estimated_tokens" in payload
@@ -663,12 +579,23 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
                 content=json.dumps(
                     {
                         "answer": "Window inspected.",
-                        "cited_message_ids": [],
-                        "candidate_evidence_blocks": [],
+                        "answer_summary": f"Findings for {payload['window_id']}.",
+                        "cited_message_ids": [ids[1]],
+                        "answer_ranges": [
+                            {
+                                "title": f"Evidence in {payload['window_id']}",
+                                "summary": "Relevant evidence from this window.",
+                                "display_text": "Relevant evidence from this window.",
+                                "date_description": "On Jan 1",
+                                "hit_message_id": ids[1],
+                                "start_message_id": ids[0],
+                                "end_message_id": ids[-1],
+                            }
+                        ],
                         "uncertainties": [],
                         "coverage_summary": {
                             "mode": "exhaustive_window_scan",
-                            "messages_considered": len(payload["message_ids"]),
+                            "messages_considered": n,
                             "source_thread_ids": [payload["source_thread_id"]],
                         },
                     }
@@ -676,18 +603,22 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
                 raw_response={},
                 latency_ms=1,
             )
-        assert run_type == RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE
+        assert run_type == RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS
+        assert messages is not None
+        payload = json.loads(messages[1]["content"])
+        calls.append((run_type, payload, kwargs))
         assert scan_count > 0
-        assert len(payload["window_findings"]) == scan_count
-        assert payload["coverage_summary"]["windows_inspected"] == scan_count
+        assert len(payload["ledger_records"]) == scan_count
+        assert payload["record_count"] == scan_count
         return NimChatResult(
             content=json.dumps(
                 {
-                    "answer": "Merged exhaustive scan answer.",
-                    "cited_message_ids": [],
-                    "candidate_evidence_blocks": [],
+                    "answer_summary": "Evidence-ledger synthesis result.",
+                    "answer": "Merged exhaustive scan answer with enough detail to pass validation.",
+                    "themes": [],
+                    "notable_patterns": [],
+                    "contradictions_or_tensions": [],
                     "uncertainties": [],
-                    "coverage_summary": payload["coverage_summary"],
                 }
             ),
             raw_response={},
@@ -695,9 +626,19 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
         )
 
     router = router_with_role_models()
-    with patch(
-        "message_evidence_workstation.search.conversational_answer.run_nim_chat",
-        side_effect=fake_run_nim_chat,
+    with (
+        patch(
+            "message_evidence_workstation.search.conversational_answer.run_nim_chat",
+            side_effect=fake_run_nim_chat,
+        ),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.collect_exhaustive_window_hints",
+            return_value=EMPTY_HINT_COLLECTION,
+        ),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.build_token_bounded_windows_for_dataset",
+            return_value=planned_windows,
+        ),
     ):
         result = run_exhaustive_window_scan_answer(
             conn,
@@ -714,14 +655,155 @@ def test_run_exhaustive_window_scan_answer_inspects_every_planned_window(answer_
     assert len(scan_calls) == scan_count
     assert scan_count > 0
     assert all(call[2].get("max_tokens") == nim_settings.max_output_tokens for call in scan_calls)
-    merge_calls = [call for call in calls if call[0] == RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE]
-    if merge_calls:
-        assert merge_calls[0][2].get("max_tokens") == nim_settings.max_output_tokens
-    else:
-        assert scan_count == 1
+    merge_calls = [call for call in calls if call[0] == RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS]
+    assert len(merge_calls) == 1
+    assert merge_calls[0][2].get("max_tokens") == nim_settings.max_output_tokens
     assert result.mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
     assert result.coverage_summary.windows_inspected == scan_count
     assert result.coverage_summary.token_budget is not None
+    window_logs = [
+        entry
+        for entry in fetch_process_logs(conn, component="search.conversational_answer", limit=50)
+        if entry.operation == "exhaustive_window_scan_window_completed"
+    ]
+    assert len(window_logs) == scan_count
+    details_by_window = {entry.details_json["window_id"]: entry.details_json for entry in window_logs}
+    assert details_by_window["thread_001__window_001"]["raw_answer_range_count"] == 1
+    assert details_by_window["thread_001__window_001"]["validated_answer_range_count"] == 1
+    assert details_by_window["thread_001__window_002"]["raw_answer_range_count"] == 1
+    totals_log = next(
+        entry
+        for entry in fetch_process_logs(conn, component="search.conversational_answer", limit=50)
+        if entry.operation == "exhaustive_window_scan_windows_completed"
+    )
+    assert totals_log.details_json["raw_answer_range_count_total"] == scan_count
+    assert totals_log.details_json["validated_answer_range_count_total"] == scan_count
+    ledger_log = next(
+        entry
+        for entry in fetch_process_logs(conn, component="search.conversational_answer", limit=50)
+        if entry.operation == "evidence_ledger_built"
+    )
+    assert ledger_log.details_json["entry_count"] == scan_count
+    assert ledger_log.details_json["raw_answer_range_count_total"] == scan_count
+    assert ledger_log.details_json["validated_answer_range_count_total"] == scan_count
+
+
+def test_run_exhaustive_window_scan_answer_legacy_merge_path(answer_db) -> None:
+    conn, logger, dataset_id = answer_db
+    answer_settings = AnswerSettings(use_evidence_ledger_merge=False)
+    nim_settings = NimSettings(
+        context_window_tokens=1_000_000,
+        max_output_tokens=4096,
+        window_overlap_messages=2,
+    )
+    calls: list[tuple[str, dict, dict]] = []
+    planned_windows = [
+        TranscriptWindow(
+            window_id="thread_001__window_001",
+            source_thread_id="thread_001",
+            start_message_id="msg_001",
+            end_message_id="msg_003",
+            message_ids=["msg_001", "msg_002", "msg_003"],
+            estimated_tokens=200,
+            text="window 1",
+        ),
+        TranscriptWindow(
+            window_id="thread_001__window_002",
+            source_thread_id="thread_001",
+            start_message_id="msg_004",
+            end_message_id="msg_006",
+            message_ids=["msg_004", "msg_005", "msg_006"],
+            estimated_tokens=200,
+            text="window 2",
+        ),
+    ]
+
+    scan_mock_count = 0
+
+    def fake_run_nim_chat(_conn, _logger, _client, *, run_type, user_content=None, messages=None, dataset_id=None, **kwargs):
+        nonlocal scan_mock_count
+        if run_type == RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN:
+            payload = json.loads(user_content)
+            calls.append((run_type, payload, kwargs))
+            n = payload["messages_considered"]
+            offset = scan_mock_count * 3
+            ids = [f"msg_{offset + i + 1:03d}" for i in range(n)]
+            scan_mock_count += 1
+            return NimChatResult(
+                content=json.dumps(
+                    {
+                        "answer": "Window inspected.",
+                        "answer_summary": f"Findings for {payload['window_id']}.",
+                        "cited_message_ids": [ids[1]],
+                        "answer_ranges": [
+                            {
+                                "title": f"Evidence in {payload['window_id']}",
+                                "summary": "Relevant evidence from this window.",
+                                "display_text": "Relevant evidence from this window.",
+                                "date_description": "On Jan 1",
+                                "hit_message_id": ids[1],
+                                "start_message_id": ids[0],
+                                "end_message_id": ids[-1],
+                            }
+                        ],
+                        "uncertainties": [],
+                        "coverage_summary": {
+                            "mode": "exhaustive_window_scan",
+                            "messages_considered": n,
+                            "source_thread_ids": [payload["source_thread_id"]],
+                        },
+                    }
+                ),
+                raw_response={},
+                latency_ms=1,
+            )
+
+        assert run_type == RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE
+        payload = json.loads(user_content)
+        calls.append((run_type, payload, kwargs))
+        return NimChatResult(
+            content=json.dumps(
+                {
+                    "answer": "Merged exhaustive scan answer.",
+                    "cited_message_ids": [],
+                    "candidate_evidence_blocks": [],
+                    "uncertainties": [],
+                    "coverage_summary": payload["coverage_summary"],
+                }
+            ),
+            raw_response={},
+            latency_ms=1,
+        )
+
+    router = router_with_role_models()
+    with (
+        patch(
+            "message_evidence_workstation.search.conversational_answer.run_nim_chat",
+            side_effect=fake_run_nim_chat,
+        ),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.collect_exhaustive_window_hints",
+            return_value=EMPTY_HINT_COLLECTION,
+        ),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.build_token_bounded_windows_for_dataset",
+            return_value=planned_windows,
+        ),
+    ):
+        result = run_exhaustive_window_scan_answer(
+            conn,
+            logger,
+            router,
+            user_query="travel chess set",
+            dataset_id=dataset_id,
+            answer_settings=answer_settings,
+            nim_settings=nim_settings,
+            max_tokens=nim_settings.max_output_tokens,
+        )
+
+    assert any(call[0] == RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE for call in calls)
+    assert not any(call[0] == RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS for call in calls)
+    assert result.mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
 
 
 def test_exhaustive_window_scan_allows_empty_answer_for_no_evidence() -> None:
@@ -815,3 +897,282 @@ def test_answer_budget_log_written(answer_db) -> None:
         "SELECT operation FROM process_log WHERE operation = 'answer_budget_resolved' ORDER BY process_log_id DESC LIMIT 1"
     ).fetchone()
     assert row is not None
+
+
+# ── T97: hit-only range repair ─────────────────────────────────────────────
+
+def test_parse_answer_range_repairs_misordered_with_valid_hit() -> None:
+    from message_evidence_workstation.search.conversational_answer import _parse_answer_range, RangeRepairRecord
+
+    raw = {
+        "title": "School Application",
+        "summary": "Application discussion",
+        "hit_message_id": "msg_003",
+        "start_message_id": "msg_001",
+        "end_message_id": "msg_002",
+    }
+    valid_ids = {"msg_001", "msg_002", "msg_003"}
+    thread_by_id = {"msg_001": "t1", "msg_002": "t1", "msg_003": "t1"}
+    order = {"t1": ["msg_001", "msg_002", "msg_003"]}
+
+    answer_range, candidate, removed, repair = _parse_answer_range(
+        raw, valid_ids=valid_ids, message_thread_by_id=thread_by_id, message_order_by_thread=order,
+    )
+
+    assert answer_range is not None
+    assert answer_range.hit_message_id == "msg_003"
+    assert answer_range.start_message_id == "msg_003"
+    assert answer_range.end_message_id == "msg_003"
+    assert answer_range.title == "School Application"
+    assert candidate is not None
+    assert candidate.core_message_id == "msg_003"
+    assert candidate.relevant_start_message_id == "msg_003"
+    assert candidate.relevant_end_message_id == "msg_003"
+    assert isinstance(repair, RangeRepairRecord)
+    assert repair.reason == "range_order"
+    assert repair.original_start_message_id == "msg_001"
+    assert repair.original_end_message_id == "msg_002"
+    assert removed == []
+
+
+def test_parse_answer_range_rejects_invented_hit_id() -> None:
+    from message_evidence_workstation.search.conversational_answer import _parse_answer_range
+
+    raw = {
+        "title": "Fake",
+        "summary": "Fake evidence",
+        "hit_message_id": "msg_999",
+        "start_message_id": "msg_001",
+        "end_message_id": "msg_002",
+    }
+    valid_ids = {"msg_001", "msg_002"}
+    answer_range, candidate, removed, repair = _parse_answer_range(
+        raw, valid_ids=valid_ids, message_thread_by_id={}, message_order_by_thread=None,
+    )
+
+    assert answer_range is None
+    assert candidate is None
+    assert repair is None
+    assert "msg_999" in removed
+
+
+def test_parse_answer_range_rejects_cross_thread_hit() -> None:
+    from message_evidence_workstation.search.conversational_answer import _parse_answer_range
+
+    raw = {
+        "title": "Cross",
+        "summary": "Cross-thread evidence",
+        "hit_message_id": "msg_003",
+        "start_message_id": "msg_001",
+        "end_message_id": "msg_002",
+    }
+    valid_ids = {"msg_001", "msg_002", "msg_003"}
+    thread_by_id = {"msg_001": "t1", "msg_002": "t1", "msg_003": "t2"}  # hit in different thread
+
+    answer_range, candidate, removed, repair = _parse_answer_range(
+        raw, valid_ids=valid_ids, message_thread_by_id=thread_by_id, message_order_by_thread=None,
+    )
+
+    assert answer_range is None
+    assert candidate is None
+    assert repair is None
+    assert any("cross_thread" in r for r in removed)
+
+
+def test_run_exhaustive_scan_logs_repaired_and_rejected_counts(answer_db) -> None:
+    """Integration: repair/reject logged per-window (not propagated to final result)."""
+    conn, logger, dataset_id = answer_db
+    from message_evidence_workstation.config.settings import NimSettings
+    from message_evidence_workstation.search.conversational_answer import run_exhaustive_window_scan_answer
+    from message_evidence_workstation.nim.client import NimChatResult
+
+    loaded_router = router_with_role_models()
+    nim = NimSettings(context_window_tokens=1_000_000, max_output_tokens=4096, window_overlap_messages=0)
+    settings = AnswerSettings()
+
+    planned = [
+        TranscriptWindow(
+            window_id="tw__window_001",
+            source_thread_id="thread_001",
+            start_message_id="msg_001",
+            end_message_id="msg_003",
+            message_ids=["msg_001", "msg_002", "msg_003"],
+            estimated_tokens=100,
+            text="window",
+        ),
+    ]
+
+    def fake_nim(_conn, _logger, _client, *, run_type, user_content=None, messages=None, **kwargs):
+        if run_type == RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN:
+            return NimChatResult(
+                content=json.dumps({
+                    "answer": "found evidence",
+                    "answer_summary": "evidence",
+                    "answer_ranges": [
+                        {
+                            "title": "Bad bracket",
+                            "summary": "hit outside range",
+                            "hit_message_id": "msg_003",
+                            "start_message_id": "msg_001",
+                            "end_message_id": "msg_002",
+                        },
+                        {
+                            "title": "Good range",
+                            "summary": "valid evidence",
+                            "hit_message_id": "msg_002",
+                            "start_message_id": "msg_001",
+                            "end_message_id": "msg_003",
+                        },
+                    ],
+                    "uncertainties": [],
+                    "coverage_summary": {
+                        "mode": "exhaustive_window_scan",
+                        "messages_considered": 3,
+                        "source_thread_ids": ["thread_001"],
+                    },
+                }),
+                raw_response={},
+                latency_ms=1,
+            )
+        return NimChatResult(
+            content=json.dumps({
+                "answer_summary": "merged",
+                "answer": "merged answer",
+                "themes": [],
+                "notable_patterns": [],
+                "contradictions_or_tensions": [],
+                "uncertainties": [],
+            }),
+            raw_response={},
+            latency_ms=1,
+        )
+
+    with (
+        patch("message_evidence_workstation.search.conversational_answer.run_nim_chat", side_effect=fake_nim),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.collect_exhaustive_window_hints",
+            return_value=EMPTY_HINT_COLLECTION,
+        ),
+        patch("message_evidence_workstation.search.conversational_answer.build_token_bounded_windows_for_dataset", return_value=planned),
+    ):
+        run_exhaustive_window_scan_answer(
+            conn, logger, loaded_router,
+            user_query="school",
+            dataset_id=dataset_id,
+            answer_settings=settings,
+            nim_settings=nim,
+        )
+
+    window_log = next(
+        e for e in fetch_process_logs(conn, component="search.conversational_answer", limit=50)
+        if e.operation == "exhaustive_window_scan_window_completed"
+    )
+    assert window_log.details_json["repaired_answer_range_count"] == 1
+    assert window_log.details_json["rejected_answer_range_count"] == 0
+    repair_log = next(
+        e for e in fetch_process_logs(conn, component="search.conversational_answer", limit=50)
+        if e.operation == "exhaustive_window_scan_window_repaired_ranges"
+    )
+    assert repair_log.details_json["repair_count"] == 1
+
+
+# ── T98: granular recall ────────────────────────────────────────────────────
+
+def test_exhaustive_scan_planning_uses_resolved_input_budget(answer_db) -> None:
+    """Prompt hardening must not force a separate recall token cap."""
+    conn, logger, dataset_id = answer_db
+    from message_evidence_workstation.config.settings import NimSettings
+    from message_evidence_workstation.search.conversational_answer import (
+        resolve_answer_budget,
+        run_exhaustive_window_scan_answer,
+    )
+    from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
+    from message_evidence_workstation.nim.client import NimChatResult
+
+    loaded_router = router_with_role_models()
+    nim = NimSettings(context_window_tokens=1_000_000, max_output_tokens=4096, window_overlap_messages=0)
+    answer_settings = AnswerSettings()
+    expected_budget = resolve_answer_budget(
+        compute_dataset_budget_stats(conn, dataset_id),
+        answer_settings,
+        loaded_router.writing_model_id() or "unknown-model",
+        nim_settings=nim,
+    )
+
+    planned = [
+        TranscriptWindow(
+            window_id="tw__window_001",
+            source_thread_id="thread_001",
+            start_message_id="msg_001",
+            end_message_id="msg_003",
+            message_ids=["msg_001", "msg_002", "msg_003"],
+            estimated_tokens=100,
+            text="window",
+        ),
+    ]
+
+    def fake_nim(_conn, _logger, _client, *, run_type, user_content=None, messages=None, **kwargs):
+        if run_type == RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN:
+            return NimChatResult(
+                content=json.dumps({
+                    "answer": "found evidence",
+                    "answer_summary": "evidence",
+                    "answer_ranges": [
+                        {
+                            "title": "Range",
+                            "summary": "evidence",
+                            "hit_message_id": "msg_002",
+                            "start_message_id": "msg_001",
+                            "end_message_id": "msg_003",
+                        },
+                    ],
+                    "uncertainties": [],
+                    "coverage_summary": {
+                        "mode": "exhaustive_window_scan",
+                        "messages_considered": 3,
+                        "source_thread_ids": ["thread_001"],
+                    },
+                }),
+                raw_response={},
+                latency_ms=1,
+            )
+        return NimChatResult(
+            content=json.dumps({
+                "answer_summary": "merged",
+                "answer": "merged answer",
+                "themes": [],
+                "notable_patterns": [],
+                "contradictions_or_tensions": [],
+                "uncertainties": [],
+            }),
+            raw_response={},
+            latency_ms=1,
+        )
+
+    with (
+        patch("message_evidence_workstation.search.conversational_answer.run_nim_chat", side_effect=fake_nim),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.collect_exhaustive_window_hints",
+            return_value=EMPTY_HINT_COLLECTION,
+        ),
+        patch(
+            "message_evidence_workstation.search.conversational_answer.build_token_bounded_windows_for_dataset",
+            return_value=planned,
+        ) as build_windows,
+    ):
+        run_exhaustive_window_scan_answer(
+            conn, logger, loaded_router,
+            user_query="school",
+            dataset_id=dataset_id,
+            nim_settings=nim,
+            answer_settings=answer_settings,
+        )
+
+    assert build_windows.call_args.kwargs["target_tokens"] == expected_budget.usable_input_tokens
+    preflight = next(
+        e for e in fetch_process_logs(conn, component="search.conversational_answer", limit=50)
+        if e.operation == "exhaustive_scan_preflight"
+    )
+    assert preflight.details_json["per_call_input_budget"] == expected_budget.usable_input_tokens
+    assert "scan_window_target_tokens" not in preflight.details_json
+    assert "planning_reason" not in preflight.details_json

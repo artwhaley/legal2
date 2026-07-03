@@ -23,7 +23,7 @@ Remove four dead `AnswerSettings` fields and ensure `window_overlap_messages` is
 
 ## Guardrails
 - Do not remove `answer_strategy` or active conversational modes
-- Do not touch session-coverage path beyond overlap wiring shared with scan
+- Do not change non-scan conversational behavior beyond overlap wiring shared with scan
 
 ## Non-Goals
 - Window packing formula changes (T49)

@@ -46,7 +46,7 @@ from message_evidence_workstation.domain.constants import (
     SEVERITY_WARNING,
 )
 from message_evidence_workstation.llm.errors import ModelError, model_error_user_message
-from message_evidence_workstation.llm.router import ModelRouter
+from message_evidence_workstation.llm.router import ModelRouter, ModelRouterError
 from message_evidence_workstation.llm.types import (
     ModelInfo,
     ModelTaskRole,
@@ -229,18 +229,13 @@ class SettingsTab(QWidget):
         self.answer_strategy = QComboBox()
         for label, value in (
             ("Whole transcript (default)", "whole_transcript"),
-            ("Exhaustive window scan (inspect every session)", "exhaustive_window_scan"),
-            ("Session summary triage (faster, lower recall)", "session_coverage"),
+            ("Exhaustive window scan (inspect every window)", "exhaustive_window_scan"),
         ):
             self.answer_strategy.addItem(label, value)
         strategy_index = self.answer_strategy.findData(self.settings.answer.answer_strategy)
         if strategy_index >= 0:
             self.answer_strategy.setCurrentIndex(strategy_index)
         answer_form.addRow("Answer strategy", self.answer_strategy)
-        self.answer_session_gap_minutes = QSpinBox()
-        self.answer_session_gap_minutes.setRange(15, 24 * 60)
-        self.answer_session_gap_minutes.setValue(self.settings.answer.session_gap_minutes)
-        answer_form.addRow("Session gap (minutes)", self.answer_session_gap_minutes)
         self.window_overlap_messages = QSpinBox()
         self.window_overlap_messages.setRange(0, 20)
         self.window_overlap_messages.setValue(self.settings.nim.window_overlap_messages)
@@ -261,9 +256,6 @@ class SettingsTab(QWidget):
         self.save_answer_settings_button = QPushButton("Save answer settings")
         self.save_answer_settings_button.clicked.connect(self._save_answer_settings)
         answer_buttons.addWidget(self.save_answer_settings_button)
-        self.rebuild_sessions_button = QPushButton("Rebuild transcript sessions")
-        self.rebuild_sessions_button.clicked.connect(self._rebuild_transcript_sessions)
-        answer_buttons.addWidget(self.rebuild_sessions_button)
         answer_form.addRow("", answer_buttons)
         layout.addWidget(answer_group)
 
@@ -764,7 +756,6 @@ class SettingsTab(QWidget):
         provider_metadata = self.settings.model_metadata.get(model_id, {})
         answer_settings = AnswerSettings(
             answer_strategy=str(self.answer_strategy.currentData() or "whole_transcript"),
-            session_gap_minutes=int(self.answer_session_gap_minutes.value()),
         )
         transcript_tokens = "n/a"
         auto_decision = "n/a"
@@ -835,7 +826,6 @@ class SettingsTab(QWidget):
         self.settings.answer.answer_strategy = str(
             self.answer_strategy.currentData() or "whole_transcript"
         )
-        self.settings.answer.session_gap_minutes = int(self.answer_session_gap_minutes.value())
         self.settings.nim.window_overlap_messages = int(self.window_overlap_messages.value())
         save_settings(self.settings)
         self.refresh_context_budget_readout()
@@ -845,24 +835,8 @@ class SettingsTab(QWidget):
             message="Conversational answer settings saved",
             details={
                 "answer_strategy": self.settings.answer.answer_strategy,
-                "session_gap_minutes": self.settings.answer.session_gap_minutes,
+                "window_overlap_messages": self.settings.nim.window_overlap_messages,
             },
-        )
-
-    def _rebuild_transcript_sessions(self) -> None:
-        if self.dataset_id is None:
-            self.embedding_status.setText("Load a dataset before rebuilding transcript sessions.")
-            return
-        from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
-
-        sessions = rebuild_dataset_sessions(
-            self.conn,
-            self.logger,
-            self.dataset_id,
-            gap_minutes=int(self.answer_session_gap_minutes.value()),
-        )
-        self.embedding_status.setText(
-            f"Rebuilt {len(sessions)} transcript session(s) for dataset {self.dataset_id}."
         )
 
     def _settings_for_model_list(self):
@@ -987,7 +961,10 @@ class SettingsTab(QWidget):
                     component="ui.settings_tab",
                     operation="model_list_start",
                     message="Refreshing provider model lists (background)",
-                    details={"task_role": MODEL_LIST_TASK_ROLE.value},
+                    details={
+                        "task_role": MODEL_LIST_TASK_ROLE.value,
+                        "nim_api_base_url": settings_snapshot.nim.api_base_url,
+                    },
                     dataset_id=dataset_id,
                 )
                 router = ModelRouter(settings_snapshot)
@@ -996,11 +973,13 @@ class SettingsTab(QWidget):
                 for provider in (PROVIDER_NIM, PROVIDER_GOOGLE):
                     try:
                         models_by_provider[provider] = router.list_models_for_provider(provider)
-                    except (NimClientError, ModelError) as exc:
+                    except (NimClientError, ModelError, ModelRouterError) as exc:
                         errors[provider] = (
                             nim_error_user_message(exc)
                             if isinstance(exc, NimClientError)
                             else model_error_user_message(exc)
+                            if isinstance(exc, ModelError)
+                            else str(exc)
                         )
                 return models_by_provider, errors
             finally:
@@ -1009,8 +988,9 @@ class SettingsTab(QWidget):
         def on_success(result: object) -> None:
             self.refresh_models_button.setEnabled(True)
             models_by_provider, errors = result  # type: ignore[misc]
-            for provider, models in models_by_provider.items():
-                self._models_by_provider[provider] = list(models)
+            for provider in (PROVIDER_NIM, PROVIDER_GOOGLE):
+                models = list(models_by_provider.get(provider, []))
+                self._models_by_provider[provider] = models
                 self.settings.provider_model_lists[provider] = [model.id for model in models]
             if models_by_provider:
                 self._apply_cached_models_to_ui()
@@ -1036,6 +1016,7 @@ class SettingsTab(QWidget):
                 operation="model_list_success",
                 message="Provider model lists refreshed",
                 details={
+                    "nim_api_base_url": settings_snapshot.nim.api_base_url,
                     "nim_model_count": nim_count,
                     "google_model_count": google_count,
                     "errors": errors,
@@ -1044,11 +1025,13 @@ class SettingsTab(QWidget):
 
         def on_error(exc: BaseException) -> None:
             self.refresh_models_button.setEnabled(True)
-            if isinstance(exc, (NimClientError, ModelError)):
+            if isinstance(exc, (NimClientError, ModelError, ModelRouterError)):
                 message = (
                     nim_error_user_message(exc)
                     if isinstance(exc, NimClientError)
                     else model_error_user_message(exc)
+                    if isinstance(exc, ModelError)
+                    else str(exc)
                 )
                 for combo in self.role_model.values():
                     combo.setEditable(True)
@@ -1058,7 +1041,19 @@ class SettingsTab(QWidget):
                     component="ui.settings_tab",
                     operation="model_list_failed",
                     message=str(exc),
-                    details={"error_type": exc.error_type, **getattr(exc, "details", {})},
+                    details=(
+                        {
+                            "nim_api_base_url": settings_snapshot.nim.api_base_url,
+                            "error_type": exc.error_type,
+                            **getattr(exc, "details", {}),
+                        }
+                        if isinstance(exc, (NimClientError, ModelError))
+                        else {
+                            "nim_api_base_url": settings_snapshot.nim.api_base_url,
+                            "error_type": "model_router_error",
+                            "error": str(exc),
+                        }
+                    ),
                     exc=exc,
                 )
             else:
@@ -1068,6 +1063,7 @@ class SettingsTab(QWidget):
                     component="ui.settings_tab",
                     operation="model_list_failed",
                     message="Unexpected model list failure",
+                    details={"nim_api_base_url": settings_snapshot.nim.api_base_url},
                     exc=exc,
                 )
 
@@ -1609,6 +1605,10 @@ class SettingsTab(QWidget):
             if now - _last_progress < 0.3:
                 return
             _last_progress = now
+            phase_message = info.get("phase_message")
+            if phase_message:
+                self.embedding_status.setText(str(phase_message))
+                return
             completed = info.get("completed", 0)
             total = info.get("total", 0)
             label = "messages" if granularity == "message" else "chunks"

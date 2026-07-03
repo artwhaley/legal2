@@ -13,8 +13,8 @@ from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import (
     ALL_RUN_TYPES,
     DEFAULT_PROMPT_BODIES,
+    RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS,
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
-    RUN_TYPE_SESSION_CLASSIFICATION,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
     RUN_TYPE_KEYWORD_EXPANSION,
     get_active_prompt,
@@ -48,9 +48,26 @@ def test_default_prompts_are_legal_evidence_hardened() -> None:
     assert "clickable answer_ranges" in DEFAULT_PROMPT_BODIES[RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER]
     assert "display_text should be short hover text" in DEFAULT_PROMPT_BODIES[RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER]
     assert "candidate_evidence_blocks" not in DEFAULT_PROMPT_BODIES[RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER]
-    assert "Err toward possibly_relevant" in DEFAULT_PROMPT_BODIES[RUN_TYPE_SESSION_CLASSIFICATION]
     assert "do not drop minority" in DEFAULT_PROMPT_BODIES[RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE]
     assert "candidate_evidence_blocks" not in DEFAULT_PROMPT_BODIES[RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE]
+
+
+def test_keyword_expansion_prompt_is_query_only() -> None:
+    prompt = DEFAULT_PROMPT_BODIES[RUN_TYPE_KEYWORD_EXPANSION]
+    assert "You only know the user's search query" in prompt
+    assert "you have not read the corpus" in prompt
+    assert "Do not invent names, institutions, events, programs, people" in prompt
+    assert "corpus-specific phrases" in prompt
+    assert "likely to appear verbatim" in prompt
+
+
+def test_exhaustive_scan_retrieval_terms_prompt_is_query_only_and_precise() -> None:
+    prompt = DEFAULT_PROMPT_BODIES[RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS]
+    assert "You only know the user's question" in prompt
+    assert "You have not read the corpus" in prompt
+    assert "Do not invent names, institutions, events, programs, people, or phrases" in prompt
+    assert "high-precision literal search terms or short phrases" in prompt
+    assert '"terms"' in prompt
 
 
 def test_seed_default_prompts_does_not_overwrite_active_versions(db) -> None:

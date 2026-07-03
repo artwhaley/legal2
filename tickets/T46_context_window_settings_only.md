@@ -27,7 +27,7 @@ Make `settings.nim.context_window_tokens` the sole authoritative context limit f
 ## Guardrails
 - Do not add per-model context tables yet
 - Do not change answer strategy semantics (whole-transcript vs exhaustive decision happens in T48)
-- Do not remove session-coverage path behavior beyond shared context resolution
+- Do not change conversational mode semantics beyond shared context resolution
 
 ## Non-Goals
 - SQL budget stats (T48)

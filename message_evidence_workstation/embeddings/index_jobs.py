@@ -496,7 +496,7 @@ def _embedded_chunk_vector_count(
 def _chunk_is_embedded(
     conn: sqlite3.Connection,
     dataset_id: int,
-    text_checksum: str,
+    chunk: MessageChunkSpec,
     *,
     model_name: str | None = None,
 ) -> bool:
@@ -505,7 +505,13 @@ def _chunk_is_embedded(
     )
 
     partition_filter = ""
-    params: list[Any] = [dataset_id, text_checksum]
+    params: list[Any] = [
+        dataset_id,
+        chunk.source_thread_id,
+        chunk.start_message_id,
+        chunk.end_message_id,
+        chunk.text_checksum,
+    ]
     if model_name and _vec_table_has_model_partition(conn, CHUNK_VEC_TABLE):
         partition_filter = " AND cv.model_name = ?"
         params.append(model_name)
@@ -515,7 +521,11 @@ def _chunk_is_embedded(
         FROM message_chunk mc
         INNER JOIN chunk_embedding_vec cv
           ON cv.chunk_id = mc.chunk_id AND cv.dataset_id = mc.dataset_id
-        WHERE mc.dataset_id = ? AND mc.text_checksum = ?{partition_filter}
+        WHERE mc.dataset_id = ?
+          AND mc.source_thread_id = ?
+          AND mc.start_message_id = ?
+          AND mc.end_message_id = ?
+          AND mc.text_checksum = ?{partition_filter}
         LIMIT 1
         """,
         tuple(params),
@@ -537,7 +547,7 @@ def _has_chunk_holes_before_checkpoint(
         key = ChunkSortKey.from_chunk(chunk)
         if key.as_tuple() > checkpoint.as_tuple():
             break
-        if not _chunk_is_embedded(conn, dataset_id, chunk.text_checksum, model_name=model_name):
+        if not _chunk_is_embedded(conn, dataset_id, chunk, model_name=model_name):
             return True
     return False
 
@@ -598,11 +608,34 @@ def _iter_pending_chunks(
         if resume_plan.strategy == "checkpoint" and checkpoint is not None:
             if key <= checkpoint.as_tuple():
                 continue
-            if _chunk_is_embedded(conn, dataset_id, chunk.text_checksum, model_name=model_name):
+            if _chunk_is_embedded(conn, dataset_id, chunk, model_name=model_name):
                 continue
             yield chunk
             continue
-        if _chunk_is_embedded(conn, dataset_id, chunk.text_checksum, model_name=model_name):
+        if _chunk_is_embedded(conn, dataset_id, chunk, model_name=model_name):
+            continue
+        yield chunk
+
+
+def _iter_pending_planned_chunks(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    chunks: list[MessageChunkSpec],
+    *,
+    model_name: str,
+    resume_plan: ChunkResumePlan,
+) -> Iterator[MessageChunkSpec]:
+    checkpoint = resume_plan.checkpoint
+    for chunk in chunks:
+        key = ChunkSortKey.from_chunk(chunk).as_tuple()
+        if resume_plan.strategy == "checkpoint" and checkpoint is not None:
+            if key <= checkpoint.as_tuple():
+                continue
+            if _chunk_is_embedded(conn, dataset_id, chunk, model_name=model_name):
+                continue
+            yield chunk
+            continue
+        if _chunk_is_embedded(conn, dataset_id, chunk, model_name=model_name):
             continue
         yield chunk
 
@@ -1164,6 +1197,11 @@ def build_message_embedding_index(
                     }
                 )
 
+        if failures > 0 or embedded != total_messages:
+            raise RuntimeError(
+                f"Message embedding index incomplete: embedded={embedded}, "
+                f"planned={total_messages}, failures={failures}"
+            )
         stored = _embedded_message_count(conn, dataset_id, model_name)
         if stored != embedded:
             raise RuntimeError(f"Vector row count mismatch: stored={stored}, embedded={embedded}")
@@ -1355,9 +1393,45 @@ def build_chunk_embedding_index(
         details={"dataset_id": dataset_id, **chunking_metadata},
         dataset_id=dataset_id,
     )
-    total_chunks = count_dataset_chunks(
-        conn, dataset_id, config=resolved_chunking_config, model_name=model_name
+    if on_progress is not None:
+        on_progress(
+            {
+                "completed": 0,
+                "total": 0,
+                "phase": "planning_chunks",
+                "phase_message": "Planning chunk embedding work...",
+            }
+        )
+    chunk_plan_started = time.perf_counter()
+    planned_chunks = list(
+        iter_dataset_chunks(
+            conn,
+            dataset_id,
+            config=resolved_chunking_config,
+            model_name=model_name,
+        )
     )
+    total_chunks = len(planned_chunks)
+    logger.info(
+        component="embeddings.index_jobs",
+        operation="chunk_index_count_complete",
+        message=f"Planned chunk embedding work: {total_chunks} chunks",
+        details={
+            "dataset_id": dataset_id,
+            "total_chunks": total_chunks,
+            "elapsed_ms": int((time.perf_counter() - chunk_plan_started) * 1000),
+        },
+        dataset_id=dataset_id,
+    )
+    if on_progress is not None:
+        on_progress(
+            {
+                "completed": 0,
+                "total": total_chunks,
+                "phase": "planning_chunks_complete",
+                "phase_message": f"Planned {total_chunks} chunks. Preparing embedding batches...",
+            }
+        )
 
     logger.info(
         component="embeddings.index_jobs",
@@ -1402,13 +1476,16 @@ def build_chunk_embedding_index(
             resolved_chunking_config=resolved_chunking_config,
         )
         embedded = resume_plan.embedded_count
-        pending_total = _count_pending_chunks(
-            conn,
-            dataset_id,
-            model_name=model_name,
-            chunking_config=resolved_chunking_config,
-            resume_plan=resume_plan,
+        pending_chunks = list(
+            _iter_pending_planned_chunks(
+                conn,
+                dataset_id,
+                planned_chunks,
+                model_name=model_name,
+                resume_plan=resume_plan,
+            )
         )
+        pending_total = len(pending_chunks)
         batch_total = max((pending_total + BATCH_SIZE - 1) // BATCH_SIZE, 0)
 
         logger.info(
@@ -1440,13 +1517,7 @@ def build_chunk_embedding_index(
         failures = 0
         pending_batch: list[MessageChunkSpec] = []
         with logger.batch(auto_flush_every=1) as blog:
-            for chunk in _iter_pending_chunks(
-                conn,
-                dataset_id,
-                model_name=model_name,
-                chunking_config=resolved_chunking_config,
-                resume_plan=resume_plan,
-            ):
+            for chunk in pending_chunks:
                 pending_batch.append(chunk)
                 if len(pending_batch) < BATCH_SIZE:
                     continue
@@ -1629,6 +1700,11 @@ def build_chunk_embedding_index(
                         chunking_config=chunking_metadata,
                     )
 
+        if failures > 0 or embedded != total_chunks:
+            raise RuntimeError(
+                f"Chunk embedding index incomplete: embedded={embedded}, "
+                f"planned={total_chunks}, failures={failures}"
+            )
         stored = _embedded_chunk_vector_count(conn, dataset_id, model_name)
         if stored != embedded:
             raise RuntimeError(f"Chunk vector row count mismatch: stored={stored}, embedded={embedded}")

@@ -180,31 +180,6 @@ CREATE INDEX IF NOT EXISTS idx_evidence_block_dataset_thread
 CREATE INDEX IF NOT EXISTS idx_evidence_block_category
     ON evidence_block(category_id);
 
-CREATE TABLE IF NOT EXISTS transcript_session (
-    session_id TEXT NOT NULL,
-    dataset_id INTEGER NOT NULL,
-    source_thread_id TEXT NOT NULL,
-    session_index INTEGER NOT NULL,
-    calendar_date TEXT NOT NULL,
-    start_message_id TEXT NOT NULL,
-    end_message_id TEXT NOT NULL,
-    start_timestamp TEXT NOT NULL,
-    end_timestamp TEXT NOT NULL,
-    participants_json TEXT NOT NULL DEFAULT '[]',
-    message_count INTEGER NOT NULL DEFAULT 0,
-    title TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'built',
-    summary_json TEXT NOT NULL DEFAULT '{}',
-    summary_status TEXT NOT NULL DEFAULT 'pending',
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    PRIMARY KEY (dataset_id, session_id),
-    FOREIGN KEY (dataset_id) REFERENCES dataset(dataset_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_transcript_session_dataset_thread
-    ON transcript_session(dataset_id, source_thread_id, session_index);
-
 CREATE TABLE IF NOT EXISTS printable_artifact_group (
     printable_artifact_group_id INTEGER PRIMARY KEY AUTOINCREMENT,
     dataset_id INTEGER NOT NULL,

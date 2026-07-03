@@ -51,7 +51,7 @@ Confirmed role mapping (post-T25B):
 | Task roles | User-facing role |
 |------------|------------------|
 | `search_expansion` | expansion |
-| `session_summary`, `session_classification`, `coverage_audit`, `full_context_search`, `windowed_context_search` | research |
+| `full_context_search`, `windowed_context_search` | research |
 | `windowed_result_merge`, `full_context_answer`, `conversational_candidate` | writing |
 | `model_test`, `model_list` | (settings / provider ops) |
 
@@ -91,4 +91,3 @@ Do not implement retry policy in full here unless it is necessary to make the ro
 - No full NIM migration yet.
 - No Google provider yet.
 - No settings UI changes yet.
-

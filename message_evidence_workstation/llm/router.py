@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from typing import Any, Protocol
 
@@ -17,10 +18,12 @@ from message_evidence_workstation.config.settings import (
 )
 from message_evidence_workstation.llm.errors import (
     ModelError,
+    is_retryable_model_error,
     model_error_from_nim,
 )
 from message_evidence_workstation.llm.providers.google_provider import GoogleModelProvider
 from message_evidence_workstation.llm.providers.nim_provider import NimModelProvider
+from message_evidence_workstation.llm.retry import call_with_retry
 from message_evidence_workstation.llm.task_roles import (
     task_role_for_run_type,
     user_facing_role_for_task_role,
@@ -55,6 +58,10 @@ class _ChatProvider(Protocol):
 class ModelRouter:
     def __init__(self, settings: AppSettings | None = None) -> None:
         self._settings = settings or load_settings()
+        self._log = logging.getLogger(__name__)
+
+    def _nim_log_fold_warning(self, message: str, details: dict[str, Any]) -> None:
+        self._log.warning("%s: %s", message, details)
 
     @classmethod
     def from_settings(cls, settings: AppSettings | None = None) -> ModelRouter:
@@ -74,7 +81,10 @@ class ModelRouter:
 
     def _provider_for_config(self, config: ModelRoleConfig) -> _ChatProvider:
         if config.provider == PROVIDER_NIM:
-            return NimModelProvider(config)
+            return NimModelProvider(
+                config,
+                log_warning=self._nim_log_fold_warning,
+            )
         if config.provider == PROVIDER_GOOGLE:
             return GoogleModelProvider(config)
         raise ModelRouterError(f"Provider {config.provider!r} is not implemented.")
@@ -89,6 +99,16 @@ class ModelRouter:
         timeout_seconds: float,
         temperature: float,
     ) -> ModelChatResult:
+        if not config.model.strip():
+            raise ModelRouterError(
+                f"Model is not configured for provider {config.provider!r}. "
+                "Set a model in Settings -> Model Routing."
+            )
+        if config.provider == PROVIDER_NIM and not config.api_base_url.strip():
+            raise ModelRouterError(
+                "NIM API base URL is not configured. "
+                "Set an endpoint in Settings -> Provider Settings."
+            )
         provider = self._provider_for_config(config)
         try:
             result = provider.chat_completion(
@@ -135,7 +155,27 @@ class ModelRouter:
                 temperature=selected_temperature,
             )
 
-        return operation()
+        def is_retryable(exc: Exception) -> bool:
+            if isinstance(exc, ModelError):
+                return is_retryable_model_error(exc)
+            return False
+
+        def on_retry(attempt: int, exc: Exception, delay: float) -> None:
+            error_type = exc.error_type if isinstance(exc, ModelError) else type(exc).__name__
+            import logging
+            logging.getLogger(__name__).warning(
+                "Retry attempt %d/%d for task_role=%s provider=%s model=%s "
+                "error_type=%s delay=%.1fs",
+                attempt + 1,
+                2,
+                task_role.value,
+                config.provider,
+                config.model,
+                error_type,
+                delay,
+            )
+
+        return call_with_retry(operation, is_retryable=is_retryable, on_retry=on_retry)
 
     def chat_for_run_type(
         self,
@@ -184,10 +224,12 @@ class ModelRouter:
                     google_key = role_config.api_key
                 if role_config.provider == PROVIDER_GOOGLE and role_config.model:
                     google_model = role_config.model
+            if not google_model:
+                raise ModelRouterError("No Google model configured. Set a model in Settings -> Model Routing.")
             return apply_api_key_env_override(
                 ModelRoleConfig(
                     provider=PROVIDER_GOOGLE,
-                    model=google_model or "gemini-2.0-flash",
+                    model=google_model,
                     api_key=google_key,
                     timeout_seconds=nim.timeout_seconds,
                 )

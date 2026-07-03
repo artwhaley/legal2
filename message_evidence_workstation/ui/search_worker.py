@@ -146,6 +146,7 @@ def run_search_job(spec: SearchJobSpec, cancel_token: SearchCancellationToken | 
                 router,
                 spec.query,
                 dataset_id=spec.dataset_id,
+                max_expansion_terms=settings.search.max_expansion_terms,
             )
             if cancel_token is not None and cancel_token.is_cancelled():
                 return SearchJobResult(

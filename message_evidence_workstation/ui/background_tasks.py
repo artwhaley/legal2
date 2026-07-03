@@ -10,6 +10,21 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 T = TypeVar("T")
 
+_shutdown_requested: bool = False
+_shutdown_lock = threading.Lock()
+
+
+def request_shutdown() -> None:
+    """Signal all background runners to skip new work."""
+    global _shutdown_requested
+    with _shutdown_lock:
+        _shutdown_requested = True
+
+
+def _check_shutdown() -> bool:
+    with _shutdown_lock:
+        return _shutdown_requested
+
 
 class _JobBridge(QObject):
     """Marshals worker-thread results onto the QObject owner thread (UI)."""
@@ -33,9 +48,25 @@ def run_background(
     on_success: Callable[[T], None],
     on_error: Callable[[BaseException], None],
 ) -> threading.Thread:
-    """Execute ``fn`` on a daemon thread; run callbacks on the UI thread."""
+    """Execute ``fn`` on a daemon thread; run callbacks on the UI thread.
+
+    If :func:`request_shutdown` has been called the work is skipped and a
+    :class:`RuntimeError` is delivered to ``on_error`` immediately.
+    """
     if parent is None:
         raise ValueError("run_background requires a QObject parent for UI-thread delivery")
+
+    if _check_shutdown():
+        thread = threading.Thread(target=lambda: None, name="mew-background-skipped", daemon=True)
+        thread.start()
+        resolved_error = RuntimeError("Background work skipped: shutdown requested")
+        from message_evidence_workstation.ui.ui_callback_watchdog import run_ui_callback
+
+        run_ui_callback(
+            "background_tasks.on_error",
+            lambda: on_error(resolved_error),  # type: ignore[arg-type]
+        )
+        return thread
 
     bridge = _JobBridge(parent)
 
@@ -58,10 +89,13 @@ def run_background(
     bridge.errored.connect(on_bridge_error)
 
     def runner() -> None:
+        if _check_shutdown():
+            bridge.errored.emit(RuntimeError("Background work skipped: shutdown requested"))
+            return
         try:
             result = fn()
             bridge.succeeded.emit(result)
-        except BaseException as exc:
+        except Exception as exc:
             bridge.errored.emit(exc)
 
     thread = threading.Thread(target=runner, name="mew-background", daemon=True)

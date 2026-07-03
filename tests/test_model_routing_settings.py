@@ -145,3 +145,24 @@ def test_answer_settings_migration_strips_archaic_keys(isolated_settings) -> Non
     assert "whole_transcript_max_chars" not in saved["answer"]
     assert "window_overlap_messages" not in saved["answer"]
     assert saved["nim"]["window_overlap_messages"] == 5
+
+
+def test_legacy_answer_session_gap_migrates_to_chunking(isolated_settings) -> None:
+    path = settings_path()
+    path.write_text(
+        json.dumps(
+            {
+                "answer": {
+                    "answer_strategy": "whole_transcript",
+                    "session_gap_minutes": 90,
+                },
+                "chunking": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    settings = load_settings()
+    assert float(settings.chunking["session_gap_hours"]) == 1.5
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert "session_gap_minutes" not in saved["answer"]
+    assert float(saved["chunking"]["session_gap_hours"]) == 1.5

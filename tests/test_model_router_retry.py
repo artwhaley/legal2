@@ -32,16 +32,17 @@ def db(tmp_path):
 
 
 def _app_settings() -> AppSettings:
-    nim = NimSettings(api_key="key")
+    nim = NimSettings(api_base_url="https://integrate.api.nvidia.com/v1", api_key="key")
+    base_url = "https://integrate.api.nvidia.com/v1"
     routing = ModelRoutingSettings(
-        expansion=ModelRoleConfig(provider=PROVIDER_NIM, model="expansion-model", api_key="key"),
-        research=ModelRoleConfig(provider=PROVIDER_NIM, model="research-model", api_key="key"),
-        writing=ModelRoleConfig(provider=PROVIDER_NIM, model="writing-model", api_key="key"),
+        expansion=ModelRoleConfig(provider=PROVIDER_NIM, model="expansion-model", api_key="key", api_base_url=base_url),
+        research=ModelRoleConfig(provider=PROVIDER_NIM, model="research-model", api_key="key", api_base_url=base_url),
+        writing=ModelRoleConfig(provider=PROVIDER_NIM, model="writing-model", api_key="key", api_base_url=base_url),
     )
     return AppSettings(nim=nim, model_routing=routing)
 
 
-def test_router_surfaces_first_429_without_retry() -> None:
+def test_router_retries_429_then_fails() -> None:
     router = ModelRouter(_app_settings())
     attempts = {"count": 0}
 
@@ -64,7 +65,7 @@ def test_router_surfaces_first_429_without_retry() -> None:
             )
     assert exc_info.value.error_type == "http_error"
     assert exc_info.value.details.get("status_code") == 429
-    assert attempts["count"] == 1
+    assert attempts["count"] == 2
 
 
 def test_router_does_not_retry_missing_api_key() -> None:

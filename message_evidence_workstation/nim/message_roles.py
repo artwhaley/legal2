@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 from message_evidence_workstation.config.settings import load_settings, save_settings
 
@@ -91,7 +94,11 @@ def is_system_role_unsupported_error(exc: BaseException) -> bool:
         return True
     try:
         payload = json.loads(body)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        _log.warning(
+            "Non-JSON body in system-role error detection: %s",
+            exc,
+        )
         return False
     if not isinstance(payload, dict):
         return False

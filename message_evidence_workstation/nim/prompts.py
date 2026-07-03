@@ -14,22 +14,18 @@ RUN_TYPE_KEYWORD_EXPANSION = "keyword_expansion"
 RUN_TYPE_CONVERSATIONAL_PLANNER = "conversational_search_planner"
 RUN_TYPE_CONVERSATIONAL_SYNTHESIS = "conversational_search_synthesis"
 RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER = "whole_transcript_answer"
-RUN_TYPE_COVERAGE_SESSION_ANSWER = "coverage_session_answer"
-RUN_TYPE_COVERAGE_AUDIT = "coverage_audit"
-RUN_TYPE_SESSION_SUMMARY = "session_summary"
-RUN_TYPE_SESSION_CLASSIFICATION = "session_classification"
+RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS = "exhaustive_scan_retrieval_terms"
 RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN = "exhaustive_window_scan"
 RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE = "exhaustive_window_merge"
+RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS = "evidence_ledger_synthesis"
 
 ALL_RUN_TYPES = (
     RUN_TYPE_KEYWORD_EXPANSION,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
-    RUN_TYPE_COVERAGE_SESSION_ANSWER,
-    RUN_TYPE_COVERAGE_AUDIT,
-    RUN_TYPE_SESSION_SUMMARY,
-    RUN_TYPE_SESSION_CLASSIFICATION,
+    RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS,
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
+    RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS,
 )
 
 LEGAL_EVIDENCE_POLICY = (
@@ -57,8 +53,14 @@ EVIDENCE_BLOCK_RULES = (
     "For each material evidence cluster, choose hit_message_id as the strongest, most recognizable, "
     "highest-confidence message in that cluster. start_message_id and end_message_id should bracket "
     "only the directly relevant passage. Do not pad ranges for context; the app will add surrounding "
-    "context automatically. Prefer fewer, better ranges over bloated duplicate ranges, but include all "
-    "materially distinct evidence clusters. summary should be a clean clickable result label for the UI. "
+    "context automatically. Prefer concise, non-duplicative ranges, but include every materially "
+    "distinct evidence cluster. For \"all times\" questions, high recall is more important than "
+    "minimizing the number of ranges. Treat separate conversations, dates, incidents, decisions, "
+    "disputes, logistics exchanges, payments, appointments, absences, plans, and follow-ups as separate "
+    "clickable ranges when they are individually relevant. Do not merge separate occurrences merely "
+    "because they share a topic, person, school, provider, or general theme. Use answer_summary for "
+    "the broad overview; do not substitute an overview for clickable ranges. summary should be a clean "
+    "clickable result label for the UI. "
     "display_text should be short hover text that helps the reviewer recognize the hit quickly. "
     "In brief mode, the UI may show date_description only, so keep date_description concrete and useful."
 )
@@ -79,8 +81,12 @@ DEFAULT_PROMPT_BODIES: dict[str, str] = {
         f"{LEGAL_EVIDENCE_POLICY} "
         "Task: expand a legal-evidence search query into additional keyword terms. "
         'Return JSON only: {"terms": ["term1", "term2"]}. '
+        "You only know the user's search query; you have not read the corpus. "
+        "Do not invent names, institutions, events, programs, people, or corpus-specific phrases "
+        "that are not present in the query. "
         "Return at most 15 short concrete terms likely to appear verbatim in family/message text. "
-        "Prefer names, alternate spellings, concrete nouns, events, places, and plain-language synonyms. "
+        "Prefer exact important words from the query, obvious morphology variants, alternate spellings, "
+        "concrete nouns, events, places, and plain-language synonyms that are likely source-message wording. "
         "Do not add broad legal concepts unless the query itself uses them. "
         "No explanations and no nested JSON strings inside the terms array."
     ),
@@ -96,49 +102,18 @@ DEFAULT_PROMPT_BODIES: dict[str, str] = {
         "explain uncertainty. If evidence is insufficient, say so explicitly. "
         f"{EVIDENCE_BLOCK_RULES} {ANSWER_FORMAT_RULES} Return JSON only:\n{ANSWER_JSON_SCHEMA}"
     ),
-    RUN_TYPE_COVERAGE_SESSION_ANSWER: (
+    RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS: (
         f"{LEGAL_EVIDENCE_POLICY} "
-        "Task: answer questions about a large message-evidence corpus using session summaries "
-        "and selected transcript windows. Session summaries are orientation aids; cite only message IDs "
-        "present in supplied transcript windows. Prefer completeness over brevity. Include all material "
-        "relevant findings from inspected windows, contradictions, and residual gaps from skipped or "
-        "summary-only sessions. The app renders answer_summary plus clickable answer_ranges, so optimize for that shape. "
-        f"{EVIDENCE_BLOCK_RULES} {ANSWER_FORMAT_RULES} Return JSON only with answer_summary, "
-        "answer_format, answer, answer_ranges, uncertainties, and coverage_summary including sessions_considered, "
-        "sessions_inspected, and sessions_skipped."
-    ),
-    RUN_TYPE_COVERAGE_AUDIT: (
-        f"{LEGAL_EVIDENCE_POLICY} "
-        "Task: audit coverage before final synthesis in session-coverage mode. "
-        "Review selected evidence, skipped session summaries, retrieval assists, and the "
-        "user question. Return JSON only:\n"
-        '{"additional_session_ids": ["session_001"], "residual_uncertainties": ["..."], '
-        '"audit_notes": "..."}\n'
-        "Request every skipped session that might materially affect the answer, including sessions "
-        "with contradictory facts, ambiguous summaries, or retrieval hits. Return an empty "
-        "additional_session_ids array only when skipped material is clearly immaterial."
-    ),
-    RUN_TYPE_SESSION_SUMMARY: (
-        f"{LEGAL_EVIDENCE_POLICY} "
-        "Task: summarize a message transcript session for legal evidence review. "
-        "Return JSON only with arrays for topics, people, events, commitments, conflicts, "
-        "appointments, money, parenting_school, medical, travel, and notable_quotes. "
-        "notable_quotes entries must be objects with message_id and quote. "
-        "Use only message IDs from the transcript. Preserve concrete dates, people, promises, "
-        "admissions, denials, disputes, changes in position, and safety/medical/school/financial "
-        "details. Do not smooth over contradictions. If a category has no evidence, return an empty array."
-    ),
-    RUN_TYPE_SESSION_CLASSIFICATION: (
-        f"{LEGAL_EVIDENCE_POLICY} "
-        "Task: classify transcript sessions for relevance to a user question. "
-        "You receive JSON with user_query and session_summaries. "
-        "Every session must appear exactly once. Return JSON only:\n"
-        '{"session_classifications": [{"session_id": "...", '
-        '"classification": "relevant|possibly_relevant|not_relevant", "reason": "..."}]}\n'
-        "Use relevant when the summary likely contains direct evidence responsive to the question. "
-        "Use possibly_relevant when the summary is ambiguous, related, contradictory, or could contain "
-        "important context. Use not_relevant only when it is clearly unrelated. Err toward "
-        "possibly_relevant when unsure so the system preserves recall."
+        "Task: plan literal keyword searches over a message corpus. "
+        'Return JSON only: {"terms": ["term1", "term2"]}. '
+        "You only know the user's question. You have not read the corpus. "
+        "Do not invent names, institutions, events, programs, people, or phrases that are not present in the user question. "
+        "Return 1-5 high-precision literal search terms or short phrases derived from the user question. "
+        "Allowed: exact important words from the user question; obvious morphology variants of those words; "
+        "very constrained ordinary-language variants only when they are likely source-message wording. "
+        "Prefer precision over recall. Avoid broad/common words likely to appear in unrelated conversations. "
+        "Avoid legal/task framing words unless they are likely to appear in source messages. "
+        "No explanations and no nested JSON strings inside the terms array."
     ),
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN: (
         f"{LEGAL_EVIDENCE_POLICY} "
@@ -160,6 +135,11 @@ DEFAULT_PROMPT_BODIES: dict[str, str] = {
         f"{EVIDENCE_BLOCK_RULES} {ANSWER_FORMAT_RULES} Return JSON only with answer_summary, "
         "answer_format, answer, answer_ranges, uncertainties, and coverage_summary. Use only message IDs present "
         "in the supplied window findings."
+    ),
+    RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS: (
+        "You are a legal evidence reviewer. The user supplies a ledger of evidence "
+        "records. Analyze the ledger, identify themes, patterns, contradictions, "
+        "and uncertainties. Return JSON only."
     ),
 }
 

@@ -94,5 +94,4 @@ T25 inventory includes call sites slated for removal or router exclusion:
 
 - **Obsolete:** `evidence_range_suggestion` (Output Formatting tab) — do not router-migrate.
 - **Removed in T25B:** retrieval fallback (planner, harness LLM path, synthesis) from Conversational tab.
-- **Confirmed research role:** `session_summary`, `session_classification`, `coverage_audit` (session-coverage mode only).
-
+- Session-coverage-only research prep calls were removed with the obsolete `session_coverage` mode.

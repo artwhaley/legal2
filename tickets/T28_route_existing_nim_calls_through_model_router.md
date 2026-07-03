@@ -19,8 +19,8 @@ Migration targets (active product LLM calls):
 - keyword expansion (Simple Search + any remaining harness test utilities)
 - whole-transcript and windowed context analysis
 - windowed result merge
-- final answer generation (`full_context_answer`, `coverage_session_answer`)
-- session-coverage research prep (`session_summary`, `session_classification`, `coverage_audit`)
+- final answer generation (`full_context_answer`)
+- obsolete session-coverage research prep calls were removed
 - settings model test
 - settings model list refresh
 
@@ -43,7 +43,6 @@ Migration targets include at least:
 - keyword expansion
 - whole-transcript and windowed context analysis
 - result merge / final answer
-- session-coverage research prep and final answer
 - settings model test
 - settings model list refresh
 
@@ -62,8 +61,6 @@ It is fine if `message_evidence_workstation/nim/` remains in place as the NIM-sp
 - `message_evidence_workstation/llm/providers/nim_provider.py` (new)
 - `message_evidence_workstation/search/keyword_expansion.py`
 - `message_evidence_workstation/search/conversational_answer.py`
-- `message_evidence_workstation/search/session_summaries.py`
-- `message_evidence_workstation/search/coverage_audit.py`
 - `message_evidence_workstation/search/tool_runner.py` (keyword expansion helper only if still used)
 - `message_evidence_workstation/ui/settings_tab.py`
 - `tests/test_nim_client.py`
@@ -80,7 +77,7 @@ It is fine if `message_evidence_workstation/nim/` remains in place as the NIM-sp
 ## Tests / Verification
 
 - Regression test: keyword expansion still works and is routed as `search_expansion`.
-- Regression test: whole-transcript / windowed / session-coverage answers route to correct writing/research roles.
+- Regression test: whole-transcript and windowed answers route to correct writing/research roles.
 - Regression test: model test flow still reports success/failure cleanly.
 - Regression test: NIM unsupported system-role fallback still works.
 - Full existing NIM/conversational tests pass after migration.
@@ -89,4 +86,3 @@ It is fine if `message_evidence_workstation/nim/` remains in place as the NIM-sp
 
 - No Google provider behavior yet.
 - No retry policy redesign beyond what is required to preserve behavior.
-

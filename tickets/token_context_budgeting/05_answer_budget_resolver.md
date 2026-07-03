@@ -76,7 +76,7 @@ else:
 Explicit strategies:
 
 - `exhaustive_window_scan` always selects exhaustive scan.
-- `session_coverage` always selects session coverage.
+- Legacy `session_coverage` settings now normalize to `whole_transcript`.
 - `retrieval_fallback` always selects retrieval fallback.
 - `whole_transcript` should select whole transcript if it fits; if it does not fit, log a warning and route to exhaustive scan rather than causing a model overflow.
 

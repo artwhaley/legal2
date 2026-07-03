@@ -89,7 +89,7 @@ class _RunnerState:
     grouped_results: list[GroupedSearchResult] = field(default_factory=list)
 
 
-def _extract_json_object(content: str) -> dict[str, Any]:
+def _extract_json_object(content: str, logger: ProcessLogger | None = None) -> dict[str, Any]:
     text = content.strip()
     if not text:
         raise PlannerParseError("Planner returned empty content")
@@ -117,47 +117,79 @@ def _extract_json_object(content: str) -> dict[str, Any]:
 
     decoder = json.JSONDecoder()
     last_error: json.JSONDecodeError | None = None
-    candidates: list[str] = [text]
+    candidates: list[tuple[str, str]] = [("full_text", text)]
     start = text.find("{")
     end = text.rfind("}")
     if start >= 0 and end > start:
-        candidates.append(text[start : end + 1])
-    for candidate in list(candidates):
+        candidates.append(("brace_extraction", text[start : end + 1]))
+    for name, candidate in list(candidates):
         repaired = _without_trailing_commas(candidate)
         if repaired != candidate:
-            candidates.append(repaired)
+            candidates.append(("trailing_comma_repair", repaired))
 
-    for candidate in candidates:
+    attempt_history: list[dict[str, Any]] = []
+    for name, candidate in candidates:
         try:
             payload = json.loads(candidate)
+            if attempt_history and logger is not None:
+                logger.warning(
+                    component="search.tool_runner",
+                    operation="json_repair_salvaged",
+                    message=f"JSON repair succeeded via {name}",
+                    details={
+                        "winning_strategy": name,
+                        "attempts": attempt_history,
+                        "content_preview": content[:200],
+                    },
+                )
             break
         except json.JSONDecodeError as exc:
+            attempt_history.append({"strategy": name, "error": str(exc), "context_preview": candidate[:200]})
             last_error = exc
         for index, char in enumerate(candidate):
             if char != "{":
                 continue
             try:
                 payload, _end = decoder.raw_decode(candidate[index:])
+                attempt_history.append({"strategy": f"raw_decode_at_{index}", "error": None, "context_preview": candidate[index:index+200]})
+                if logger is not None:
+                    logger.warning(
+                        component="search.tool_runner",
+                        operation="json_repair_salvaged",
+                        message=f"JSON repair succeeded via raw_decode at {index}",
+                        details={
+                            "winning_strategy": f"raw_decode_at_{index}",
+                            "attempts": attempt_history,
+                            "content_preview": content[:200],
+                        },
+                    )
                 break
             except json.JSONDecodeError as exc:
+                attempt_history.append({"strategy": f"raw_decode_at_{index}", "error": str(exc), "context_preview": candidate[index:index+200]})
                 last_error = exc
         else:
             continue
         break
     else:
         if last_error is not None:
-            raise _with_json_context(last_error, text) from last_error
+            exc = _with_json_context(last_error, text)
+            exc.details["attempts"] = attempt_history
+            raise exc from last_error
         raise PlannerParseError(
             "Planner output is not valid JSON: no JSON object found",
-            details={"content_preview": content[:500], "content_length": len(content)},
+            details={
+                "content_preview": content[:500],
+                "content_length": len(content),
+                "attempts": attempt_history,
+            },
         )
     if not isinstance(payload, dict):
         raise PlannerParseError("Planner output must be a JSON object")
     return payload
 
 
-def parse_planner_plan(content: str) -> SearchPlannerPlan:
-    payload = _extract_json_object(content)
+def parse_planner_plan(content: str, logger: ProcessLogger | None = None) -> SearchPlannerPlan:
+    payload = _extract_json_object(content, logger=logger)
     strategy = payload.get("strategy_summary")
     tool_calls = payload.get("tool_calls", [])
     if not isinstance(strategy, str) or not strategy.strip():
@@ -260,8 +292,13 @@ def _keyword_expansion_hits(
     dataset_id: int,
     query: str,
 ) -> tuple[list[str], list[SearchHit]]:
-    router = ModelRouter(load_settings())
-    terms = expand_keywords(conn, logger, router, query, dataset_id=dataset_id)
+    settings = load_settings()
+    router = ModelRouter(settings)
+    terms = expand_keywords(
+        conn, logger, router, query,
+        dataset_id=dataset_id,
+        max_expansion_terms=settings.search.max_expansion_terms,
+    )
     hits: list[SearchHit] = []
     for term in terms:
         for fts_hit in fts.search_exact(conn, logger, dataset_id, term):
@@ -662,7 +699,7 @@ def fetch_conversational_plan(
         user_content=user_query,
         dataset_id=dataset_id,
     )
-    plan = parse_planner_plan(chat.content)
+    plan = parse_planner_plan(chat.content, logger=logger)
     logger.info(
         component="search.tool_runner",
         operation="plan_parsed",

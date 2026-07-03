@@ -17,7 +17,7 @@ GOOGLE_API_KEY_ENV = "MEW_GOOGLE_API_KEY"
 PROVIDER_NIM = "nim"
 PROVIDER_GOOGLE = "google"
 
-LEGACY_ANSWER_STRATEGIES = frozenset({"auto", "retrieval_fallback"})
+LEGACY_ANSWER_STRATEGIES = frozenset({"auto", "retrieval_fallback", "session_coverage"})
 DEFAULT_ANSWER_STRATEGY = "whole_transcript"
 
 _LEGACY_NIM_KEYS = frozenset({"model", "manual_model_entry_enabled"})
@@ -27,13 +27,13 @@ _LEGACY_NIM_KEYS = frozenset({"model", "manual_model_entry_enabled"})
 class NimSettings:
     """Shared provider connection defaults and token budgets for routed model calls."""
 
-    api_base_url: str = "https://integrate.api.nvidia.com/v1"
+    api_base_url: str = ""
     api_key: str = ""
     temperature: float = 0.2
     max_output_tokens: int = 4096
     context_window_tokens: int = 0
     context_safety_ratio: float = 0.70
-    prompt_overhead_tokens: int = 1500
+    prompt_overhead_tokens: int = 6000
     timeout_seconds: float = 600.0
     streaming: bool = False
     window_overlap_messages: int = 2
@@ -47,7 +47,7 @@ class TranscriptSettings:
 @dataclass
 class AnswerSettings:
     answer_strategy: str = DEFAULT_ANSWER_STRATEGY
-    session_gap_minutes: int = 120
+    use_evidence_ledger_merge: bool = True
 
 
 _LEGACY_ANSWER_ARCHAIC_KEYS = frozenset(
@@ -57,6 +57,7 @@ _LEGACY_ANSWER_ARCHAIC_KEYS = frozenset(
         "transcript_window_padding",
         "window_target_tokens",
         "window_overlap_messages",
+        "session_gap_minutes",
     }
 )
 
@@ -93,6 +94,7 @@ class ModelRoutingSettings:
 @dataclass
 class SearchSettings:
     fts_page_size: int = 200
+    max_expansion_terms: int = 20
 
 
 @dataclass
@@ -144,6 +146,20 @@ def _normalize_answer_settings(data: dict) -> AnswerSettings:
     if strategy in LEGACY_ANSWER_STRATEGIES:
         merged["answer_strategy"] = DEFAULT_ANSWER_STRATEGY
     return AnswerSettings(**merged)
+
+
+def _migrate_legacy_session_gap_to_chunking(
+    chunking: dict[str, Any],
+    answer_data: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    if "session_gap_hours" in chunking:
+        return dict(chunking), False
+    legacy_gap_minutes = int(answer_data.get("session_gap_minutes", 0) or 0)
+    if legacy_gap_minutes <= 0:
+        return dict(chunking), False
+    migrated = dict(chunking)
+    migrated["session_gap_hours"] = legacy_gap_minutes / 60.0
+    return migrated, True
 
 
 def _nim_role_template(nim: NimSettings) -> ModelRoleConfig:
@@ -291,13 +307,17 @@ def load_settings() -> AppSettings:
         bumped_output_tokens = True
     answer_data = data.get("answer", {})
     nim, migrated_tokens = _migrate_answer_token_fields_to_nim(nim, answer_data)
+    chunking_data, migrated_gap = _migrate_legacy_session_gap_to_chunking(
+        dict(data.get("chunking", {})),
+        answer_data,
+    )
     routing = _model_routing_from_dict(data.get("model_routing", {}), nim=nim)
     routing = _migrate_legacy_nim_model(routing, legacy_nim_model)
     model_metadata = dict(data.get("model_metadata", data.get("nim_model_metadata", {})))
     settings = AppSettings(
         nim=nim,
         embedding_model=data.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2"),
-        chunking=data.get("chunking", {}),
+        chunking=chunking_data,
         answer=_normalize_answer_settings(data.get("answer", {})),
         transcript=TranscriptSettings(**{**asdict(TranscriptSettings()), **data.get("transcript", {})}),
         search=SearchSettings(**{**asdict(SearchSettings()), **data.get("search", {})}),
@@ -309,7 +329,7 @@ def load_settings() -> AppSettings:
         },
         model_routing=routing,
     )
-    should_save = bumped_timeout or bumped_output_tokens or migrated_tokens
+    should_save = bumped_timeout or bumped_output_tokens or migrated_tokens or migrated_gap
     if any(key in answer_data for key in _LEGACY_ANSWER_TOKEN_KEYS):
         should_save = True
     if any(key in answer_data for key in _LEGACY_ANSWER_ARCHAIC_KEYS):

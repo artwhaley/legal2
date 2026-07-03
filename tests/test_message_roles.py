@@ -45,7 +45,7 @@ def test_is_system_role_unsupported_error() -> None:
 def test_chat_completion_retries_without_system_role(tmp_path) -> None:
     gemma = "google/gemma-2-2b-it"
     settings_path = tmp_path / "settings.json"
-    nim = NimSettings(api_key="key")
+    nim = NimSettings(api_base_url="https://integrate.api.nvidia.com/v1", api_key="key")
     role = ModelRoleConfig(provider=PROVIDER_NIM, model=gemma, api_key="key")
     routing = ModelRoutingSettings(expansion=role, research=replace(role), writing=replace(role))
     with patch("message_evidence_workstation.config.settings.settings_path", return_value=settings_path):

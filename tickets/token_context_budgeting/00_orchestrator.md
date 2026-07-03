@@ -43,7 +43,6 @@ This is an evidence workstation, not a generic RAG toy. Recall and completeness 
   - `auto`
   - `whole_transcript`
   - `exhaustive_window_scan`
-  - `session_coverage`
   - `retrieval_fallback`
 - Preserve existing settings file compatibility.
 - Do not require `tiktoken`; support it optionally.

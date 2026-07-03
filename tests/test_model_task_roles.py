@@ -16,7 +16,7 @@ from message_evidence_workstation.llm import (
 from message_evidence_workstation.nim.prompts import (
     ALL_RUN_TYPES,
     RUN_TYPE_CONVERSATIONAL_SYNTHESIS,
-    RUN_TYPE_COVERAGE_SESSION_ANSWER,
+    RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS,
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
     RUN_TYPE_KEYWORD_EXPANSION,
@@ -42,6 +42,11 @@ def test_keyword_expansion_maps_to_search_expansion() -> None:
     assert keyword_expansion.TASK_ROLE == ModelTaskRole.SEARCH_EXPANSION
     sites = call_sites_for_task_role(ModelTaskRole.SEARCH_EXPANSION)
     assert any(site.function == "expand_keywords" for site in sites)
+    assert any(site.function == "collect_exhaustive_window_hints" for site in sites)
+
+
+def test_exhaustive_scan_retrieval_terms_map_to_search_expansion() -> None:
+    assert task_role_for_run_type(RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS) == ModelTaskRole.SEARCH_EXPANSION
 
 
 def test_synthesis_maps_to_windowed_result_merge() -> None:
@@ -51,7 +56,6 @@ def test_synthesis_maps_to_windowed_result_merge() -> None:
 
 def test_full_context_answer_run_types() -> None:
     assert task_role_for_run_type(RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER) == ModelTaskRole.FULL_CONTEXT_ANSWER
-    assert task_role_for_run_type(RUN_TYPE_COVERAGE_SESSION_ANSWER) == ModelTaskRole.FULL_CONTEXT_ANSWER
 
 
 def test_windowed_flow_run_types() -> None:

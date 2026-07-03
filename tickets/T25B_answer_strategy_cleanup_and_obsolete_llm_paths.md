@@ -22,7 +22,7 @@ Remove `auto` and `retrieval_fallback`. Supported strategies after this ticket:
 |----------|----------|
 | `whole_transcript` (**new default**) | Try full-dataset transcript answer when token budget allows; otherwise **explicitly** route to exhaustive window scan with clear UI status (not silent degradation). |
 | `exhaustive_window_scan` | Always windowed scan + merge (current behavior). |
-| `session_coverage` | **Only when user explicitly selects this** in Settings. Runs session-summary prep, classification, coverage audit, then final answer. |
+| `session_coverage` | Removed as obsolete. Persisted legacy settings normalize to `whole_transcript`. |
 
 Migration: existing settings with `answer_strategy: "auto"` load as `whole_transcript`.
 
@@ -35,11 +35,7 @@ Migration: existing settings with `answer_strategy: "auto"` load as `whole_trans
 
 These three run types are confirmed **research-model** work (`UserFacingModelRole.RESEARCH`):
 
-- `session_summary`
-- `session_classification`
-- `coverage_audit`
-
-They run **only** inside `run_session_coverage_answer` when answer strategy is `session_coverage`. `coverage_audit` does not run in whole-transcript or exhaustive-window modes.
+The obsolete `session_summary`, `session_classification`, and `coverage_audit` runs were removed with `session_coverage` mode.
 
 ### Obsolete / do not router-migrate
 
@@ -68,7 +64,7 @@ Keyword expansion in Simple Search and inside retrieval harness **unit tests** r
 
 - Remove `ANSWER_STRATEGY_AUTO` and `ANSWER_STRATEGY_RETRIEVAL_FALLBACK` branches.
 - Remove `ANSWER_MODE_RETRIEVAL_FALLBACK` decision path.
-- `session_coverage` decision only when strategy is explicitly `session_coverage`.
+- Legacy `session_coverage` settings normalize to `whole_transcript`; no session-coverage decision path remains.
 
 ### Conversational tab
 
@@ -114,8 +110,8 @@ Keyword expansion in Simple Search and inside retrieval harness **unit tests** r
 - Default answer strategy is `whole_transcript`.
 - No `auto` or `retrieval_fallback` in settings UI or saved defaults for new installs.
 - Conversational tab never runs planner → harness → synthesis.
-- `session_coverage` runs only when explicitly selected.
-- `coverage_audit` runs only as part of session-coverage flow.
+- `session_coverage` no longer exists.
+- `coverage_audit` no longer exists in production flow.
 - Obsolete range suggestion is documented and excluded from router migration list.
 - Research role mapping documented for session prep LLM calls.
 
@@ -123,7 +119,7 @@ Keyword expansion in Simple Search and inside retrieval harness **unit tests** r
 
 - Unit test: `auto` settings migrate to `whole_transcript`.
 - Unit test: `resolve_answer_budget` never returns `retrieval_fallback`.
-- Unit test: `session_coverage` strategy returns session-coverage mode only when explicit.
+- Unit test: legacy `session_coverage` settings normalize to `whole_transcript`.
 - Regression test: whole-transcript → exhaustive-window escalation remains explicit (token budget).
 - Remove or update tests that depend on retrieval-fallback conversational flow.
 

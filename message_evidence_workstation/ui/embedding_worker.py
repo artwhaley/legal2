@@ -281,6 +281,10 @@ def run_embedding_job(
     if parent is None:
         raise ValueError("run_embedding_job requires a QObject parent for UI-thread delivery")
     _ensure_worker_thread()
+    # Pre-create delivery bridge on the UI thread (caller's thread) so Qt
+    # never sees a QObject parented to SettingsTab being created on a
+    # background thread.  Matches the pattern in background_tasks.py.
+    _delivery_bridge(parent)
     trace("embedding_worker", "enqueue", job_type=spec.job_type, queue_depth=_job_queue.qsize())
     _job_queue.put(_QueuedWork(spec, on_success, on_error, parent, on_progress))
 

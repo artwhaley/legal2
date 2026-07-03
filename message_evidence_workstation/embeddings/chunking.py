@@ -33,6 +33,7 @@ class ChunkingConfig:
             "session_gap_hours": float(self.session_gap_hours),
             "use_semantic_boundaries": bool(self.use_semantic_boundaries),
             "split_on_date_change": bool(self.split_on_date_change),
+            "calibration_method": "adjacent_similarity_quantile_v1",
             "overlap_policy": "none",
         }
 
@@ -155,26 +156,6 @@ def _semantic_boundary(
     return _cosine_similarity(centroid, next_vector) < config.semantic_similarity_threshold
 
 
-def _chunk_count_for_threshold(
-    messages_by_thread: dict[str, list[_MessageRow]],
-    *,
-    config: ChunkingConfig,
-    threshold: float,
-) -> int:
-    candidate_config = ChunkingConfig(
-        max_chars=config.max_chars,
-        semantic_similarity_threshold=threshold,
-        desired_average_chunk_messages=config.desired_average_chunk_messages,
-        session_gap_hours=config.session_gap_hours,
-        use_semantic_boundaries=config.use_semantic_boundaries,
-        split_on_date_change=config.split_on_date_change,
-    )
-    return sum(
-        len(build_thread_chunks(rows, config=candidate_config))
-        for rows in messages_by_thread.values()
-    )
-
-
 def calibrate_semantic_similarity_threshold(
     messages_by_thread: dict[str, list[_MessageRow]],
     *,
@@ -184,34 +165,32 @@ def calibrate_semantic_similarity_threshold(
     if message_count <= 0 or config.desired_average_chunk_messages <= 0:
         return config.semantic_similarity_threshold
     target_chunks = max(1, round(message_count / config.desired_average_chunk_messages))
+    base_chunks = sum(1 for rows in messages_by_thread.values() if any(row.body.strip() for row in rows))
+    desired_semantic_breaks = max(0, target_chunks - base_chunks)
+    if desired_semantic_breaks <= 0:
+        return config.semantic_similarity_threshold
 
-    def score(threshold: float) -> tuple[int, float]:
-        chunk_count = _chunk_count_for_threshold(messages_by_thread, config=config, threshold=threshold)
-        return (
-            abs(chunk_count - target_chunks),
-            abs(threshold - DEFAULT_SEMANTIC_SIMILARITY_THRESHOLD),
-        )
+    adjacent_similarities: list[float] = []
+    for rows in messages_by_thread.values():
+        ordered = sorted(rows, key=lambda row: (row.sort_index, row.message_id))
+        previous: _MessageRow | None = None
+        for row in ordered:
+            if not row.body.strip():
+                continue
+            if (
+                previous is not None
+                and previous.vector is not None
+                and row.vector is not None
+                and not _time_or_date_boundary(previous, row, config)
+            ):
+                adjacent_similarities.append(_cosine_similarity(previous.vector, row.vector))
+            previous = row
+    if not adjacent_similarities:
+        return config.semantic_similarity_threshold
 
-    low = 0.0
-    high = 1.0
-    best_threshold = config.semantic_similarity_threshold
-    best_delta = score(best_threshold)
-    for _ in range(7):
-        left = low + (high - low) / 3
-        right = high - (high - low) / 3
-        left_delta = score(left)
-        right_delta = score(right)
-        if left_delta <= right_delta:
-            high = right
-            if left_delta < best_delta:
-                best_delta = left_delta
-                best_threshold = left
-        else:
-            low = left
-            if right_delta < best_delta:
-                best_delta = right_delta
-                best_threshold = right
-    return best_threshold
+    adjacent_similarities.sort()
+    break_index = min(desired_semantic_breaks - 1, len(adjacent_similarities) - 1)
+    return adjacent_similarities[break_index]
 
 
 def config_with_calibrated_threshold(

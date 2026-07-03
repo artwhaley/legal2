@@ -15,6 +15,19 @@ ALL_BOUNDARIES = (
 )
 
 
+class MessageIdNotFoundError(ValueError):
+    """Raised when a message ID is not found in the ordered message list."""
+
+    def __init__(self, message_id: str, ordered_count: int, message: str = "") -> None:
+        self.missing_message_id = message_id
+        self.ordered_count = ordered_count
+        detail = message or (
+            f"Message ID {message_id!r} not found in ordered message list "
+            f"({ordered_count} messages)"
+        )
+        super().__init__(detail)
+
+
 def validate_slot_bounds(
     message_count: int,
     context_start_slot: int,
@@ -76,8 +89,11 @@ def default_slots_for_hit_index_with_context(
 def hit_index_for_message(ordered_message_ids: list[str], message_id: str) -> int:
     try:
         return ordered_message_ids.index(message_id)
-    except ValueError:
-        return 0
+    except ValueError as exc:
+        raise MessageIdNotFoundError(
+            message_id=message_id,
+            ordered_count=len(ordered_message_ids),
+        ) from exc
 
 
 def slots_from_message_boundary_ids(

@@ -37,7 +37,7 @@ Large reloads also revealed two import-phase slow paths that must be treated as 
 - Preserve correctness while improving speed:
   - `thread_ordinal` values must remain stable, gapless, zero-based, and ordered by the canonical transcript order.
   - `source_thread.message_count` must exactly match the imported message count per thread.
-  - Import-time sessions must be valid and deterministic: every message belongs to the expected time/day session coverage, session boundaries reference real message IDs, and persisted sessions pass existing conversational/session tests.
+  - Import-time sessions must be valid and deterministic: every message belongs to the expected time/day session grouping, session boundaries reference real message IDs, and persisted sessions pass existing conversational/session tests.
   - Do not remove semantic session/chunk quality. If semantic sessions are deferred, they must run later from cached/calibrated metadata and replace or refine lightweight sessions only after a successful background pass.
   - Do not preserve speed by silently dropping cached embeddings, skipping FTS/spellfix, weakening evidence-block links, or hiding failures.
 - Route load-tab embedding through `embedding_worker.run_embedding_job` instead of `run_background` plus inline adapter work in `run_embedding_pipeline`.

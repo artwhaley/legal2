@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
+
+_log = logging.getLogger(__name__)
 from uuid import uuid4
 
 from message_evidence_workstation.search.fusion import fuse_hits
@@ -20,6 +23,7 @@ def _parse_ts(value: str) -> datetime | None:
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
+        _log.warning("Malformed timestamp value in grouping: %r", value)
         return None
 
 
@@ -60,40 +64,26 @@ def group_hits(
     dataset_id: int | None = None,
 ) -> list[GroupedSearchResult]:
     ordered = fuse_hits(hits)
+    if logger is not None:
+        logger.info(
+            component="search.grouping",
+            operation="grouping_started",
+            message="Started grouping search hits",
+            details={"hit_count": len(ordered)},
+            dataset_id=dataset_id,
+        )
     groups: list[list[SearchHit]] = []
+    merged_hit_count = 0
     for hit in ordered:
         placed = False
         for group in groups:
             if any(_should_group(existing, hit) for existing in group):
                 group.append(hit)
                 placed = True
-                if logger is not None:
-                    logger.info(
-                        component="search.grouping",
-                        operation="group_merge_hit",
-                        message="Merged hit into existing candidate group",
-                        details={
-                            "message_id": hit.message_id,
-                            "source_thread_id": hit.source_thread_id,
-                            "group_size": len(group),
-                            "reason": "same_thread_within_distance_or_time",
-                        },
-                        dataset_id=dataset_id,
-                    )
+                merged_hit_count += 1
                 break
         if not placed:
             groups.append([hit])
-            if logger is not None:
-                logger.info(
-                    component="search.grouping",
-                    operation="group_new",
-                    message="Started new candidate group",
-                    details={
-                        "message_id": hit.message_id,
-                        "source_thread_id": hit.source_thread_id,
-                    },
-                    dataset_id=dataset_id,
-                )
 
     results: list[GroupedSearchResult] = []
     for group in groups:
@@ -111,5 +101,18 @@ def group_hits(
                     hit.retrieval_method for hit in group
                 } | {method for hit in group for method in hit.extra_methods},
             )
+        )
+    if logger is not None:
+        logger.info(
+            component="search.grouping",
+            operation="grouping_completed",
+            message="Completed grouping search hits",
+            details={
+                "hit_count": len(ordered),
+                "group_count": len(results),
+                "new_group_count": len(groups),
+                "merged_hit_count": merged_hit_count,
+            },
+            dataset_id=dataset_id,
         )
     return results

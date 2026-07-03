@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from message_evidence_workstation.config.settings import ModelRoleConfig, PROVIDER_NIM, NimSettings
 from message_evidence_workstation.llm.types import ModelChatResult, ModelInfo, ModelProvider, ModelTaskRole
 from message_evidence_workstation.nim.client import NimChatResult, NimClient
@@ -9,7 +12,7 @@ from message_evidence_workstation.nim.client import NimChatResult, NimClient
 
 def _nim_settings_from_role(config: ModelRoleConfig) -> NimSettings:
     return NimSettings(
-        api_base_url=config.api_base_url or "https://integrate.api.nvidia.com/v1",
+        api_base_url=config.api_base_url,
         api_key=config.api_key,
         temperature=config.temperature,
         max_output_tokens=config.max_output_tokens,
@@ -35,11 +38,19 @@ def _to_model_chat_result(
 
 
 class NimModelProvider:
-    def __init__(self, config: ModelRoleConfig) -> None:
+    def __init__(
+        self,
+        config: ModelRoleConfig,
+        *,
+        log_warning: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> None:
         if config.provider != PROVIDER_NIM:
             raise ValueError(f"NimModelProvider requires provider={PROVIDER_NIM!r}")
         self._config = config
-        self._client = NimClient(_nim_settings_from_role(config))
+        self._client = NimClient(
+            _nim_settings_from_role(config),
+            log_warning=log_warning,
+        )
 
     @property
     def client(self) -> NimClient:

@@ -7,6 +7,7 @@ import socket
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -92,8 +93,14 @@ def nim_error_log_details(exc: NimClientError) -> dict[str, Any]:
 
 
 class NimClient:
-    def __init__(self, settings: NimSettings) -> None:
+    def __init__(
+        self,
+        settings: NimSettings,
+        *,
+        log_warning: Callable[[str, dict[str, Any]], None] | None = None,
+    ) -> None:
         self.settings = settings
+        self._log_warning = log_warning
 
     def _request(
         self,
@@ -212,6 +219,16 @@ class NimClient:
             ):
                 record_system_role_support(selected_model, False)
                 folded_messages = fold_system_into_user(messages)
+                if self._log_warning is not None:
+                    self._log_warning(
+                        "Model rejected system role; folded prompt into user message",
+                        {
+                            "model": selected_model,
+                            "message_count_before": len(messages),
+                            "message_count_after": len(folded_messages),
+                            "original_error": str(exc),
+                        },
+                    )
                 return self._chat_completion_with_messages(
                     folded_messages,
                     model=selected_model,

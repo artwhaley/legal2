@@ -19,11 +19,12 @@ from message_evidence_workstation.nim.client import NimClient
 
 
 def _app_settings(**nim_overrides) -> AppSettings:
-    nim = NimSettings(api_key="key", **nim_overrides)
+    nim = NimSettings(api_base_url="https://integrate.api.nvidia.com/v1", api_key="key", **nim_overrides)
+    base_url = "https://integrate.api.nvidia.com/v1"
     routing = ModelRoutingSettings(
-        expansion=ModelRoleConfig(provider=PROVIDER_NIM, model="expansion-model", api_key="key"),
-        research=ModelRoleConfig(provider=PROVIDER_NIM, model="research-model", api_key="key"),
-        writing=ModelRoleConfig(provider=PROVIDER_NIM, model="writing-model", api_key="key"),
+        expansion=ModelRoleConfig(provider=PROVIDER_NIM, model="expansion-model", api_key="key", api_base_url=base_url),
+        research=ModelRoleConfig(provider=PROVIDER_NIM, model="research-model", api_key="key", api_base_url=base_url),
+        writing=ModelRoleConfig(provider=PROVIDER_NIM, model="writing-model", api_key="key", api_base_url=base_url),
     )
     return AppSettings(nim=nim, model_routing=routing)
 

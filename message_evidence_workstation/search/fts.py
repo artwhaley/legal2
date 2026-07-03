@@ -18,6 +18,31 @@ FTS_TOKEN_EDGE_RE = re.compile(r"^[^\w']+|[^\w']+$", re.UNICODE)
 FTS_REBUILD_BATCH_SIZE = 1000
 ORDER_KEY_CHUNK_SIZE = 500
 
+FTS_RESERVED_TOKENS = frozenset({"AND", "OR", "NOT", "NEAR"})
+FTS_RESERVED_LOWER = frozenset({t.casefold() for t in FTS_RESERVED_TOKENS})
+
+
+def _is_reserved_fts_token(token: str) -> bool:
+    return token.casefold() in FTS_RESERVED_LOWER
+
+
+def _validate_fts_query(fts_query: str, match_type: str) -> str | None:
+    """Return error reason string if the FTS query is unsafe/invalid, None if valid.
+
+    Quoted phrases (used by exact/keyword modes) are always safe because FTS5
+    interprets content inside double quotes as literal text.  Bareword prefixes
+    (partial mode) can collide with FTS5 reserved operators.
+    """
+    if not fts_query.strip():
+        return "empty query"
+    if fts_query.startswith('"'):
+        return None
+    parts = TOKEN_SPLIT_RE.split(fts_query.strip())
+    bad = [p for p in parts if _is_reserved_fts_token(p)]
+    if bad:
+        return f"query contains FTS5 reserved tokens: {', '.join(bad)}"
+    return None
+
 
 @dataclass(slots=True)
 class FtsHit:
@@ -39,6 +64,7 @@ class FtsSearchPage:
     total_count: int
     has_more: bool
     next_offset: int | None
+    invalid_query_reason: str | None = None
 
 
 MATCH_TYPE_ORDER = {"exact": 0, "partial": 1, "fuzzy": 2}
@@ -321,6 +347,22 @@ def _run_fts_query(
 ) -> list[FtsHit]:
     if not fts_query.strip():
         return []
+    reason = _validate_fts_query(fts_query, match_type)
+    if reason is not None:
+        logger.warning(
+            component="search.fts",
+            operation="query_skipped",
+            message="Skipping invalid FTS query",
+            details={
+                "raw_query": raw_query,
+                "fts_query": fts_query,
+                "match_type": match_type,
+                "reason": reason,
+                "dataset_id": dataset_id,
+            },
+            dataset_id=dataset_id,
+        )
+        return []
     started = time.perf_counter()
     pagination_sql = ""
     pagination_params: tuple[int, ...] = ()
@@ -586,6 +628,21 @@ def _candidate_specs_for_query(
         if key in seen_queries:
             return
         seen_queries.add(key)
+        reason = _validate_fts_query(fts_query, match_type)
+        if reason is not None:
+            logger.warning(
+                component="search.fts",
+                operation="candidate_skipped",
+                message="Skipping invalid FTS candidate spec",
+                details={
+                    "fts_query": fts_query,
+                    "match_type": match_type,
+                    "reason": reason,
+                    "dataset_id": dataset_id,
+                },
+                dataset_id=dataset_id,
+            )
+            return
         specs.append(_CandidateSpec(fts_query=fts_query, match_type=match_type, match_priority=match_priority))
 
     token_list = tokens if len(tokens) > 1 else [tokens[0]]
@@ -599,7 +656,12 @@ def _candidate_specs_for_query(
     return specs
 
 
-def _candidate_specs_for_keyword_terms(terms: list[str]) -> list[_CandidateSpec]:
+def _candidate_specs_for_keyword_terms(
+    logger: ProcessLogger,
+    terms: list[str],
+    *,
+    dataset_id: int = 0,
+) -> list[_CandidateSpec]:
     specs: list[_CandidateSpec] = []
     seen: set[tuple[str, str]] = set()
     for chip_index, term in enumerate(terms):
@@ -611,6 +673,21 @@ def _candidate_specs_for_keyword_terms(terms: list[str]) -> list[_CandidateSpec]
         if key in seen:
             continue
         seen.add(key)
+        reason = _validate_fts_query(fts_query, "keyword")
+        if reason is not None:
+            logger.warning(
+                component="search.fts",
+                operation="keyword_candidate_skipped",
+                message="Skipping invalid keyword FTS candidate spec",
+                details={
+                    "fts_query": fts_query,
+                    "term": cleaned,
+                    "reason": reason,
+                    "dataset_id": dataset_id,
+                },
+                dataset_id=dataset_id,
+            )
+            continue
         specs.append(_CandidateSpec(fts_query=fts_query, match_type="keyword", match_priority=chip_index))
     return specs
 
@@ -625,7 +702,13 @@ def _search_candidates_sql(
     offset: int,
 ) -> FtsSearchPage:
     if not specs:
-        return FtsSearchPage(hits=[], total_count=0, has_more=False, next_offset=None)
+        return FtsSearchPage(
+            hits=[],
+            total_count=0,
+            has_more=False,
+            next_offset=None,
+            invalid_query_reason="all FTS candidates were invalid",
+        )
 
     union_parts: list[str] = []
     params: list[Any] = []
@@ -723,7 +806,24 @@ def _search_candidates_sql(
             dataset_id=dataset_id,
         )
         if "syntax error" in str(exc).lower() or "fts5" in str(exc).lower():
-            return FtsSearchPage(hits=[], total_count=0, has_more=False, next_offset=None)
+            logger.warning(
+                component="search.fts",
+                operation="sql_syntax_error",
+                message="SQL FTS query triggered syntax error after candidate validation",
+                details={
+                    "dataset_id": dataset_id,
+                    "candidate_count": len(specs),
+                    "error": str(exc),
+                },
+                dataset_id=dataset_id,
+            )
+            return FtsSearchPage(
+                hits=[],
+                total_count=0,
+                has_more=False,
+                next_offset=None,
+                invalid_query_reason=f"FTS query syntax error: {exc}",
+            )
         raise
 
     hits = [
@@ -754,13 +854,14 @@ def search_keyword_terms(
     limit: int | None = None,
     offset: int = 0,
 ) -> dict[str, Any]:
-    specs = _candidate_specs_for_keyword_terms(terms)
+    specs = _candidate_specs_for_keyword_terms(logger, terms, dataset_id=dataset_id)
     page = _search_candidates_sql(conn, logger, dataset_id, specs, limit=limit, offset=offset)
     return {
         "hits": page.hits,
         "total_count": page.total_count,
         "has_more": page.has_more,
         "next_offset": page.next_offset,
+        "invalid_query_reason": page.invalid_query_reason,
     }
 
 
@@ -807,4 +908,5 @@ def search_messages(
         "total_count": page.total_count,
         "has_more": page.has_more,
         "next_offset": page.next_offset,
+        "invalid_query_reason": page.invalid_query_reason,
     }

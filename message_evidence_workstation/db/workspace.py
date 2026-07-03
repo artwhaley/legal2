@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from message_evidence_workstation.config.paths import default_workspace_path
-from message_evidence_workstation.db.connection import connect
+from message_evidence_workstation.db.connection import connect, extension_load_warning
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.domain.constants import (
     WORKSPACE_FORMAT_ID,
@@ -38,10 +38,25 @@ def ensure_evw_path(path: Path) -> Path:
     return path
 
 
-def _read_metadata(conn: sqlite3.Connection) -> dict[str, str]:
+def _read_metadata(conn: sqlite3.Connection, *, logger: ProcessLogger | None = None) -> dict[str, str]:
     try:
         rows = conn.execute("SELECT key, value FROM workspace_metadata").fetchall()
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if logger is not None:
+            logger.warning(
+                component="db.workspace",
+                operation="metadata_table_missing",
+                message="workspace_metadata table is missing; returning empty metadata",
+                details={
+                    "error": str(exc),
+                    "tables": [
+                        str(row[0])
+                        for row in conn.execute(
+                            "SELECT name FROM sqlite_master WHERE type='table'"
+                        ).fetchall()
+                    ],
+                },
+            )
         return {}
     return {str(row["key"]): str(row["value"]) for row in rows}
 
@@ -82,8 +97,8 @@ def touch_workspace_updated(conn: sqlite3.Connection) -> None:
     _write_metadata(conn, metadata)
 
 
-def get_workspace_metadata(conn: sqlite3.Connection) -> dict[str, str]:
-    return _read_metadata(conn)
+def get_workspace_metadata(conn: sqlite3.Connection, *, logger: ProcessLogger | None = None) -> dict[str, str]:
+    return _read_metadata(conn, logger=logger)
 
 
 def validate_workspace(conn: sqlite3.Connection) -> dict[str, str]:
@@ -106,6 +121,13 @@ def create_workspace(
     if evw_path.exists():
         raise WorkspaceError(f"Workspace already exists: {evw_path}")
     conn = connect(evw_path)
+    _warn = extension_load_warning()
+    if _warn:
+        logger.warning(
+            component="db.connection",
+            operation="extension_load_unavailable",
+            message=_warn,
+        )
     initialize_schema(conn, logger)
     seed_workspace_metadata(conn, display_name=display_name or evw_path.stem)
     logger.info(
@@ -122,11 +144,18 @@ def open_workspace(path: Path, logger: ProcessLogger) -> sqlite3.Connection:
     if not evw_path.exists():
         raise WorkspaceError(f"Workspace file not found: {evw_path}")
     conn = connect(evw_path)
+    _warn = extension_load_warning()
+    if _warn:
+        logger.warning(
+            component="db.connection",
+            operation="extension_load_unavailable",
+            message=_warn,
+        )
     initialize_schema(conn, logger)
-    metadata = get_workspace_metadata(conn)
+    metadata = get_workspace_metadata(conn, logger=logger)
     if not metadata:
         seed_workspace_metadata(conn, display_name=evw_path.stem)
-        metadata = get_workspace_metadata(conn)
+        metadata = get_workspace_metadata(conn, logger=logger)
     validate_workspace(conn)
     logger.info(
         component="db.workspace",

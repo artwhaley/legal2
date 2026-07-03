@@ -249,16 +249,8 @@ def test_full_pipeline_skip_embedding(workspace) -> None:
     assert get_workspace_import_validity(conn) == IMPORT_VALIDITY_READY
 
 
-def test_import_pipeline_uses_baseline_sessions_without_semantic_chunking(workspace, monkeypatch) -> None:
+def test_import_pipeline_does_not_create_transcript_sessions(workspace, monkeypatch) -> None:
     conn, logger, _db_path = workspace
-
-    def fail_semantic_chunking(*_args, **_kwargs):
-        raise AssertionError("import-time session rebuild must not use semantic chunking")
-
-    monkeypatch.setattr(
-        "message_evidence_workstation.search.session_map.iter_dataset_chunks",
-        fail_semantic_chunking,
-    )
 
     result = run_import_pipeline(
         conn,
@@ -268,13 +260,10 @@ def test_import_pipeline_uses_baseline_sessions_without_semantic_chunking(worksp
 
     assert result.import_succeeded
     assert result.dataset_id is not None
-    sessions = conn.execute(
-        "SELECT start_message_id, end_message_id, message_count FROM transcript_session WHERE dataset_id = ?",
-        (result.dataset_id,),
+    table_row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'transcript_session'"
     ).fetchall()
-    assert sessions
-    assert all(row["start_message_id"] and row["end_message_id"] for row in sessions)
-    assert all(int(row["message_count"]) > 0 for row in sessions)
+    assert table_row == []
 
 
 def test_background_import_leaves_ui_connection_usable(tmp_path, qapp, monkeypatch) -> None:

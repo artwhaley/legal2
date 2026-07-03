@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import json
+import logging
+import math
 import sqlite3
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 
+_log = logging.getLogger(__name__)
+
 from message_evidence_workstation.domain.models import Message
-from message_evidence_workstation.search.session_map import TranscriptSession, load_thread_messages
-from message_evidence_workstation.search.token_budget import estimate_tokens
-from message_evidence_workstation.search.transcript import serialize_messages
+from message_evidence_workstation.search.token_budget import estimate_tokens as _estimate_tokens
+from message_evidence_workstation.search.transcript import estimate_token_count, load_dataset_messages, serialize_messages
 
 DEFAULT_WINDOW_PLANNING_BATCH_SIZE = 500
 MIN_WINDOW_TARGET_TOKENS = 256
@@ -19,7 +22,6 @@ MIN_WINDOW_TARGET_TOKENS = 256
 @dataclass(slots=True)
 class TranscriptWindow:
     window_id: str
-    session_id: str
     source_thread_id: str
     start_message_id: str
     end_message_id: str
@@ -33,7 +35,11 @@ def _row_to_message(row: sqlite3.Row) -> Message:
     if isinstance(metadata, str) and metadata.strip():
         try:
             metadata_obj = json.loads(metadata)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            _log.warning(
+                "Corrupt source_metadata_json for message_id=%s: %s",
+                row["message_id"], exc,
+            )
             metadata_obj = {}
     elif isinstance(metadata, dict):
         metadata_obj = metadata
@@ -110,28 +116,6 @@ def iter_thread_messages_for_window_planning(
             break
 
 
-def _session_messages(
-    conn: sqlite3.Connection,
-    dataset_id: int,
-    session: TranscriptSession,
-) -> list[Message]:
-    messages = load_thread_messages(conn, dataset_id, session.source_thread_id)
-    ordered_ids = [message.message_id for message in messages]
-    if session.start_message_id not in ordered_ids or session.end_message_id not in ordered_ids:
-        return []
-    start_index = ordered_ids.index(session.start_message_id)
-    end_index = ordered_ids.index(session.end_message_id)
-    if start_index > end_index:
-        start_index, end_index = end_index, start_index
-    return messages[start_index : end_index + 1]
-
-
-def _serialize_window(messages: list[Message], session: TranscriptSession) -> tuple[str, list[str]]:
-    transcript = serialize_messages(messages, source_thread_id=session.source_thread_id)
-    header = f"=== Session {session.session_id} ({session.title}) ==="
-    return f"{header}\n{transcript.text}", transcript.message_ids
-
-
 def _serialize_thread_window(
     messages: list[Message],
     *,
@@ -143,119 +127,110 @@ def _serialize_thread_window(
     return f"{header}\n{transcript.text}", transcript.message_ids
 
 
-def _pack_messages_into_windows(
-    messages: list[Message],
-    *,
-    source_thread_id: str,
-    window_id_prefix: str,
-    session_id: str,
-    target_tokens: int,
-    overlap_messages: int,
-    model_id: str,
-    serialize_chunk: Callable[[list[Message]], tuple[str, list[str]]],
-    window_counter_start: int = 0,
-) -> tuple[list[TranscriptWindow], int]:
-    windows: list[TranscriptWindow] = []
-    window_counter = window_counter_start
-    if not messages:
-        return windows, window_counter
+def _compute_chars_per_token(conn: sqlite3.Connection, dataset_id: int) -> int:
+    """Call tiktoken once on the full dataset transcript to derive actual chars/token ratio.
 
-    start_index = 0
-    while start_index < len(messages):
-        best_end = start_index
-        probe_end = start_index
-        while probe_end < len(messages):
-            chunk = messages[start_index : probe_end + 1]
-            text, _message_ids = serialize_chunk(chunk)
-            tokens = estimate_tokens(text, model_id).estimated_tokens
-            if tokens <= target_tokens:
-                best_end = probe_end
-                probe_end += 1
-            else:
-                break
-        chunk = messages[start_index : best_end + 1]
-        text, message_ids = serialize_chunk(chunk)
-        token_estimate = estimate_tokens(text, model_id)
-        window_counter += 1
-        windows.append(
-            TranscriptWindow(
-                window_id=f"{window_id_prefix}__window_{window_counter:03d}",
-                session_id=session_id,
-                source_thread_id=source_thread_id,
-                start_message_id=chunk[0].message_id,
-                end_message_id=chunk[-1].message_id,
-                message_ids=message_ids,
-                estimated_tokens=token_estimate.estimated_tokens,
-                text=text,
-            )
-        )
-        if best_end >= len(messages) - 1:
-            break
-        next_start = best_end + 1 - overlap_messages
-        if next_start <= start_index:
-            next_start = best_end + 1
-        start_index = next_start
-    return windows, window_counter
+    Returns ceil(total_chars / actual_tokens) so downstream ``window_planner`` can use
+    ``ceil(chars / chars_per_token)`` instead of guessing ``ceil(chars / 4)``.
+    """
+    all_messages = load_dataset_messages(conn, dataset_id)
+    serialized = serialize_messages(all_messages)
+    if not serialized.text:
+        return estimate_token_count(1)  # fallback: chars/4, returns 1
+    result = _estimate_tokens(serialized.text)
+    if result.method != "tiktoken":
+        return estimate_token_count(1)  # tiktoken unavailable, same fallback
+    actual_tokens = result.estimated_tokens
+    if actual_tokens <= 0:
+        return estimate_token_count(1)
+    return max(1, math.ceil(serialized.char_count / actual_tokens))
 
 
-def _pack_message_stream_into_windows(
+def _pack_thread_message_stream_into_windows(
     message_iter: Iterator[Message],
     *,
     source_thread_id: str,
     window_id_prefix: str,
-    session_id: str,
     target_tokens: int,
     overlap_messages: int,
-    model_id: str,
-    serialize_chunk: Callable[[list[Message]], tuple[str, list[str]]],
+    chars_per_token: int,
     window_counter_start: int = 0,
 ) -> tuple[list[TranscriptWindow], int]:
-    """Pack a chronological message stream without materializing the full thread."""
+    """Pack a chronological thread stream using incremental char accounting.
+
+    This avoids repeated full-window reserialization/tokenization for giant
+    single-thread datasets during exhaustive scan planning.
+    """
+
     windows: list[TranscriptWindow] = []
     window_counter = window_counter_start
-    current: list[Message] = []
+    header = f"=== Transcript window scan ({source_thread_id}) ==="
+    header_chars = len(header) + 1
+    current_messages: list[Message] = []
+    current_lines: list[str] = []
+    current_line_chars = 0
 
-    def emit_window(chunk: list[Message]) -> None:
+    def _prepare_line(message: Message) -> tuple[str, int]:
+        serialized = serialize_messages([message], source_thread_id=source_thread_id)
+        return serialized.text, serialized.char_count
+
+    def _window_char_count(line_chars: int, line_count: int) -> int:
+        if line_count <= 0:
+            return 0
+        return header_chars + line_chars + max(0, line_count - 1)
+
+    def _window_tokens(line_chars: int, line_count: int) -> int:
+        return max(1, math.ceil(_window_char_count(line_chars, line_count) / chars_per_token))
+
+    def _emit_current() -> None:
         nonlocal window_counter
-        if not chunk:
+        if not current_messages:
             return
-        text, message_ids = serialize_chunk(chunk)
-        token_estimate = estimate_tokens(text, model_id)
+        text = f"{header}\n" + "\n".join(current_lines)
         window_counter += 1
         windows.append(
             TranscriptWindow(
                 window_id=f"{window_id_prefix}__window_{window_counter:03d}",
-                session_id=session_id,
                 source_thread_id=source_thread_id,
-                start_message_id=chunk[0].message_id,
-                end_message_id=chunk[-1].message_id,
-                message_ids=message_ids,
-                estimated_tokens=token_estimate.estimated_tokens,
+                start_message_id=current_messages[0].message_id,
+                end_message_id=current_messages[-1].message_id,
+                message_ids=[message.message_id for message in current_messages],
+                estimated_tokens=max(1, math.ceil(len(text) / chars_per_token)),
                 text=text,
             )
         )
 
     for message in message_iter:
-        if not current:
-            current = [message]
+        line_text, line_chars = _prepare_line(message)
+        trial_line_count = len(current_lines) + 1
+        trial_line_chars = current_line_chars + line_chars
+        if not current_messages or _window_tokens(trial_line_chars, trial_line_count) <= target_tokens:
+            current_messages.append(message)
+            current_lines.append(line_text)
+            current_line_chars = trial_line_chars
             continue
-        trial = current + [message]
-        trial_text, _ = serialize_chunk(trial)
-        if estimate_tokens(trial_text, model_id).estimated_tokens <= target_tokens:
-            current = trial
-            continue
-        emit_window(current)
-        if overlap_messages > 0:
-            current = current[-overlap_messages:] + [message]
-        else:
-            current = [message]
-        solo_text, _ = serialize_chunk(current)
-        if estimate_tokens(solo_text, model_id).estimated_tokens > target_tokens:
-            emit_window(current)
-            current = []
 
-    if current:
-        emit_window(current)
+        _emit_current()
+        if overlap_messages > 0:
+            current_messages = current_messages[-overlap_messages:]
+            current_lines = current_lines[-overlap_messages:]
+            current_line_chars = sum(len(line) for line in current_lines)
+        else:
+            current_messages = []
+            current_lines = []
+            current_line_chars = 0
+
+        current_messages.append(message)
+        current_lines.append(line_text)
+        current_line_chars += line_chars
+        if _window_tokens(current_line_chars, len(current_lines)) > target_tokens:
+            _emit_current()
+            current_messages = []
+            current_lines = []
+            current_line_chars = 0
+
+    if current_messages:
+        _emit_current()
     return windows, window_counter
 
 
@@ -282,87 +257,19 @@ def build_token_bounded_windows_for_dataset(
         """,
         (dataset_id,),
     ).fetchall()
+    chars_per_token = _compute_chars_per_token(conn, dataset_id)
     windows: list[TranscriptWindow] = []
     window_counter = 0
     for row in rows:
         thread_id = str(row["source_thread_id"])
-        thread_windows, window_counter = _pack_message_stream_into_windows(
+        thread_windows, window_counter = _pack_thread_message_stream_into_windows(
             iter_thread_messages_for_window_planning(conn, dataset_id, thread_id),
             source_thread_id=thread_id,
             window_id_prefix=thread_id,
-            session_id=thread_id,
             target_tokens=target_tokens,
             overlap_messages=overlap_messages,
-            model_id=model_id,
-            serialize_chunk=lambda chunk, tid=thread_id: _serialize_thread_window(
-                chunk,
-                source_thread_id=tid,
-                window_label="scan",
-            ),
+            chars_per_token=chars_per_token,
             window_counter_start=window_counter,
         )
         windows.extend(thread_windows)
     return windows
-
-
-def build_token_bounded_windows(
-    conn: sqlite3.Connection,
-    dataset_id: int,
-    sessions: list[TranscriptSession],
-    *,
-    target_tokens: int,
-    overlap_messages: int,
-    model_id: str,
-) -> list[TranscriptWindow]:
-    ordered_sessions = sorted(
-        sessions,
-        key=lambda session: (session.source_thread_id, session.session_index, session.session_id),
-    )
-    windows: list[TranscriptWindow] = []
-    window_counter = 0
-    target_tokens = max(MIN_WINDOW_TARGET_TOKENS, target_tokens)
-    overlap_messages = max(0, overlap_messages)
-
-    for session in ordered_sessions:
-        session_messages = _session_messages(conn, dataset_id, session)
-        if not session_messages:
-            continue
-
-        def _serialize_session_chunk(
-            chunk: list[Message],
-            active_session: TranscriptSession = session,
-        ) -> tuple[str, list[str]]:
-            return _serialize_window(chunk, active_session)
-
-        session_windows, window_counter = _pack_messages_into_windows(
-            session_messages,
-            source_thread_id=session.source_thread_id,
-            window_id_prefix=session.session_id,
-            session_id=session.session_id,
-            target_tokens=target_tokens,
-            overlap_messages=overlap_messages,
-            model_id=model_id,
-            serialize_chunk=_serialize_session_chunk,
-            window_counter_start=window_counter,
-        )
-        windows.extend(session_windows)
-
-    return windows
-
-
-def all_session_message_ids(
-    conn: sqlite3.Connection,
-    dataset_id: int,
-    sessions: list[TranscriptSession],
-) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for session in sorted(
-        sessions,
-        key=lambda row: (row.source_thread_id, row.session_index, row.session_id),
-    ):
-        for message in _session_messages(conn, dataset_id, session):
-            if message.message_id not in seen:
-                seen.add(message.message_id)
-                ordered.append(message.message_id)
-    return ordered

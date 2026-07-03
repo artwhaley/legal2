@@ -1,6 +1,6 @@
 """Shared domain constants."""
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 NORMALIZED_FORMAT_VERSION = 1
 

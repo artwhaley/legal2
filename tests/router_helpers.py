@@ -21,8 +21,8 @@ def router_with_role_models(
     writing: str | None = None,
     api_key: str = "key",
 ) -> ModelRouter:
-    nim = NimSettings(api_key=api_key)
-    base = ModelRoleConfig(provider=PROVIDER_NIM, model=expansion, api_key=api_key)
+    nim = NimSettings(api_base_url="https://integrate.api.nvidia.com/v1", api_key=api_key)
+    base = ModelRoleConfig(provider=PROVIDER_NIM, model=expansion, api_key=api_key, api_base_url="https://integrate.api.nvidia.com/v1")
     routing = ModelRoutingSettings(
         expansion=base,
         research=replace(base, model=research or expansion),

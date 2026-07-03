@@ -1,4 +1,4 @@
-"""Coverage-aware conversational answering."""
+"""Conversational answering."""
 
 from __future__ import annotations
 
@@ -9,36 +9,38 @@ from typing import Any
 
 from message_evidence_workstation.config.settings import AnswerSettings, NimSettings, load_settings
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.embeddings.chunking import config_from_mapping
 from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.nim.model_context import resolve_model_context
 from message_evidence_workstation.nim.message_roles import build_whole_transcript_cache_messages
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import (
-    RUN_TYPE_COVERAGE_SESSION_ANSWER,
+    RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS,
     RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
     RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
-    RUN_TYPE_SESSION_CLASSIFICATION,
     RUN_TYPE_WHOLE_TRANSCRIPT_ANSWER,
     get_active_prompt,
+)
+from message_evidence_workstation.search.evidence_ledger import (
+    assemble_ledger_result,
+    build_evidence_ledger,
+    build_evidence_ledger_synthesis_messages,
+    batch_context_to_dicts,
+    ledger_to_dicts,
+    plan_ledger_budget,
+)
+from message_evidence_workstation.search.ledger_validator import (
+    validate_assembled_ledger_output,
+    validate_ledger_analysis_output,
 )
 from message_evidence_workstation.search.dataset_budget import (
     DatasetBudgetStats,
     compute_dataset_budget_stats,
     estimate_transcript_tokens_from_stats,
 )
-from message_evidence_workstation.search.coverage_audit import run_coverage_audit
-from message_evidence_workstation.search.retrieval_assist import (
-    collect_retrieval_assists,
-    promote_sessions_from_retrieval_assists,
+from message_evidence_workstation.search.exhaustive_hints import (
+    ExhaustiveHintBlock,
+    collect_exhaustive_window_hints,
 )
-from message_evidence_workstation.search.session_map import (
-    TranscriptSession,
-    list_sessions,
-    rebuild_dataset_sessions,
-    serialize_session_transcript,
-)
-from message_evidence_workstation.search.session_summaries import ensure_session_summaries
 from message_evidence_workstation.search.tool_runner import (
     PlannerParseError,
     ToolRunnerDeps,
@@ -57,20 +59,11 @@ from message_evidence_workstation.search.window_planner import (
 
 ANSWER_MODE_WHOLE_TRANSCRIPT = "whole_transcript"
 ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN = "exhaustive_window_scan"
-ANSWER_MODE_SESSION_COVERAGE = "session_coverage"
 
 ANSWER_STRATEGY_WHOLE_TRANSCRIPT = "whole_transcript"
 ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN = "exhaustive_window_scan"
-ANSWER_STRATEGY_SESSION_COVERAGE = "session_coverage"
 
 DEFAULT_TRANSCRIPT_WINDOW_PADDING = 2
-
-SESSION_CLASS_RELEVANT = "relevant"
-SESSION_CLASS_POSSIBLY_RELEVANT = "possibly_relevant"
-SESSION_CLASS_NOT_RELEVANT = "not_relevant"
-VALID_SESSION_CLASSIFICATIONS = frozenset(
-    {SESSION_CLASS_RELEVANT, SESSION_CLASS_POSSIBLY_RELEVANT, SESSION_CLASS_NOT_RELEVANT}
-)
 
 
 class ConversationalAnswerParseError(ValueError):
@@ -109,9 +102,6 @@ class CoverageSummary:
     mode: str
     messages_considered: int
     source_thread_ids: list[str]
-    sessions_considered: int = 0
-    sessions_inspected: int = 0
-    sessions_skipped: int = 0
     windows_inspected: int = 0
     retrieval_assists: list[dict[str, Any]] = field(default_factory=list)
     token_budget: dict[str, Any] | None = None
@@ -160,9 +150,7 @@ def resolve_answer_budget(
     )
     token_estimate = estimate_transcript_tokens_from_stats(stats)
     strategy = answer_settings.answer_strategy
-    if strategy == ANSWER_STRATEGY_SESSION_COVERAGE:
-        decision = ANSWER_MODE_SESSION_COVERAGE
-    elif strategy == ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN:
+    if strategy == ANSWER_STRATEGY_EXHAUSTIVE_WINDOW_SCAN:
         decision = ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN
     else:
         decision = (
@@ -234,6 +222,17 @@ def log_answer_budget_resolved(
 
 
 @dataclass(slots=True)
+class RangeRepairRecord:
+    original_start_message_id: str
+    original_hit_message_id: str
+    original_end_message_id: str
+    repaired_start_message_id: str
+    repaired_end_message_id: str
+    reason: str = "range_order"
+    title: str = ""
+
+
+@dataclass(slots=True)
 class ConversationalAnswerResult:
     answer: str
     cited_message_ids: list[str]
@@ -246,6 +245,7 @@ class ConversationalAnswerResult:
     answer_format: str = "detailed"
     removed_invalid_citation_ids: list[str] = field(default_factory=list)
     removed_invalid_block_ids: list[str] = field(default_factory=list)
+    repaired_answer_ranges: list[RangeRepairRecord] = field(default_factory=list)
 
 
 def resolve_answer_mode(
@@ -376,7 +376,7 @@ def _parse_answer_range(
     valid_ids: set[str],
     message_thread_by_id: dict[str, str],
     message_order_by_thread: dict[str, list[str]] | None,
-) -> tuple[AnswerRangeDraft | None, CandidateEvidenceBlockDraft | None, list[str]]:
+) -> tuple[AnswerRangeDraft | None, CandidateEvidenceBlockDraft | None, list[str], RangeRepairRecord | None]:
     removed: list[str] = []
     hit_id = str(raw.get("hit_message_id", "")).strip()
     start_id = str(raw.get("start_message_id", "")).strip()
@@ -387,17 +387,22 @@ def _parse_answer_range(
         ("end_message_id", end_id),
     ):
         if not message_id:
-            return None, None, [f"missing:{field_name}"]
+            return None, None, [f"missing:{field_name}"], None
         if message_id not in valid_ids:
             removed.append(message_id)
     if removed:
-        return None, None, removed
+        return None, None, removed, None
 
     thread_id = message_thread_by_id.get(hit_id, "")
     if not thread_id:
-        return None, None, [hit_id]
+        return None, None, [hit_id], None
     if message_thread_by_id.get(start_id) != thread_id or message_thread_by_id.get(end_id) != thread_id:
-        return None, None, [f"cross_thread:{start_id},{hit_id},{end_id}"]
+        return None, None, [f"cross_thread:{start_id},{hit_id},{end_id}"], None
+
+    title = str(raw.get("title", "")).strip() or "Evidence block"
+    summary = str(raw.get("summary", "")).strip()
+    date_description = str(raw.get("date_description", "")).strip()
+    display_text = str(raw.get("display_text", "")).strip()
 
     ordered_ids = _thread_order(message_order_by_thread, thread_id)
     if ordered_ids:
@@ -405,14 +410,40 @@ def _parse_answer_range(
         hit_index = ordered_ids.index(hit_id) if hit_id in ordered_ids else -1
         end_index = ordered_ids.index(end_id) if end_id in ordered_ids else -1
         if start_index < 0 or hit_index < 0 or end_index < 0:
-            return None, None, [f"missing_order:{start_id},{hit_id},{end_id}"]
+            return None, None, [f"missing_order:{start_id},{hit_id},{end_id}"], None
         if not (start_index <= hit_index <= end_index):
-            return None, None, [f"range_order:{start_id},{hit_id},{end_id}"]
+            _repair = RangeRepairRecord(
+                original_start_message_id=start_id,
+                original_hit_message_id=hit_id,
+                original_end_message_id=end_id,
+                repaired_start_message_id=hit_id,
+                repaired_end_message_id=hit_id,
+                reason="range_order",
+                title=title,
+            )
+            answer_range = AnswerRangeDraft(
+                title=title,
+                summary=summary,
+                hit_message_id=hit_id,
+                start_message_id=hit_id,
+                end_message_id=hit_id,
+                source_thread_id=thread_id,
+                date_description=date_description,
+                display_text=display_text,
+            )
+            candidate = CandidateEvidenceBlockDraft(
+                title=title,
+                summary=summary,
+                core_message_id=hit_id,
+                relevant_start_message_id=hit_id,
+                relevant_end_message_id=hit_id,
+                leading_context_start_message_id=hit_id,
+                trailing_context_end_message_id=hit_id,
+                highlighted_message_ids=[hit_id],
+                source_thread_id=thread_id,
+            )
+            return answer_range, candidate, [], _repair
 
-    title = str(raw.get("title", "")).strip() or "Evidence block"
-    summary = str(raw.get("summary", "")).strip()
-    date_description = str(raw.get("date_description", "")).strip()
-    display_text = str(raw.get("display_text", "")).strip()
     answer_range = AnswerRangeDraft(
         title=title,
         summary=summary,
@@ -439,7 +470,7 @@ def _parse_answer_range(
         highlighted_message_ids=[hit_id],
         source_thread_id=thread_id,
     )
-    return answer_range, candidate, []
+    return answer_range, candidate, [], None
 
 
 def _parse_candidate_block(
@@ -518,45 +549,6 @@ def parse_whole_transcript_answer_response(
     )
 
 
-def parse_coverage_session_answer_response(
-    content: str,
-    *,
-    valid_message_ids: set[str],
-    message_thread_by_id: dict[str, str],
-    source_thread_ids: list[str],
-    messages_considered: int,
-    sessions_considered: int,
-    sessions_inspected: int,
-    sessions_skipped: int,
-    retrieval_assists: list[dict[str, Any]] | None = None,
-    message_order_by_thread: dict[str, list[str]] | None = None,
-) -> ConversationalAnswerResult:
-    try:
-        payload = _extract_json_object(content)
-    except PlannerParseError as exc:
-        raise ConversationalAnswerParseError(
-            f"Model response is not valid JSON: {exc}",
-            details=exc.details,
-        ) from exc
-    except (json.JSONDecodeError, ValueError, TypeError) as exc:
-        raise ConversationalAnswerParseError(f"Model response is not valid JSON: {exc}") from exc
-    if not isinstance(payload, dict):
-        raise ConversationalAnswerParseError("Model response must be a JSON object")
-    return _parse_answer_payload(
-        payload,
-        valid_message_ids=valid_message_ids,
-        message_thread_by_id=message_thread_by_id,
-        source_thread_ids=source_thread_ids,
-        messages_considered=messages_considered,
-        mode=ANSWER_MODE_SESSION_COVERAGE,
-        sessions_considered=sessions_considered,
-        sessions_inspected=sessions_inspected,
-        sessions_skipped=sessions_skipped,
-        retrieval_assists=retrieval_assists,
-        message_order_by_thread=message_order_by_thread,
-    )
-
-
 def _parse_answer_payload(
     payload: dict[str, Any],
     *,
@@ -565,9 +557,6 @@ def _parse_answer_payload(
     source_thread_ids: list[str],
     messages_considered: int,
     mode: str,
-    sessions_considered: int = 0,
-    sessions_inspected: int = 0,
-    sessions_skipped: int = 0,
     retrieval_assists: list[dict[str, Any]] | None = None,
     allow_empty_answer: bool = False,
     message_order_by_thread: dict[str, list[str]] | None = None,
@@ -587,19 +576,22 @@ def _parse_answer_payload(
     answer_ranges: list[AnswerRangeDraft] = []
     candidates: list[CandidateEvidenceBlockDraft] = []
     removed_block_ids: list[str] = []
+    repair_records: list[RangeRepairRecord] = []
     ranges_raw = payload.get("answer_ranges") or []
     if not isinstance(ranges_raw, list):
         ranges_raw = []
     for item in ranges_raw:
         if not isinstance(item, dict):
             continue
-        answer_range, candidate, removed = _parse_answer_range(
+        answer_range, candidate, removed, repair = _parse_answer_range(
             item,
             valid_ids=valid_message_ids,
             message_thread_by_id=message_thread_by_id,
             message_order_by_thread=message_order_by_thread,
         )
         removed_block_ids.extend(removed)
+        if repair is not None:
+            repair_records.append(repair)
         if answer_range is not None:
             answer_ranges.append(answer_range)
         if candidate is not None:
@@ -643,6 +635,11 @@ def _parse_answer_payload(
             f"Skipped candidate evidence block(s) with invalid message ID(s): "
             f"{', '.join(sorted(set(removed_block_ids)))}"
         )
+    if repair_records:
+        uncertainties.append(
+            f"Repaired {len(repair_records)} range(s) where the model supplied an invalid bracket: "
+            f"{', '.join(record.title for record in repair_records)}."
+        )
 
     coverage_raw = payload.get("coverage_summary") or {}
     if not isinstance(coverage_raw, dict):
@@ -656,9 +653,6 @@ def _parse_answer_payload(
             if str(item).strip()
         ]
         or list(source_thread_ids),
-        sessions_considered=int(coverage_raw.get("sessions_considered") or sessions_considered),
-        sessions_inspected=int(coverage_raw.get("sessions_inspected") or sessions_inspected),
-        sessions_skipped=int(coverage_raw.get("sessions_skipped") or sessions_skipped),
         windows_inspected=int(coverage_raw.get("windows_inspected") or 0),
         retrieval_assists=list(retrieval_assists or coverage_raw.get("retrieval_assists") or []),
         token_budget=coverage_raw.get("token_budget"),
@@ -680,6 +674,7 @@ def _parse_answer_payload(
         mode=mode,
         removed_invalid_citation_ids=removed_citations,
         removed_invalid_block_ids=sorted(set(removed_block_ids)),
+        repaired_answer_ranges=repair_records,
     )
 
 
@@ -737,127 +732,11 @@ def run_whole_transcript_answer(
     return parsed
 
 
-def build_session_classification_user_content(
-    user_query: str,
-    sessions: list[TranscriptSession],
-) -> str:
-    summaries = [
-        {
-            "session_id": session.session_id,
-            "source_thread_id": session.source_thread_id,
-            "calendar_date": session.calendar_date,
-            "title": session.title,
-            "participants": session.participants,
-            "message_count": session.message_count,
-            "summary": session.summary_json or {},
-        }
-        for session in sessions
-    ]
-    return json.dumps(
-        {"user_query": user_query, "session_summaries": summaries},
-        ensure_ascii=False,
-    )
-
-
-def parse_session_classifications(
-    content: str,
-    expected_session_ids: list[str],
-) -> tuple[dict[str, str], list[str]]:
-    payload = _extract_json_object(content)
-    if not isinstance(payload, dict):
-        raise ConversationalAnswerParseError("Session classification response must be a JSON object")
-    rows = payload.get("session_classifications") or []
-    if not isinstance(rows, list):
-        rows = []
-    classifications: dict[str, str] = {}
-    uncertainties: list[str] = []
-    for item in rows:
-        if not isinstance(item, dict):
-            continue
-        session_id = str(item.get("session_id", "")).strip()
-        classification = str(item.get("classification", "")).strip()
-        if not session_id or classification not in VALID_SESSION_CLASSIFICATIONS:
-            continue
-        classifications[session_id] = classification
-    for session_id in expected_session_ids:
-        if session_id not in classifications:
-            classifications[session_id] = SESSION_CLASS_NOT_RELEVANT
-            uncertainties.append(
-                f"Session {session_id} was not classified by the model; treated as not_relevant."
-            )
-    return classifications, uncertainties
-
-
-def classify_sessions_for_query(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    router: ModelRouter,
-    *,
-    user_query: str,
-    dataset_id: int,
-    sessions: list[TranscriptSession],
-) -> tuple[dict[str, str], list[str]]:
-    expected_ids = [session.session_id for session in sessions]
-    result = run_nim_chat(
-        conn,
-        logger,
-        router,
-        run_type=RUN_TYPE_SESSION_CLASSIFICATION,
-        user_content=build_session_classification_user_content(user_query, sessions),
-        dataset_id=dataset_id,
-    )
-    return parse_session_classifications(result.content, expected_ids)
-
-
-def _select_sessions_for_inspection(
-    sessions: list[TranscriptSession],
-    classifications: dict[str, str],
-) -> tuple[list[TranscriptSession], list[TranscriptSession]]:
-    relevant = [
-        session
-        for session in sessions
-        if classifications.get(session.session_id) == SESSION_CLASS_RELEVANT
-    ]
-    possibly = [
-        session
-        for session in sessions
-        if classifications.get(session.session_id) == SESSION_CLASS_POSSIBLY_RELEVANT
-    ]
-    inspected = relevant + possibly
-    inspected_ids = {session.session_id for session in inspected}
-    skipped = [session for session in sessions if session.session_id not in inspected_ids]
-    return inspected, skipped
-
-
-def build_session_coverage_user_content(
-    user_query: str,
-    *,
-    sessions: list[TranscriptSession],
-    classifications: dict[str, str],
-    inspected_windows: list[dict[str, Any]],
-) -> str:
-    return json.dumps(
-        {
-            "user_query": user_query,
-            "session_summaries": [
-                {
-                    "session_id": session.session_id,
-                    "classification": classifications.get(session.session_id, SESSION_CLASS_NOT_RELEVANT),
-                    "title": session.title,
-                    "summary": session.summary_json or {},
-                }
-                for session in sessions
-            ],
-            "inspected_transcript_windows": inspected_windows,
-        },
-        ensure_ascii=False,
-    )
-
-
 def build_exhaustive_window_scan_user_content(
     user_query: str,
     *,
     window: TranscriptWindow,
+    retrieval_hint_blocks: list[dict[str, Any]] | None = None,
 ) -> str:
     return json.dumps(
         {
@@ -866,12 +745,18 @@ def build_exhaustive_window_scan_user_content(
                 "Inspect this transcript window for the question. Return relevant findings "
                 "with message IDs, or say this window contains no relevant evidence."
             ),
+            "retrieval_hint_instruction": (
+                "Retrieval hints are not exhaustive and are not answers. They identify "
+                "message IDs or contiguous message ranges that lexical or vector search "
+                "considered potentially relevant. Inspect the entire window. Return "
+                "responsive ranges even if they are not listed as hints. Do not ignore "
+                "hinted messages unless they are clearly incidental or non-responsive."
+            ),
             "window_id": window.window_id,
-            "session_id": window.session_id,
             "source_thread_id": window.source_thread_id,
             "estimated_tokens": window.estimated_tokens,
-            "message_ids": window.message_ids,
             "messages_considered": len(window.message_ids),
+            "retrieval_hints": list(retrieval_hint_blocks or []),
             "transcript": window.text,
         },
         ensure_ascii=False,
@@ -881,12 +766,11 @@ def build_exhaustive_window_scan_user_content(
 def build_exhaustive_window_merge_user_content(
     user_query: str,
     *,
-    sessions: list[TranscriptSession],
+    source_thread_ids: list[str],
     window_results: list[dict[str, Any]],
     retrieval_assists: list[dict[str, Any]] | None = None,
     token_budget: dict[str, Any] | None = None,
 ) -> str:
-    source_thread_ids = sorted({session.source_thread_id for session in sessions})
     messages_considered = len(
         {
             message_id
@@ -905,12 +789,6 @@ def build_exhaustive_window_merge_user_content(
                 "mode": ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
                 "messages_considered": messages_considered,
                 "source_thread_ids": source_thread_ids,
-                "sessions_considered": len(sessions),
-                "sessions_inspected": len({window.get("session_id") for window in window_results}),
-                "sessions_skipped": max(
-                    0,
-                    len(sessions) - len({window.get("session_id") for window in window_results}),
-                ),
                 "windows_inspected": len(window_results),
                 "retrieval_assists": list(retrieval_assists or []),
                 "token_budget": token_budget or {},
@@ -924,7 +802,6 @@ def build_exhaustive_window_merge_user_content(
 def _compact_window_result_for_merge(window: dict[str, Any]) -> dict[str, Any]:
     return {
         "window_id": window.get("window_id"),
-        "session_id": window.get("session_id"),
         "source_thread_id": window.get("source_thread_id"),
         "message_ids": list(window.get("message_ids", [])),
         "estimated_tokens": window.get("estimated_tokens"),
@@ -937,10 +814,82 @@ def _compact_window_result_for_merge(window: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _serialize_hint_blocks_for_prompt(blocks: tuple[ExhaustiveHintBlock, ...]) -> list[dict[str, Any]]:
+    payload: list[dict[str, Any]] = []
+    for block in blocks:
+        payload.append(
+            {
+                "source_thread_id": block.source_thread_id,
+                "start_message_id": block.start_message_id,
+                "end_message_id": block.end_message_id,
+                "hit_message_ids": list(block.hit_message_ids),
+                "terms": list(block.terms),
+                "sources": list(block.sources),
+            }
+        )
+    return payload
+
+
+def _hint_source_counts(blocks: tuple[ExhaustiveHintBlock, ...]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for block in blocks:
+        for source in block.sources:
+            counts[source] = counts.get(source, 0) + 1
+    return counts
+
+
+def _message_order_by_planned_windows(planned_windows: list[TranscriptWindow]) -> dict[str, list[str]]:
+    ordered: dict[str, list[str]] = {}
+    seen: dict[str, set[str]] = {}
+    for window in planned_windows:
+        bucket = ordered.setdefault(window.source_thread_id, [])
+        seen_ids = seen.setdefault(window.source_thread_id, set())
+        for message_id in window.message_ids:
+            if message_id in seen_ids:
+                continue
+            seen_ids.add(message_id)
+            bucket.append(message_id)
+    return ordered
+
+
+def _range_intersects_hint_blocks(
+    answer_range: AnswerRangeDraft,
+    blocks: tuple[ExhaustiveHintBlock, ...],
+    *,
+    message_order_by_thread: dict[str, list[str]],
+    message_thread_by_id: dict[str, str],
+) -> bool:
+    thread_id = message_thread_by_id.get(answer_range.start_message_id) or message_thread_by_id.get(
+        answer_range.hit_message_id
+    )
+    if not thread_id:
+        return False
+    ordered_ids = message_order_by_thread.get(thread_id)
+    if not ordered_ids:
+        return False
+    positions = {message_id: index for index, message_id in enumerate(ordered_ids)}
+    start_pos = positions.get(answer_range.start_message_id)
+    end_pos = positions.get(answer_range.end_message_id)
+    if start_pos is None or end_pos is None:
+        return False
+    low = min(start_pos, end_pos)
+    high = max(start_pos, end_pos)
+    for block in blocks:
+        if block.source_thread_id != thread_id:
+            continue
+        block_start = positions.get(block.start_message_id)
+        block_end = positions.get(block.end_message_id)
+        if block_start is None or block_end is None:
+            continue
+        if max(low, min(block_start, block_end)) <= min(high, max(block_start, block_end)):
+            return True
+    return False
+
+
 def _estimate_merge_user_content_tokens(
     user_query: str,
     *,
-    sessions: list[TranscriptSession],
+    source_thread_ids: list[str],
     window_results: list[dict[str, Any]],
     retrieval_assists: list[dict[str, Any]] | None,
     token_budget: dict[str, Any] | None,
@@ -948,7 +897,7 @@ def _estimate_merge_user_content_tokens(
 ) -> int:
     content = build_exhaustive_window_merge_user_content(
         user_query,
-        sessions=sessions,
+        source_thread_ids=source_thread_ids,
         window_results=[_compact_window_result_for_merge(window) for window in window_results],
         retrieval_assists=retrieval_assists,
         token_budget=token_budget,
@@ -965,7 +914,6 @@ def _interim_window_from_answer(
 ) -> dict[str, Any]:
     return {
         "window_id": window_id,
-        "session_id": "merged_batch",
         "source_thread_id": source_thread_id,
         "message_ids": message_ids,
         "estimated_tokens": 0,
@@ -978,13 +926,244 @@ def _interim_window_from_answer(
     }
 
 
+def _run_evidence_ledger_window_merge(
+    conn: sqlite3.Connection,
+    logger: ProcessLogger,
+    router: ModelRouter,
+    *,
+    user_query: str,
+    window_results: list[dict[str, Any]],
+    retrieval_assists: list[dict[str, Any]] | None,
+    token_budget: dict[str, Any] | None,
+    budget: AnswerBudget,
+    dataset_id: int,
+    max_tokens: int,
+    model_id: str,
+    valid_ids: set[str],
+    message_thread_by_id: dict[str, str],
+    source_thread_ids: list[str],
+) -> ConversationalAnswerResult:
+    logger.info(
+        component="search.conversational_answer",
+        operation="evidence_ledger_merge_selected",
+        message="Evidence-ledger merge selected for exhaustive window scan",
+        details={
+            "use_evidence_ledger_merge": True,
+            "window_count": len(window_results),
+            "source_thread_count": len(source_thread_ids),
+        },
+        dataset_id=dataset_id,
+    )
+
+    entries, batch_ctx = build_evidence_ledger(window_results)
+    entry_dicts = ledger_to_dicts(entries)
+    batch_dicts = batch_context_to_dicts(batch_ctx)
+    logger.info(
+        component="search.conversational_answer",
+        operation="evidence_ledger_built",
+        message="Evidence ledger built from window results",
+        details={
+            "entry_count": len(entry_dicts),
+            "batch_context_count": len(batch_dicts),
+            "raw_answer_range_count_total": sum(
+                int(window.get("raw_answer_range_count") or 0) for window in window_results
+            ),
+            "validated_answer_range_count_total": sum(
+                len(window.get("answer_ranges") or []) for window in window_results
+            ),
+            "window_range_counts": [
+                {
+                    "window_id": str(window.get("window_id") or ""),
+                    "source_thread_id": str(window.get("source_thread_id") or ""),
+                    "raw_answer_range_count": window.get("raw_answer_range_count"),
+                    "validated_answer_range_count": len(window.get("answer_ranges") or []),
+                }
+                for window in window_results
+            ],
+            "source_thread_ids": source_thread_ids,
+        },
+        dataset_id=dataset_id,
+    )
+
+    if not entry_dicts:
+        logger.info(
+            component="search.conversational_answer",
+            operation="evidence_ledger_empty",
+            message="Evidence ledger is empty; returning deterministic no-results",
+            details={"window_count": len(window_results)},
+            dataset_id=dataset_id,
+        )
+        return ConversationalAnswerResult(
+            answer=(
+                "Exhaustive Windowed Search examined the full selected data package "
+                "and found no results. Please modify your search terms and try again."
+            ),
+            answer_summary=(
+                "Exhaustive Windowed Search examined the full selected data package "
+                "and found no results."
+            ),
+            cited_message_ids=[],
+            candidate_evidence_blocks=[],
+            uncertainties=[],
+            coverage_summary=CoverageSummary(
+                mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+                messages_considered=len(valid_ids),
+                source_thread_ids=source_thread_ids,
+                windows_inspected=len(window_results),
+                retrieval_assists=list(retrieval_assists or []),
+                token_budget=token_budget,
+            ),
+            mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+        )
+
+    provisional = build_evidence_ledger_synthesis_messages(
+        user_query, entry_dicts, batch_dicts, config=None,
+    )
+    config = plan_ledger_budget(
+        entry_dicts, provisional,
+        model_context_tokens=budget.context_window_tokens,
+        max_output_tokens=max_tokens,
+    )
+    logger.info(
+        component="search.conversational_answer",
+        operation="evidence_ledger_budget_planned",
+        message="Evidence-ledger budget planned",
+        details={
+            "mode": config.mode,
+            "answer_format": config.answer_format,
+            "estimated_input_tokens": config.estimated_input_tokens,
+            "estimated_output_tokens": config.estimated_output_tokens,
+            "available_input_tokens": config.available_input_tokens,
+            "available_output_tokens": config.available_output_tokens,
+            "overflow": config.overflow,
+            "fallback_reason": config.fallback_reason,
+        },
+        dataset_id=dataset_id,
+    )
+
+    if config.overflow:
+        logger.info(
+            component="search.conversational_answer",
+            operation="evidence_ledger_validation_failed",
+            message="Budget overflow; cannot fit ledger in context window",
+            details={
+                "phase": "budget",
+                "fallback_reason": config.fallback_reason,
+                "entry_count": len(entry_dicts),
+            },
+            dataset_id=dataset_id,
+        )
+        raise ConversationalAnswerParseError(
+            f"Evidence-ledger merge cannot fit within the available context budget: "
+            f"{config.fallback_reason}. Multi-call splitting is not yet implemented."
+        )
+
+    messages = build_evidence_ledger_synthesis_messages(
+        user_query, entry_dicts, batch_dicts, config,
+    )
+    logger.info(
+        component="search.conversational_answer",
+        operation="evidence_ledger_synthesis_start",
+        message="Starting evidence-ledger synthesis model call",
+        details={
+            "run_type": RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS,
+            "max_tokens": max_tokens,
+            "ledger_entry_count": len(entry_dicts),
+        },
+        dataset_id=dataset_id,
+    )
+
+    result = run_nim_chat(
+        conn, logger, router,
+        run_type=RUN_TYPE_EVIDENCE_LEDGER_SYNTHESIS,
+        messages=messages,
+        dataset_id=dataset_id,
+        max_tokens=max_tokens,
+    )
+
+    try:
+        model_json = _extract_json_object(result.content)
+    except PlannerParseError as exc:
+        raise ConversationalAnswerParseError(
+            f"Evidence-ledger synthesis response is not valid JSON: {exc}",
+            details=exc.details,
+        ) from exc
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+        raise ConversationalAnswerParseError(
+            f"Evidence-ledger synthesis response is not valid JSON: {exc}"
+        ) from exc
+    if not isinstance(model_json, dict):
+        raise ConversationalAnswerParseError(
+            "Evidence-ledger synthesis response must be a JSON object"
+        )
+    raw_validation = validate_ledger_analysis_output(model_json, entry_dicts)
+    if not raw_validation.ok:
+        logger.info(
+            component="search.conversational_answer",
+            operation="evidence_ledger_validation_failed",
+            message="Raw model output validation failed",
+            details={
+                "phase": "raw",
+                "issues": [i.code for i in raw_validation.issues],
+            },
+            dataset_id=dataset_id,
+        )
+        raise ConversationalAnswerParseError(
+            f"Evidence-ledger raw model validation failed: "
+            f"{', '.join(i.message for i in raw_validation.issues)}",
+            details={"validation_issues": [{"code": i.code, "message": i.message} for i in raw_validation.issues]},
+        )
+
+    assembled = assemble_ledger_result(model_json, entry_dicts, config)
+    assembly_validation = validate_assembled_ledger_output(assembled, entry_dicts)
+    if not assembly_validation.ok:
+        logger.info(
+            component="search.conversational_answer",
+            operation="evidence_ledger_validation_failed",
+            message="Assembled payload validation failed",
+            details={
+                "phase": "assembled",
+                "issues": [i.code for i in assembly_validation.issues],
+            },
+            dataset_id=dataset_id,
+        )
+        raise ConversationalAnswerParseError(
+            f"Evidence-ledger assembly validation failed: "
+            f"{', '.join(i.message for i in assembly_validation.issues)}",
+            details={"validation_issues": [{"code": i.code, "message": i.message} for i in assembly_validation.issues]},
+        )
+
+    parsed = _parse_answer_payload(
+        assembled,
+        valid_message_ids=valid_ids,
+        message_thread_by_id=message_thread_by_id,
+        source_thread_ids=source_thread_ids,
+        messages_considered=len(valid_ids),
+        mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
+        retrieval_assists=retrieval_assists,
+        message_order_by_thread=_message_order_by_thread_from_db(conn, dataset_id),
+    )
+
+    logger.info(
+        component="search.conversational_answer",
+        operation="evidence_ledger_merge_complete",
+        message="Evidence-ledger merge complete",
+        details={
+            "answer_range_count": len(parsed.answer_ranges),
+            "cited_message_count": len(parsed.cited_message_ids),
+            "uncertainty_count": len(parsed.uncertainties),
+        },
+        dataset_id=dataset_id,
+    )
+    return parsed
+
+
 def _run_bounded_exhaustive_window_merge(
     conn: sqlite3.Connection,
     logger: ProcessLogger,
     router: ModelRouter,
     *,
     user_query: str,
-    sessions: list[TranscriptSession],
     window_results: list[dict[str, Any]],
     retrieval_assists: list[dict[str, Any]] | None,
     token_budget: dict[str, Any] | None,
@@ -1002,7 +1181,7 @@ def _run_bounded_exhaustive_window_merge(
         compact_batch = [_compact_window_result_for_merge(window) for window in batch]
         estimated_tokens = _estimate_merge_user_content_tokens(
             user_query,
-            sessions=sessions,
+            source_thread_ids=source_thread_ids,
             window_results=compact_batch,
             retrieval_assists=retrieval_assists if depth == 0 else [],
             token_budget=token_budget if depth == 0 else None,
@@ -1061,7 +1240,7 @@ def _run_bounded_exhaustive_window_merge(
             run_type=RUN_TYPE_EXHAUSTIVE_WINDOW_MERGE,
             user_content=build_exhaustive_window_merge_user_content(
                 user_query,
-                sessions=sessions,
+                source_thread_ids=source_thread_ids,
                 window_results=compact_batch,
                 retrieval_assists=retrieval_assists if depth == 0 else [],
                 token_budget=token_budget if depth == 0 else None,
@@ -1075,12 +1254,6 @@ def _run_bounded_exhaustive_window_merge(
             message_thread_by_id=message_thread_by_id,
             source_thread_ids=source_thread_ids,
             messages_considered=len(valid_ids),
-            sessions_considered=len(sessions),
-            sessions_inspected=len({window.get("session_id") for window in window_results}),
-            sessions_skipped=max(
-                0,
-                len(sessions) - len({window.get("session_id") for window in window_results}),
-            ),
             retrieval_assists=retrieval_assists if depth == 0 else [],
             message_order_by_thread=message_order_by_thread,
         )
@@ -1104,12 +1277,6 @@ def _run_bounded_exhaustive_window_merge(
             message_thread_by_id=message_thread_by_id,
             source_thread_ids=source_thread_ids,
             messages_considered=len(valid_ids),
-            sessions_considered=len(sessions),
-            sessions_inspected=len({window.get("session_id") for window in window_results}),
-            sessions_skipped=max(
-                0,
-                len(sessions) - len({window.get("session_id") for window in window_results}),
-            ),
             retrieval_assists=retrieval_assists,
             message_order_by_thread=message_order_by_thread,
         )
@@ -1148,6 +1315,19 @@ def parse_exhaustive_window_scan_response(
     )
 
 
+def _count_raw_answer_ranges(content: str) -> int | None:
+    try:
+        payload = _extract_json_object(content)
+    except (PlannerParseError, json.JSONDecodeError, ValueError, TypeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    ranges_raw = payload.get("answer_ranges")
+    if not isinstance(ranges_raw, list):
+        return 0
+    return len(ranges_raw)
+
+
 def parse_exhaustive_window_merge_response(
     content: str,
     *,
@@ -1155,9 +1335,6 @@ def parse_exhaustive_window_merge_response(
     message_thread_by_id: dict[str, str],
     source_thread_ids: list[str],
     messages_considered: int,
-    sessions_considered: int,
-    sessions_inspected: int,
-    sessions_skipped: int,
     retrieval_assists: list[dict[str, Any]] | None = None,
     message_order_by_thread: dict[str, list[str]] | None = None,
 ) -> ConversationalAnswerResult:
@@ -1179,9 +1356,6 @@ def parse_exhaustive_window_merge_response(
         source_thread_ids=source_thread_ids,
         messages_considered=messages_considered,
         mode=ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
-        sessions_considered=sessions_considered,
-        sessions_inspected=sessions_inspected,
-        sessions_skipped=sessions_skipped,
         retrieval_assists=retrieval_assists,
         message_order_by_thread=message_order_by_thread,
     )
@@ -1194,7 +1368,6 @@ def run_exhaustive_window_scan_answer(
     *,
     user_query: str,
     dataset_id: int,
-    session_gap_minutes: int = 120,
     deps: ToolRunnerDeps | None = None,
     answer_settings: AnswerSettings | None = None,
     nim_settings: NimSettings | None = None,
@@ -1202,16 +1375,60 @@ def run_exhaustive_window_scan_answer(
     provider_metadata: dict | None = None,
     max_tokens: int | None = None,
 ) -> ConversationalAnswerResult:
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_scan_pipeline_enter",
+        message="Entered exhaustive window scan answer pipeline",
+        details={
+            "dataset_id": dataset_id,
+            "model_id": model_id,
+            "max_tokens_override": max_tokens,
+        },
+        dataset_id=dataset_id,
+    )
     settings = answer_settings or load_settings().answer
     app_settings = load_settings()
     nim = nim_settings or app_settings.nim
     selected_model = model_id or router.writing_model_id() or "unknown-model"
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_scan_budgeting_start",
+        message="Starting exhaustive window scan budgeting",
+        details={
+            "selected_model": selected_model,
+            "window_overlap_messages": nim.window_overlap_messages,
+        },
+        dataset_id=dataset_id,
+    )
     budget = resolve_answer_budget(
         compute_dataset_budget_stats(conn, dataset_id),
         settings,
         selected_model,
         nim_settings=nim,
         provider_metadata=provider_metadata,
+    )
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_scan_budgeting_complete",
+        message="Completed exhaustive window scan budgeting",
+        details={
+            "usable_input_tokens": budget.usable_input_tokens,
+            "context_window_tokens": budget.context_window_tokens,
+            "decision": budget.decision,
+            "max_output_tokens": budget.max_output_tokens,
+        },
+        dataset_id=dataset_id,
+    )
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_scan_window_build_start",
+        message="Starting exhaustive window planning",
+        details={
+            "target_tokens": budget.usable_input_tokens,
+            "window_overlap_messages": nim.window_overlap_messages,
+            "selected_model": selected_model,
+        },
+        dataset_id=dataset_id,
     )
     planned_windows = build_token_bounded_windows_for_dataset(
         conn,
@@ -1223,8 +1440,8 @@ def run_exhaustive_window_scan_answer(
     if not planned_windows:
         raise ConversationalAnswerParseError("No transcript windows available for exhaustive window scan")
 
-    sessions = list_sessions(conn, dataset_id)
     per_call_input_budget = budget.usable_input_tokens
+    source_thread_ids = sorted({window.source_thread_id for window in planned_windows})
     logger.info(
         component="search.conversational_answer",
         operation="exhaustive_scan_preflight",
@@ -1247,7 +1464,6 @@ def run_exhaustive_window_scan_answer(
             "window_count": len(planned_windows),
             "target_tokens": per_call_input_budget,
             "overlap_messages": nim.window_overlap_messages,
-            "sessions_considered": len(sessions),
             "windowing_mode": "token_bounded_thread",
         },
         dataset_id=dataset_id,
@@ -1271,54 +1487,125 @@ def run_exhaustive_window_scan_answer(
         "safety_ratio": budget.safety_ratio,
     }
 
-    retrieval_assists = collect_retrieval_assists(
+    hint_collection = collect_exhaustive_window_hints(
         conn,
         logger,
+        router,
         dataset_id=dataset_id,
         user_query=user_query,
-        sessions=sessions,
+        planned_windows=planned_windows,
         deps=deps,
     )
+    retrieval_assists: list[dict[str, Any]] = []
     window_results: list[dict[str, Any]] = []
+    window_scan_counts: list[dict[str, Any]] = []
     valid_ids: set[str] = set()
     message_thread_by_id: dict[str, str] = {}
-    source_thread_ids = sorted({session.source_thread_id for session in sessions})
     scan_uncertainties: list[str] = []
     output_tokens = max_tokens if max_tokens is not None else budget.max_output_tokens
     merge_max_tokens = output_tokens
 
-    for window in planned_windows:
-        session_valid_ids = set(window.message_ids)
-        session_thread_by_id = {
+    for index, window in enumerate(planned_windows, start=1):
+        window_valid_ids = set(window.message_ids)
+        window_thread_by_id = {
             message_id: window.source_thread_id for message_id in window.message_ids
         }
+        window_hint_blocks = hint_collection.window_blocks_by_id.get(window.window_id, ())
         scan = run_nim_chat(
             conn,
             logger,
             router,
             run_type=RUN_TYPE_EXHAUSTIVE_WINDOW_SCAN,
-            user_content=build_exhaustive_window_scan_user_content(user_query, window=window),
+            user_content=build_exhaustive_window_scan_user_content(
+                user_query,
+                window=window,
+                retrieval_hint_blocks=_serialize_hint_blocks_for_prompt(window_hint_blocks),
+            ),
             dataset_id=dataset_id,
             max_tokens=output_tokens,
         )
+        raw_answer_range_count = _count_raw_answer_ranges(scan.content)
         parsed_scan = parse_exhaustive_window_scan_response(
             scan.content,
-            valid_message_ids=session_valid_ids,
-            message_thread_by_id=session_thread_by_id,
+            valid_message_ids=window_valid_ids,
+            message_thread_by_id=window_thread_by_id,
             source_thread_ids=[window.source_thread_id],
             messages_considered=len(window.message_ids),
             message_order_by_thread={window.source_thread_id: list(window.message_ids)},
         )
+        repaired_count = len(parsed_scan.repaired_answer_ranges)
+        rejected_count = len(parsed_scan.removed_invalid_block_ids) + len(parsed_scan.removed_invalid_citation_ids)
+        logger.info(
+            component="search.conversational_answer",
+            operation="exhaustive_window_scan_window_completed",
+            message="Completed exhaustive window scan for planned window",
+            details={
+                "window_id": window.window_id,
+                "window_index": index,
+                "window_count": len(planned_windows),
+                "source_thread_id": window.source_thread_id,
+                "messages_considered": len(window.message_ids),
+                "estimated_tokens": window.estimated_tokens,
+                "raw_answer_range_count": raw_answer_range_count,
+                "validated_answer_range_count": len(parsed_scan.answer_ranges),
+                "repaired_answer_range_count": repaired_count,
+                "rejected_answer_range_count": rejected_count,
+                "removed_invalid_citation_count": len(parsed_scan.removed_invalid_citation_ids),
+                "removed_invalid_block_count": len(parsed_scan.removed_invalid_block_ids),
+                "retrieval_hint_block_count": len(window_hint_blocks),
+                "retrieval_hint_source_counts": _hint_source_counts(window_hint_blocks),
+            },
+            dataset_id=dataset_id,
+        )
+        if parsed_scan.repaired_answer_ranges:
+            logger.warning(
+                component="search.conversational_answer",
+                operation="exhaustive_window_scan_window_repaired_ranges",
+                message="Repaired misordered ranges in exhaustive window scan result",
+                details={
+                    "window_id": window.window_id,
+                    "repair_count": len(parsed_scan.repaired_answer_ranges),
+                    "repair_records": [
+                        asdict(r) for r in parsed_scan.repaired_answer_ranges
+                    ],
+                },
+                dataset_id=dataset_id,
+            )
+        if parsed_scan.removed_invalid_citation_ids or parsed_scan.removed_invalid_block_ids:
+            logger.warning(
+                component="search.conversational_answer",
+                operation="exhaustive_window_scan_window_validation_removed_ids",
+                message="Removed invalid message IDs from exhaustive window scan result",
+                details={
+                    "window_id": window.window_id,
+                    "removed_citations": parsed_scan.removed_invalid_citation_ids,
+                    "removed_block_ids": parsed_scan.removed_invalid_block_ids,
+                },
+                dataset_id=dataset_id,
+            )
         valid_ids.update(window.message_ids)
-        message_thread_by_id.update(session_thread_by_id)
+        message_thread_by_id.update(window_thread_by_id)
         scan_uncertainties.extend(parsed_scan.uncertainties)
+        window_scan_counts.append(
+            {
+                "window_id": window.window_id,
+                "window_index": index,
+                "source_thread_id": window.source_thread_id,
+                "raw_answer_range_count": raw_answer_range_count,
+                "validated_answer_range_count": len(parsed_scan.answer_ranges),
+                "repaired_answer_range_count": repaired_count,
+                "rejected_answer_range_count": rejected_count,
+                "retrieval_hint_block_count": len(window_hint_blocks),
+                "retrieval_hint_source_counts": _hint_source_counts(window_hint_blocks),
+            }
+        )
         window_results.append(
             {
                 "window_id": window.window_id,
-                "session_id": window.session_id,
                 "source_thread_id": window.source_thread_id,
                 "estimated_tokens": window.estimated_tokens,
                 "message_ids": window.message_ids,
+                "raw_answer_range_count": raw_answer_range_count,
                 "answer": parsed_scan.answer,
                 "answer_summary": parsed_scan.answer_summary,
                 "answer_format": parsed_scan.answer_format,
@@ -1328,150 +1615,90 @@ def run_exhaustive_window_scan_answer(
             }
         )
 
-    parsed = _run_bounded_exhaustive_window_merge(
-        conn,
-        logger,
-        router,
-        user_query=user_query,
-        sessions=sessions,
-        window_results=window_results,
-        retrieval_assists=retrieval_assists,
-        token_budget=token_budget,
-        budget=budget,
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_window_scan_windows_completed",
+        message="Completed exhaustive window scans for all planned windows",
+        details={
+            "window_count": len(planned_windows),
+            "raw_answer_range_count_total": sum(
+                count["raw_answer_range_count"] or 0 for count in window_scan_counts
+            ),
+            "validated_answer_range_count_total": sum(
+                count["validated_answer_range_count"] for count in window_scan_counts
+            ),
+            "repaired_answer_range_count_total": sum(
+                count["repaired_answer_range_count"] for count in window_scan_counts
+            ),
+            "rejected_answer_range_count_total": sum(
+                count["rejected_answer_range_count"] for count in window_scan_counts
+            ),
+            "retrieval_hint_block_count_total": sum(
+                count["retrieval_hint_block_count"] for count in window_scan_counts
+            ),
+            "window_range_counts": window_scan_counts,
+        },
         dataset_id=dataset_id,
-        max_tokens=merge_max_tokens,
-        model_id=selected_model,
-        valid_ids=valid_ids,
-        message_thread_by_id=message_thread_by_id,
-        source_thread_ids=source_thread_ids,
     )
+
+    if settings.use_evidence_ledger_merge:
+        parsed = _run_evidence_ledger_window_merge(
+            conn,
+            logger,
+            router,
+            user_query=user_query,
+            window_results=window_results,
+            retrieval_assists=retrieval_assists,
+            token_budget=token_budget,
+            budget=budget,
+            dataset_id=dataset_id,
+            max_tokens=merge_max_tokens,
+            model_id=selected_model,
+            valid_ids=valid_ids,
+            message_thread_by_id=message_thread_by_id,
+            source_thread_ids=source_thread_ids,
+        )
+    else:
+        parsed = _run_bounded_exhaustive_window_merge(
+            conn,
+            logger,
+            router,
+            user_query=user_query,
+            window_results=window_results,
+            retrieval_assists=retrieval_assists,
+            token_budget=token_budget,
+            budget=budget,
+            dataset_id=dataset_id,
+            max_tokens=merge_max_tokens,
+            model_id=selected_model,
+            valid_ids=valid_ids,
+            message_thread_by_id=message_thread_by_id,
+            source_thread_ids=source_thread_ids,
+        )
     parsed.coverage_summary.windows_inspected = len(planned_windows)
     parsed.coverage_summary.token_budget = token_budget
     parsed.uncertainties = scan_uncertainties + parsed.uncertainties
-    return parsed
-
-
-def run_session_coverage_answer(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    router: ModelRouter,
-    *,
-    user_query: str,
-    dataset_id: int,
-    session_gap_minutes: int = 120,
-    deps: ToolRunnerDeps | None = None,
-    max_tokens: int | None = None,
-) -> ConversationalAnswerResult:
-    chunking_config = config_from_mapping(load_settings().chunking)
-    chunking_config.session_gap_hours = max(1, session_gap_minutes) / 60.0
-    sessions = rebuild_dataset_sessions(
-        conn,
-        logger,
-        dataset_id,
-        gap_minutes=session_gap_minutes,
-        chunking_config=chunking_config,
-        use_semantic_chunks=True,
-    )
-    if not sessions:
-        raise ConversationalAnswerParseError("No transcript sessions available for session-coverage mode")
-    sessions = ensure_session_summaries(conn, logger, router, dataset_id)
-    classifications, classification_uncertainties = classify_sessions_for_query(
-        conn,
-        logger,
-        router,
-        user_query=user_query,
-        dataset_id=dataset_id,
-        sessions=sessions,
-    )
-    retrieval_assists = collect_retrieval_assists(
-        conn,
-        logger,
-        dataset_id=dataset_id,
-        user_query=user_query,
-        sessions=sessions,
-        deps=deps,
-    )
-    classifications, assist_notes = promote_sessions_from_retrieval_assists(
-        classifications,
-        retrieval_assists,
-        inspected_session_ids=set(),
-    )
-    inspected_sessions, skipped_sessions = _select_sessions_for_inspection(
-        sessions,
-        classifications,
-    )
-    audit = run_coverage_audit(
-        conn,
-        logger,
-        router,
-        user_query=user_query,
-        dataset_id=dataset_id,
-        sessions=sessions,
-        classifications=classifications,
-        inspected_session_ids=[session.session_id for session in inspected_sessions],
-        skipped_sessions=skipped_sessions,
-        retrieval_assists=retrieval_assists,
-    )
-    if audit.additional_session_ids:
-        inspected_ids = {session.session_id for session in inspected_sessions}
-        for session in sessions:
-            if session.session_id in audit.additional_session_ids and session.session_id not in inspected_ids:
-                inspected_sessions.append(session)
-                inspected_ids.add(session.session_id)
-        skipped_sessions = [session for session in sessions if session.session_id not in inspected_ids]
-    inspected_windows: list[dict[str, Any]] = []
-    valid_ids: set[str] = set()
-    message_thread_by_id: dict[str, str] = {}
-    for session in inspected_sessions:
-        transcript_text, message_ids = serialize_session_transcript(
-            conn,
-            dataset_id,
-            session,
-            padding=DEFAULT_TRANSCRIPT_WINDOW_PADDING,
+    message_order_by_thread = _message_order_by_planned_windows(planned_windows)
+    hinted_final_ranges = sum(
+        1
+        for answer_range in parsed.answer_ranges
+        if _range_intersects_hint_blocks(
+            answer_range,
+            hint_collection.all_blocks,
+            message_order_by_thread=message_order_by_thread,
+            message_thread_by_id=message_thread_by_id,
         )
-        inspected_windows.append(
-            {
-                "session_id": session.session_id,
-                "source_thread_id": session.source_thread_id,
-                "classification": classifications.get(session.session_id),
-                "transcript": transcript_text,
-                "message_ids": message_ids,
-            }
-        )
-        valid_ids.update(message_ids)
-        for message_id in message_ids:
-            message_thread_by_id[message_id] = session.source_thread_id
-    user_content = build_session_coverage_user_content(
-        user_query,
-        sessions=sessions,
-        classifications=classifications,
-        inspected_windows=inspected_windows,
     )
-    result = run_nim_chat(
-        conn,
-        logger,
-        router,
-        run_type=RUN_TYPE_COVERAGE_SESSION_ANSWER,
-        user_content=user_content,
+    logger.info(
+        component="search.conversational_answer",
+        operation="exhaustive_scan_hint_overlap_summary",
+        message="Computed exhaustive scan retrieval-hint overlap with final answer ranges",
+        details={
+            "planner_term_count": len(hint_collection.planner_terms),
+            "hint_block_count": len(hint_collection.all_blocks),
+            "final_answer_range_count": len(parsed.answer_ranges),
+            "hinted_final_answer_range_count": hinted_final_ranges,
+        },
         dataset_id=dataset_id,
-        max_tokens=max_tokens,
     )
-    source_thread_ids = sorted({session.source_thread_id for session in sessions})
-    parsed = parse_coverage_session_answer_response(
-        result.content,
-        valid_message_ids=valid_ids,
-        message_thread_by_id=message_thread_by_id,
-        source_thread_ids=source_thread_ids,
-        messages_considered=len(valid_ids),
-        sessions_considered=len(sessions),
-        sessions_inspected=len(inspected_sessions),
-        sessions_skipped=len(skipped_sessions),
-        retrieval_assists=retrieval_assists,
-        message_order_by_thread=_message_order_by_thread_from_db(conn, dataset_id),
-    )
-    parsed.uncertainties = (
-        classification_uncertainties + assist_notes + audit.residual_uncertainties + parsed.uncertainties
-    )
-    if audit.audit_notes:
-        parsed.uncertainties.append(audit.audit_notes)
     return parsed

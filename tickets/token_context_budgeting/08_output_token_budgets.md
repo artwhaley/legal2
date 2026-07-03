@@ -23,7 +23,6 @@ Applicable paths:
 
 - `run_whole_transcript_answer`
 - `run_exhaustive_window_scan_answer`
-- `run_session_coverage_answer`
 - Session classification / audit / summary only if appropriate and safe.
 
 Use:

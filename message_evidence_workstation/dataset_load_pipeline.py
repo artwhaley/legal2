@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from message_evidence_workstation.config.settings import load_settings
 from message_evidence_workstation.db.evidence_blocks import ensure_uncategorized_category
 from message_evidence_workstation.db.printable_artifacts import ensure_default_printable_artifact_group
 from message_evidence_workstation.db.repositories import get_latest_dataset
@@ -128,11 +127,11 @@ def run_import_pipeline(
         )
 
     try:
-        _append_narration(narrate, narration, "Step 1/7: Workspace database is open.")
+        _append_narration(narrate, narration, "Step 1/6: Workspace database is open.")
         if cancelled():
             return DatasetLoadResult(success=False, error="Cancelled", narration=narration)
 
-        _append_narration(narrate, narration, "Step 2/7: Schema migration complete (idempotent).")
+        _append_narration(narrate, narration, "Step 2/6: Schema migration complete (idempotent).")
         if cancelled():
             return DatasetLoadResult(success=False, error="Cancelled", narration=narration)
 
@@ -145,14 +144,14 @@ def run_import_pipeline(
                 _append_narration(
                     narrate,
                     narration,
-                    f"Step 3/7: Using existing dataset (dataset_id={dataset_id}).",
+                    f"Step 3/6: Using existing dataset (dataset_id={dataset_id}).",
                 )
 
         if not skip_import:
             _append_narration(
                 narrate,
                 narration,
-                f"Step 3/7: Streaming import from {request.dataset_path}…",
+                f"Step 3/6: Streaming import from {request.dataset_path}…",
             )
             with logger.batch() as batch_log:
                 batch_log.info(
@@ -178,7 +177,7 @@ def run_import_pipeline(
                     narration=narration,
                 )
 
-            _append_narration(narrate, narration, "Step 4/7: Rebuilding FTS index…")
+            _append_narration(narrate, narration, "Step 4/6: Rebuilding FTS index…")
             from message_evidence_workstation.search.fts import rebuild_message_fts
 
             rebuild_message_fts(
@@ -195,7 +194,7 @@ def run_import_pipeline(
                     narration=narration,
                 )
 
-            _append_narration(narrate, narration, "Step 5/7: Rebuilding spellfix index…")
+            _append_narration(narrate, narration, "Step 5/6: Rebuilding spellfix index…")
             from message_evidence_workstation.search.spellfix import rebuild_spellfix_for_dataset
 
             rebuild_spellfix_for_dataset(
@@ -212,21 +211,8 @@ def run_import_pipeline(
                     narration=narration,
                 )
 
-            _append_narration(narrate, narration, "Step 6/7: Building transcript sessions…")
-            from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
-
-            gap_minutes = load_settings().answer.session_gap_minutes
-            rebuild_dataset_sessions(
-                conn,
-                logger,
-                dataset_id,
-                gap_minutes=gap_minutes,
-                use_semantic_chunks=False,
-                progress_callback=progress_callback,
-            )
-
         assert dataset_id is not None
-        _append_narration(narrate, narration, "Step 7/7: Ensuring default categories and groups…")
+        _append_narration(narrate, narration, "Step 6/6: Ensuring default categories and groups…")
         ensure_uncategorized_category(conn, logger, dataset_id)
         ensure_default_printable_artifact_group(conn, logger, dataset_id)
         mark_dataset_import_ready(conn, dataset_id)

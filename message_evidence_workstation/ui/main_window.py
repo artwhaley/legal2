@@ -16,9 +16,11 @@ from PySide6.QtWidgets import (
 )
 
 from message_evidence_workstation.app_bootstrap import AppContext, StartupLoadOptions
+from message_evidence_workstation.ui.background_tasks import request_shutdown
 from message_evidence_workstation.config.settings import load_settings
 from message_evidence_workstation.db import repositories
 from message_evidence_workstation.domain.embedding_state import EmbeddingState
+from message_evidence_workstation.ui.background_tasks import request_shutdown
 from message_evidence_workstation.ui.conversational_tab import ConversationalTab
 from message_evidence_workstation.ui.embedding_progress_controller import EmbeddingProgressController
 from message_evidence_workstation.ui.home_tab import HomeTab
@@ -391,6 +393,10 @@ class MainWindow(QMainWindow):
             self.new_transcript_widget_tab.select_source_thread(source_thread_id)
         if self.virtual_transcript_widget_tab is not None:
             self.virtual_transcript_widget_tab.select_source_thread(source_thread_id)
+
+    def closeEvent(self, event: object) -> None:
+        request_shutdown()
+        super().closeEvent(event)
 
     def _on_conversational_citation_selected(self, message_id: str, source_thread_id: str) -> None:
         if self.context.dataset_id is None or self.transcript_widget_tab is None:

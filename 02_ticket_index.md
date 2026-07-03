@@ -123,3 +123,15 @@
 - [T94 - Virtual Transcript Annotation Editing](tickets/T94_virtual_transcript_annotation_editing.md)
 - [T95 - Virtual Transcript Demo Controls](tickets/T95_virtual_transcript_demo_controls.md)
 - [T96 - Virtual Transcript Regression and Handoff](tickets/T96_virtual_transcript_regression_and_handoff.md)
+
+## Search date range (see `10_search_date_range_build_plan.md`)
+
+**Orchestrator:** [search_date_range_orchestrator.md](tickets/search_date_range_orchestrator.md) - execute **T99 -> T105 in order**.
+
+- [T99 - Shared Date Scope And Scoped Stats](tickets/T99_shared_date_scope_and_scoped_stats.md)
+- [T100 - Simple Search Date Range For FTS And Keyword](tickets/T100_simple_search_date_range_fts_and_keyword.md)
+- [T101 - Embedding Search Date Range](tickets/T101_embedding_search_date_range.md)
+- [T102 - Conversational Whole Transcript Date Scope](tickets/T102_conversational_whole_transcript_date_scope.md)
+- [T103 - Exhaustive Scan Date Scope](tickets/T103_exhaustive_scan_date_scope.md)
+- [T104 - Conversational Date Range UI And Context Behavior](tickets/T104_conversational_date_range_ui_and_context_behavior.md)
+- [T105 - Search Date Range Regression](tickets/T105_search_date_range_regression.md)

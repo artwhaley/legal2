@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
+
+_log = logging.getLogger(__name__)
 
 DEFAULT_SPEAKER_TINTS: list[str] = [
     "#f3eee6",
@@ -52,6 +55,7 @@ def format_timestamp_label(timestamp: str) -> str:
     try:
         dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
     except ValueError:
+        _log.warning("Malformed timestamp label value: %r", timestamp)
         return timestamp
     hour = dt.strftime("%I").lstrip("0") or "12"
     minute = dt.strftime("%M")

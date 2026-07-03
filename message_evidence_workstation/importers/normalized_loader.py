@@ -359,7 +359,6 @@ def clear_dataset(conn: sqlite3.Connection, dataset_id: int) -> None:
         (dataset_id,),
     )
     conn.execute("DELETE FROM evidence_block WHERE dataset_id = ?", (dataset_id,))
-    conn.execute("DELETE FROM transcript_session WHERE dataset_id = ?", (dataset_id,))
     conn.execute("DELETE FROM category WHERE dataset_id = ?", (dataset_id,))
     from message_evidence_workstation.search.spellfix import clear_spellfix_for_dataset
 
@@ -421,7 +420,13 @@ def load_normalized_dataset(
             )
 
             with dataset_json.open("r", encoding="utf-8") as handle:
-                dataset_meta = json.load(handle)
+                try:
+                    dataset_meta = json.load(handle)
+                except json.JSONDecodeError as exc:
+                    raise DatasetLoadError(
+                        f"Malformed JSON in dataset.json: {exc.msg}",
+                        file="dataset.json",
+                    ) from exc
             if not isinstance(dataset_meta, dict):
                 raise DatasetLoadError("dataset.json must contain a JSON object", file="dataset.json")
             _validate_required(dataset_meta, REQUIRED_DATASET_FIELDS, file="dataset.json")
@@ -532,15 +537,6 @@ def load_normalized_dataset(
                     conn,
                     logger,
                     dataset_id,
-                    progress_callback=progress_callback,
-                )
-                from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
-
-                rebuild_dataset_sessions(
-                    conn,
-                    logger,
-                    dataset_id,
-                    use_semantic_chunks=False,
                     progress_callback=progress_callback,
                 )
                 if embedding_snapshot is not None:

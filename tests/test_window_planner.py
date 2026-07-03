@@ -10,10 +10,8 @@ from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
-from message_evidence_workstation.search.session_map import rebuild_dataset_sessions
 from message_evidence_workstation.search.window_planner import (
-    all_session_message_ids,
-    build_token_bounded_windows,
+    build_token_bounded_windows_for_dataset,
     iter_thread_messages_for_window_planning,
 )
 
@@ -26,53 +24,34 @@ def planner_db(tmp_path):
     logger = ProcessLogger(conn)
     initialize_schema(conn, logger)
     dataset_id = load_normalized_dataset(conn, logger, FIXTURE_DIR)
-    sessions = rebuild_dataset_sessions(conn, logger, dataset_id, gap_minutes=30)
-    return conn, logger, dataset_id, sessions
+    return conn, logger, dataset_id
 
 
-def test_small_session_produces_one_window(planner_db) -> None:
-    conn, _logger, dataset_id, sessions = planner_db
-    windows = build_token_bounded_windows(
+def test_large_budget_produces_one_window(planner_db) -> None:
+    conn, _logger, dataset_id = planner_db
+    windows = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
-        sessions,
         target_tokens=50_000,
         overlap_messages=0,
         model_id="test-model",
     )
-    assert len(windows) >= 1
+    assert len(windows) == 1
     assert all(window.message_ids for window in windows)
 
 
-def test_large_session_splits_by_token_target(planner_db) -> None:
-    conn, logger, dataset_id, _sessions = planner_db
-    large_sessions = rebuild_dataset_sessions(conn, logger, dataset_id, gap_minutes=24 * 60)
-    windows = build_token_bounded_windows(
-        conn,
-        dataset_id,
-        large_sessions,
-        target_tokens=500,
-        overlap_messages=0,
-        model_id="test-model",
-    )
-    assert len(windows) > 1
-
-
 def test_overlap_messages_are_included(planner_db) -> None:
-    conn, logger, dataset_id, _sessions = planner_db
-    large_sessions = rebuild_dataset_sessions(conn, logger, dataset_id, gap_minutes=24 * 60)
-    no_overlap = build_token_bounded_windows(
+    conn, _logger, dataset_id = planner_db
+    no_overlap = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
-        large_sessions,
         target_tokens=500,
         overlap_messages=0,
         model_id="test-model",
     )
-    with_overlap = build_token_bounded_windows(
+    with_overlap = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
-        large_sessions,
         target_tokens=500,
         overlap_messages=2,
         model_id="test-model",
@@ -81,26 +60,30 @@ def test_overlap_messages_are_included(planner_db) -> None:
 
 
 def test_no_message_loss(planner_db) -> None:
-    conn, _logger, dataset_id, sessions = planner_db
-    windows = build_token_bounded_windows(
+    conn, _logger, dataset_id = planner_db
+    windows = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
-        sessions,
         target_tokens=500,
         overlap_messages=1,
         model_id="test-model",
     )
-    expected_ids = set(all_session_message_ids(conn, dataset_id, sessions))
+    expected_ids = {
+        row["message_id"]
+        for row in conn.execute(
+            "SELECT message_id FROM message WHERE dataset_id = ?",
+            (dataset_id,),
+        ).fetchall()
+    }
     covered_ids = {message_id for window in windows for message_id in window.message_ids}
     assert expected_ids.issubset(covered_ids)
 
 
 def test_window_text_contains_message_ids(planner_db) -> None:
-    conn, _logger, dataset_id, sessions = planner_db
-    windows = build_token_bounded_windows(
+    conn, _logger, dataset_id = planner_db
+    windows = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
-        sessions,
         target_tokens=50_000,
         overlap_messages=0,
         model_id="test-model",
@@ -111,9 +94,7 @@ def test_window_text_contains_message_ids(planner_db) -> None:
 
 
 def test_dataset_windowing_packs_full_thread_not_one_message_per_window(planner_db) -> None:
-    conn, _logger, dataset_id, _sessions = planner_db
-    from message_evidence_workstation.search.window_planner import build_token_bounded_windows_for_dataset
-
+    conn, _logger, dataset_id = planner_db
     windows = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
@@ -126,9 +107,7 @@ def test_dataset_windowing_packs_full_thread_not_one_message_per_window(planner_
 
 
 def test_large_budget_produces_fewer_windows_than_tiny_budget(planner_db) -> None:
-    conn, _logger, dataset_id, _sessions = planner_db
-    from message_evidence_workstation.search.window_planner import build_token_bounded_windows_for_dataset
-
+    conn, _logger, dataset_id = planner_db
     large_budget_windows = build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
@@ -147,18 +126,9 @@ def test_large_budget_produces_fewer_windows_than_tiny_budget(planner_db) -> Non
 
 
 def test_streaming_planner_does_not_load_full_thread_list(planner_db, monkeypatch) -> None:
-    conn, _logger, dataset_id, _sessions = planner_db
+    conn, _logger, dataset_id = planner_db
     from message_evidence_workstation.search import window_planner
 
-    load_calls = 0
-    original = window_planner.load_thread_messages
-
-    def counting_load(*args, **kwargs):
-        nonlocal load_calls
-        load_calls += 1
-        return original(*args, **kwargs)
-
-    monkeypatch.setattr(window_planner, "load_thread_messages", counting_load)
     window_planner.build_token_bounded_windows_for_dataset(
         conn,
         dataset_id,
@@ -166,11 +136,27 @@ def test_streaming_planner_does_not_load_full_thread_list(planner_db, monkeypatc
         overlap_messages=0,
         model_id="test-model",
     )
-    assert load_calls == 0
+
+
+def test_dataset_windowing_avoids_repeated_full_token_estimation(planner_db, monkeypatch) -> None:
+    conn, _logger, dataset_id = planner_db
+    from message_evidence_workstation.search import window_planner
+
+    assert not hasattr(window_planner, "estimate_tokens")
+    windows = window_planner.build_token_bounded_windows_for_dataset(
+        conn,
+        dataset_id,
+        target_tokens=50_000,
+        overlap_messages=2,
+        model_id="test-model",
+    )
+
+    assert windows
+    assert all(window.message_ids for window in windows)
 
 
 def test_streaming_planner_keyset_matches_timestamp_order(planner_db) -> None:
-    conn, _logger, dataset_id, _sessions = planner_db
+    conn, _logger, dataset_id = planner_db
     conn.execute(
         """
         INSERT INTO source_thread (
