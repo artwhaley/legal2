@@ -13,6 +13,8 @@ from message_evidence_workstation.db.repositories import list_messages_for_threa
 from message_evidence_workstation.domain.models import Message
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.search.conversational_answer import build_dataset_transcript
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 from message_evidence_workstation.search.transcript import (
     estimate_token_count,
     load_dataset_messages,
@@ -144,6 +146,124 @@ def test_transcript_fits_budget() -> None:
     transcript = serialize_messages(messages)
     assert transcript_fits_budget(transcript, 1000)
     assert not transcript_fits_budget(transcript, 10)
+
+
+# ── T99: scoped transcript loading ──────────────────────────────────────
+
+def test_date_scope_sql_clauses_no_scope() -> None:
+    """Inactive and None scope produce empty clause."""
+    assert date_scope_sql_clauses(None) == ("", ())
+    assert date_scope_sql_clauses(MessageDateScope()) == ("", ())
+
+
+def test_date_scope_sql_clauses_start_only() -> None:
+    clause, params = date_scope_sql_clauses(
+        MessageDateScope(start_timestamp="2024-01-01T00:00:00+00:00")
+    )
+    assert clause == "timestamp >= ?"
+    assert params == ("2024-01-01T00:00:00+00:00",)
+
+
+def test_date_scope_sql_clauses_end_only() -> None:
+    clause, params = date_scope_sql_clauses(
+        MessageDateScope(end_timestamp="2024-01-31T23:59:59+00:00")
+    )
+    assert clause == "timestamp <= ?"
+    assert params == ("2024-01-31T23:59:59+00:00",)
+
+
+def test_date_scope_sql_clauses_both_bounds() -> None:
+    clause, params = date_scope_sql_clauses(
+        MessageDateScope(
+            start_timestamp="2024-01-01T00:00:00+00:00",
+            end_timestamp="2024-01-31T23:59:59+00:00",
+        )
+    )
+    assert clause == "timestamp >= ? AND timestamp <= ?"
+    assert params == ("2024-01-01T00:00:00+00:00", "2024-01-31T23:59:59+00:00")
+
+
+def test_message_date_scope_is_active() -> None:
+    assert not MessageDateScope().is_active
+    assert not MessageDateScope(start_timestamp=None, end_timestamp=None).is_active
+    assert MessageDateScope(start_timestamp="2024-01-01T00:00:00+00:00").is_active
+    assert MessageDateScope(end_timestamp="2024-01-01T00:00:00+00:00").is_active
+    assert MessageDateScope(
+        start_timestamp="2024-01-01T00:00:00+00:00",
+        end_timestamp="2024-01-31T23:59:59+00:00",
+    ).is_active
+    # Empty strings treated as unset (UI normalizes before reaching here).
+    assert not MessageDateScope(start_timestamp="").is_active
+    assert not MessageDateScope(end_timestamp="").is_active
+
+
+def test_build_dataset_transcript_date_scoped(transcript_db) -> None:
+    """build_dataset_transcript passes date_scope through to load_dataset_messages."""
+    conn, dataset_id = transcript_db
+    full = build_dataset_transcript(conn, dataset_id)
+    assert len(full.message_ids) == 100
+    scope = MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00")
+    scoped = build_dataset_transcript(conn, dataset_id, date_scope=scope)
+    assert 1 <= len(scoped.message_ids) < 100
+    for message_id in scoped.message_ids:
+        assert message_id in full.message_ids
+
+
+def test_load_dataset_messages_no_scope_returns_all(transcript_db) -> None:
+    conn, dataset_id = transcript_db
+    messages = load_dataset_messages(conn, dataset_id)
+    assert len(messages) == 100
+    none_messages = load_dataset_messages(conn, dataset_id, date_scope=None)
+    assert len(none_messages) == 100
+    inactive = load_dataset_messages(conn, dataset_id, date_scope=MessageDateScope())
+    assert len(inactive) == 100
+
+
+def test_load_dataset_messages_start_only(transcript_db) -> None:
+    conn, dataset_id = transcript_db
+    scope = MessageDateScope(start_timestamp="2024-01-10T00:00:00+00:00")
+    scoped = load_dataset_messages(conn, dataset_id, date_scope=scope)
+    assert 1 <= len(scoped) < 100
+    for message in scoped:
+        assert message.timestamp >= scope.start_timestamp
+
+
+def test_load_dataset_messages_end_only(transcript_db) -> None:
+    conn, dataset_id = transcript_db
+    scope = MessageDateScope(end_timestamp="2024-01-03T00:00:00+00:00")
+    scoped = load_dataset_messages(conn, dataset_id, date_scope=scope)
+    assert 1 <= len(scoped) < 100
+    for message in scoped:
+        assert message.timestamp <= scope.end_timestamp
+
+
+def test_load_dataset_messages_inclusive_bounded(transcript_db) -> None:
+    conn, dataset_id = transcript_db
+    scope = MessageDateScope(
+        start_timestamp="2024-01-03T00:00:00+00:00",
+        end_timestamp="2024-01-05T23:59:59+00:00",
+    )
+    scoped = load_dataset_messages(conn, dataset_id, date_scope=scope)
+    assert 1 <= len(scoped) < 100
+    for message in scoped:
+        assert message.timestamp >= scope.start_timestamp
+        assert message.timestamp <= scope.end_timestamp
+    # All messages are within dates Jan 3-5.
+    all_ids = {message.message_id for message in scoped}
+    full_messages = load_dataset_messages(conn, dataset_id)
+    for message in full_messages:
+        if message.timestamp < scope.start_timestamp or message.timestamp > scope.end_timestamp:
+            assert message.message_id not in all_ids
+
+
+def test_load_dataset_messages_empty_range(transcript_db) -> None:
+    conn, dataset_id = transcript_db
+    scope = MessageDateScope(
+        start_timestamp="2020-01-01T00:00:00+00:00",
+        end_timestamp="2020-01-02T00:00:00+00:00",
+    )
+    scoped = load_dataset_messages(conn, dataset_id, date_scope=scope)
+    assert scoped == []
 
 
 def test_multi_day_manual_messages_span_days() -> None:

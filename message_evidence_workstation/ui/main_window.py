@@ -114,6 +114,12 @@ class MainWindow(QMainWindow):
 
         self.sidebar.source_thread_selected.connect(self._on_source_thread_selected)
         self.sidebar.evidence_block_activated.connect(self._on_sidebar_evidence_block_activated)
+        self.sidebar.evidence_block_virtual_transcript_visibility_requested.connect(
+            self._on_sidebar_virtual_transcript_visibility_requested
+        )
+        self.sidebar.set_virtual_transcript_hidden_state_provider(
+            self._is_evidence_block_hidden_in_virtual_transcript
+        )
 
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
@@ -382,6 +388,24 @@ class MainWindow(QMainWindow):
             return
         if current is self.conversational_tab and self.conversational_tab is not None:
             self.conversational_tab.transcript_widget.select_evidence_block(evidence_block_id)
+
+    def _is_evidence_block_hidden_in_virtual_transcript(self, evidence_block_id: int) -> bool:
+        if self.virtual_transcript_widget_tab is None:
+            return False
+        return self.virtual_transcript_widget_tab.is_evidence_block_hidden(evidence_block_id)
+
+    def _on_sidebar_virtual_transcript_visibility_requested(
+        self,
+        evidence_block_id: int,
+        hidden: bool,
+    ) -> None:
+        if self.virtual_transcript_widget_tab is None:
+            return
+        if hidden:
+            self.virtual_transcript_widget_tab.hide_evidence_block(evidence_block_id)
+        else:
+            self.virtual_transcript_widget_tab.show_evidence_block(evidence_block_id)
+        self.sidebar.refresh_evidence_blocks()
 
     def _on_source_thread_selected(self, source_thread_id: str, display_title: str) -> None:
         if self.context.dataset_id is None:

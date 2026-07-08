@@ -8,6 +8,7 @@ from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.db.workspace import import_into_workspace
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.ui.search_worker import (
     SearchCancellationToken,
     SearchJobSpec,
@@ -96,3 +97,25 @@ def test_typing_does_not_query_database(qapp, workspace) -> None:
     conn.set_trace_callback(None)
     search_sql = [s for s in captured if "message_fts" in s or ("FROM message" in s and "MATCH" in s)]
     assert search_sql == []
+
+
+# ── T100: date scope in search worker ──────────────────────────────────
+
+def test_search_worker_date_scope_propagates_to_fts(workspace) -> None:
+    db_path, dataset_id = workspace
+    scope = MessageDateScope(start_timestamp="2024-01-10T00:00:00+00:00")
+    result = run_search_job(
+        SearchJobSpec(
+            db_path=db_path,
+            dataset_id=dataset_id,
+            mode="fts5",
+            query="the",
+            page_size=50,
+            offset=0,
+            generation=1,
+            date_scope=scope,
+        )
+    )
+    assert result.total_count is not None
+    assert result.total_count >= 0
+    assert result.cancelled is False

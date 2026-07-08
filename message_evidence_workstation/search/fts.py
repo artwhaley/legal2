@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
 from message_evidence_workstation.db.fts_schema import MESSAGE_FTS_DDL, MESSAGE_FTS_TOKENIZER
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 if TYPE_CHECKING:
     from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 
@@ -282,6 +283,8 @@ def _search_token_variants(
     logger: ProcessLogger,
     dataset_id: int,
     token: str,
+    *,
+    date_scope: MessageDateScope | None = None,
 ) -> dict[str, list[FtsHit]]:
     exact_hits: list[FtsHit] = []
     partial_hits: list[FtsHit] = []
@@ -290,18 +293,18 @@ def _search_token_variants(
     seen_partial: set[str] = set()
     seen_fuzzy: set[str] = set()
     for variant in token_search_variants(token):
-        for hit in search_exact(conn, logger, dataset_id, variant):
+        for hit in search_exact(conn, logger, dataset_id, variant, date_scope=date_scope):
             if hit.message_id not in seen_exact:
                 seen_exact.add(hit.message_id)
                 exact_hits.append(hit)
-        for hit in search_partial(conn, logger, dataset_id, variant):
+        for hit in search_partial(conn, logger, dataset_id, variant, date_scope=date_scope):
             if hit.message_id not in seen_partial:
                 seen_partial.add(hit.message_id)
                 partial_hits.append(hit)
     from message_evidence_workstation.search.spellfix import expand_fuzzy_terms
 
     for fuzzy_term in expand_fuzzy_terms(conn, logger, dataset_id, token):
-        for hit in search_exact(conn, logger, dataset_id, fuzzy_term):
+        for hit in search_exact(conn, logger, dataset_id, fuzzy_term, date_scope=date_scope):
             if hit.message_id not in seen_exact and hit.message_id not in seen_partial and hit.message_id not in seen_fuzzy:
                 seen_fuzzy.add(hit.message_id)
                 fuzzy_hits.append(
@@ -344,6 +347,7 @@ def _run_fts_query(
     match_type: str,
     limit: int | None = None,
     offset: int = 0,
+    date_scope: MessageDateScope | None = None,
 ) -> list[FtsHit]:
     if not fts_query.strip():
         return []
@@ -363,6 +367,7 @@ def _run_fts_query(
             dataset_id=dataset_id,
         )
         return []
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
     started = time.perf_counter()
     pagination_sql = ""
     pagination_params: tuple[int, ...] = ()
@@ -377,10 +382,11 @@ def _run_fts_query(
             JOIN message m
               ON m.message_id = mf.message_id AND m.dataset_id = mf.dataset_id
             WHERE mf.dataset_id = ? AND message_fts MATCH ?
+            {"AND " + date_clause if date_clause else ""}
             ORDER BY rank, m.timestamp, m.sort_index, mf.message_id
             {pagination_sql}
             """,
-            (dataset_id, fts_query, *pagination_params),
+            (dataset_id, fts_query, *date_params, *pagination_params),
         ).fetchall()
     except sqlite3.OperationalError as exc:
         elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -434,6 +440,8 @@ def search_exact(
     logger: ProcessLogger,
     dataset_id: int,
     query: str,
+    *,
+    date_scope: MessageDateScope | None = None,
 ) -> list[FtsHit]:
     if not query.strip():
         return []
@@ -445,6 +453,7 @@ def search_exact(
         raw_query=query,
         fts_query=fts_query,
         match_type="exact",
+        date_scope=date_scope,
     )
 
 
@@ -453,6 +462,8 @@ def search_partial(
     logger: ProcessLogger,
     dataset_id: int,
     query: str,
+    *,
+    date_scope: MessageDateScope | None = None,
 ) -> list[FtsHit]:
     if not query.strip():
         return []
@@ -473,6 +484,7 @@ def search_partial(
         raw_query=query,
         fts_query=fts_query,
         match_type="partial",
+        date_scope=date_scope,
     )
 
 
@@ -481,12 +493,14 @@ def _collect_lane_results(
     logger: ProcessLogger,
     dataset_id: int,
     query: str,
+    *,
+    date_scope: MessageDateScope | None = None,
 ) -> dict[str, list[FtsHit]]:
     tokens = tokenize_query(query)
     if not tokens:
         return {"exact": [], "partial": [], "fuzzy": []}
     if len(tokens) == 1:
-        return _search_token_variants(conn, logger, dataset_id, tokens[0])
+        return _search_token_variants(conn, logger, dataset_id, tokens[0], date_scope=date_scope)
 
     exact_hits: list[FtsHit] = []
     partial_hits: list[FtsHit] = []
@@ -495,7 +509,7 @@ def _collect_lane_results(
     seen_partial: set[str] = set()
     seen_fuzzy: set[str] = set()
     for token in tokens:
-        token_results = _search_token_variants(conn, logger, dataset_id, token)
+        token_results = _search_token_variants(conn, logger, dataset_id, token, date_scope=date_scope)
         for hit in token_results["exact"]:
             if hit.message_id not in seen_exact:
                 seen_exact.add(hit.message_id)
@@ -700,6 +714,7 @@ def _search_candidates_sql(
     *,
     limit: int | None,
     offset: int,
+    date_scope: MessageDateScope | None = None,
 ) -> FtsSearchPage:
     if not specs:
         return FtsSearchPage(
@@ -710,6 +725,7 @@ def _search_candidates_sql(
             invalid_query_reason="all FTS candidates were invalid",
         )
 
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
     union_parts: list[str] = []
     params: list[Any] = []
     for spec in specs:
@@ -729,6 +745,9 @@ def _search_candidates_sql(
             """
         )
         params.extend([spec.match_type, spec.match_priority, dataset_id, spec.fts_query])
+
+    params.extend(date_params)
+    date_filter = f"WHERE {date_clause}" if date_clause else ""
 
     base_sql = f"""
         WITH candidates AS (
@@ -762,7 +781,7 @@ def _search_candidates_sql(
     """
     try:
         count_row = conn.execute(
-            f"{base_sql} SELECT COUNT(*) AS total_count FROM ordered",
+            f"{base_sql} SELECT COUNT(*) AS total_count FROM ordered {date_filter}",
             params,
         ).fetchone()
         total_count = int(count_row["total_count"] if count_row is not None else 0)
@@ -772,6 +791,7 @@ def _search_candidates_sql(
                 {base_sql}
                 SELECT message_id, source_thread_id, match_type, rank
                 FROM ordered
+                {date_filter}
                 ORDER BY match_priority, rank, timestamp, sort_index, message_id
                 """,
                 params,
@@ -791,6 +811,7 @@ def _search_candidates_sql(
             {base_sql}
             SELECT message_id, source_thread_id, match_type, rank
             FROM ordered
+            {date_filter}
             ORDER BY match_priority, rank, timestamp, sort_index, message_id
             LIMIT ? OFFSET ?
             """,
@@ -853,9 +874,10 @@ def search_keyword_terms(
     *,
     limit: int | None = None,
     offset: int = 0,
+    date_scope: MessageDateScope | None = None,
 ) -> dict[str, Any]:
     specs = _candidate_specs_for_keyword_terms(logger, terms, dataset_id=dataset_id)
-    page = _search_candidates_sql(conn, logger, dataset_id, specs, limit=limit, offset=offset)
+    page = _search_candidates_sql(conn, logger, dataset_id, specs, limit=limit, offset=offset, date_scope=date_scope)
     return {
         "hits": page.hits,
         "total_count": page.total_count,
@@ -873,6 +895,7 @@ def search_messages(
     *,
     limit: int | None = None,
     offset: int = 0,
+    date_scope: MessageDateScope | None = None,
 ) -> dict[str, Any]:
     """Search messages with optional pagination.
 
@@ -880,13 +903,13 @@ def search_messages(
     merged, de-duplicated result set. Pass ``limit=None`` to return all hits.
     """
     if limit is None:
-        lanes = _collect_lane_results(conn, logger, dataset_id, query)
+        lanes = _collect_lane_results(conn, logger, dataset_id, query, date_scope=date_scope)
         merged = _merge_lane_results(lanes)
         ordered = _sort_merged_hits(conn, dataset_id, merged)
         page = _paginate_hits(ordered, limit=limit, offset=offset)
     else:
         specs = _candidate_specs_for_query(conn, logger, dataset_id, query)
-        page = _search_candidates_sql(conn, logger, dataset_id, specs, limit=limit, offset=offset)
+        page = _search_candidates_sql(conn, logger, dataset_id, specs, limit=limit, offset=offset, date_scope=date_scope)
     logger.info(
         component="search.fts",
         operation="search_messages",

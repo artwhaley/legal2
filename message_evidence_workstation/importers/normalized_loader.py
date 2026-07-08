@@ -520,7 +520,22 @@ def load_normalized_dataset(
 
             from message_evidence_workstation.db.repositories import backfill_thread_ordinals
 
-            backfill_thread_ordinals(conn, dataset_id)
+            batch_log.info(
+                component="importers.normalized_loader",
+                operation="thread_ordinals_start",
+                message="Assigning per-thread ordinals",
+                details={"dataset_id": dataset_id, "message_count": message_count},
+                dataset_id=dataset_id,
+            )
+            assigned_ordinals = backfill_thread_ordinals(conn, dataset_id)
+            _report_progress(progress_callback, "thread_ordinals", assigned_ordinals, assigned_ordinals)
+            batch_log.info(
+                component="importers.normalized_loader",
+                operation="thread_ordinals_complete",
+                message="Assigned per-thread ordinals",
+                details={"dataset_id": dataset_id, "assigned_ordinals": assigned_ordinals},
+                dataset_id=dataset_id,
+            )
 
             if run_post_import_steps:
                 from message_evidence_workstation.search.fts import rebuild_message_fts

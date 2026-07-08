@@ -147,12 +147,12 @@ def convert_merged_json_to_normalized_dir(
         },
     }
 
+    source_formats = sorted({str(source.get("format") or "unknown") for source in sources})
     dataset_record = {
         "name": "Julie Kramer (merged)",
         "notes": (
-            "Normalized from merged donor JSON with three source files "
-            "(facebook_decipher message_1/message_2 + decipher_thread_export). "
-            f"Original: {merged_json_path.name}"
+            f"Normalized from merged donor JSON with {len(sources)} source file(s) "
+            f"({', '.join(source_formats)}). Original: {merged_json_path.name}"
         ),
         "normalized_format_version": NORMALIZED_FORMAT_VERSION,
     }

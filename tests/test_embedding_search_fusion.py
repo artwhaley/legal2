@@ -15,6 +15,7 @@ from message_evidence_workstation.embeddings.index_jobs import (
 )
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.embedding_search import (
     EmbeddingIndexNotReadyError,
     filter_vector_hits_by_selectivity,
@@ -112,3 +113,61 @@ def test_fusion_keeps_one_row_with_multiple_methods() -> None:
     assert len(fused) == 1
     assert fused[0].match_type == "exact"
     assert "message_embedding" in fused[0].extra_methods
+
+
+# ── T101: scoped embedding search ──────────────────────────────────────
+
+def test_message_embedding_search_date_scoped(search_db) -> None:
+    conn, logger, dataset_id, adapter = search_db
+    full = search_message_embeddings(
+        conn, logger, dataset_id=dataset_id, query="allergy",
+        model_name="fake-search", adapter=adapter, top_k=10,
+    )
+    scope = MessageDateScope(start_timestamp="2024-01-10T00:00:00+00:00")
+    scoped = search_message_embeddings(
+        conn, logger, dataset_id=dataset_id, query="allergy",
+        model_name="fake-search", adapter=adapter, top_k=10,
+        date_scope=scope,
+    )
+    assert len(scoped) <= len(full)
+    for hit in scoped:
+        row = conn.execute(
+            "SELECT timestamp FROM message WHERE dataset_id = ? AND message_id = ?",
+            (dataset_id, hit.message_id),
+        ).fetchone()
+        assert row is not None
+        assert row["timestamp"] >= scope.start_timestamp
+
+
+def test_message_embedding_search_no_scope_same_as_full(search_db) -> None:
+    conn, logger, dataset_id, adapter = search_db
+    full = search_message_embeddings(
+        conn, logger, dataset_id=dataset_id, query="allergy",
+        model_name="fake-search", adapter=adapter, top_k=10,
+    )
+    none_scope = search_message_embeddings(
+        conn, logger, dataset_id=dataset_id, query="allergy",
+        model_name="fake-search", adapter=adapter, top_k=10,
+        date_scope=None,
+    )
+    inactive = search_message_embeddings(
+        conn, logger, dataset_id=dataset_id, query="allergy",
+        model_name="fake-search", adapter=adapter, top_k=10,
+        date_scope=MessageDateScope(),
+    )
+    assert len(none_scope) == len(full)
+    assert len(inactive) == len(full)
+
+
+def test_message_embedding_search_empty_range(search_db) -> None:
+    conn, logger, dataset_id, adapter = search_db
+    scope = MessageDateScope(
+        start_timestamp="2020-01-01T00:00:00+00:00",
+        end_timestamp="2020-01-02T00:00:00+00:00",
+    )
+    scoped = search_message_embeddings(
+        conn, logger, dataset_id=dataset_id, query="allergy",
+        model_name="fake-search", adapter=adapter, top_k=10,
+        date_scope=scope,
+    )
+    assert scoped == []

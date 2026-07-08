@@ -50,6 +50,7 @@ class VirtualTranscriptModel:
         self._message_cache: OrderedDict[int, Message] = OrderedDict()
         self._evidence_blocks: list[EvidenceBlock] = []
         self._overlays: list[VirtualEvidenceOverlay] = []
+        self._hidden_evidence_block_ids: set[int] = set()
         self.active_evidence_block_id: int | None = None
         self.fetch_count = 0
 
@@ -66,6 +67,7 @@ class VirtualTranscriptModel:
         self._message_cache.clear()
         self._evidence_blocks = []
         self._overlays = []
+        self._hidden_evidence_block_ids = set()
         self.active_evidence_block_id = None
 
     def count_messages(self) -> int:
@@ -225,6 +227,7 @@ class VirtualTranscriptModel:
         if not overlay_replaced:
             self._overlays.append(overlay)
         self.active_evidence_block_id = block.evidence_block_id
+        self._hidden_evidence_block_ids.discard(block.evidence_block_id)
 
     def set_active_evidence_block(self, evidence_block_id: int | None) -> None:
         self.active_evidence_block_id = evidence_block_id
@@ -234,10 +237,14 @@ class VirtualTranscriptModel:
         ]
 
     def block_overlays(self) -> list[VirtualEvidenceOverlay]:
-        return list(self._overlays)
+        return [
+            overlay
+            for overlay in self._overlays
+            if overlay.evidence_block_id not in self._hidden_evidence_block_ids
+        ]
 
     def active_overlay(self) -> VirtualEvidenceOverlay | None:
-        for overlay in self._overlays:
+        for overlay in self.block_overlays():
             if overlay.is_active:
                 return overlay
         return None
@@ -245,29 +252,29 @@ class VirtualTranscriptModel:
     def overlays_for_relevant_ordinal(self, ordinal: int) -> list[VirtualEvidenceOverlay]:
         return [
             overlay
-            for overlay in self._overlays
+            for overlay in self.block_overlays()
             if overlay.relevant_start_slot <= ordinal < overlay.relevant_end_slot
         ]
 
     def message_zone(self, ordinal: int) -> str | None:
         if any(
             overlay.relevant_start_slot <= ordinal < overlay.relevant_end_slot
-            for overlay in self._overlays
+            for overlay in self.block_overlays()
         ):
             return "relevant"
         if any(
             overlay.context_start_slot <= ordinal < overlay.relevant_start_slot
             or overlay.relevant_end_slot <= ordinal < overlay.context_end_slot
-            for overlay in self._overlays
+            for overlay in self.block_overlays()
         ):
             return "context"
         return None
 
     def message_is_highlighted_in_any_block(self, message_id: str) -> bool:
-        return any(message_id in overlay.highlighted_message_ids for overlay in self._overlays)
+        return any(message_id in overlay.highlighted_message_ids for overlay in self.block_overlays())
 
     def overlay_containing_ordinal(self, ordinal: int) -> VirtualEvidenceOverlay | None:
-        for overlay in self._overlays:
+        for overlay in self.block_overlays():
             if overlay.context_start_slot <= ordinal < overlay.context_end_slot:
                 return overlay
         return None
@@ -287,6 +294,19 @@ class VirtualTranscriptModel:
             if overlay.evidence_block_id == evidence_block_id:
                 return overlay
         return None
+
+    def hide_evidence_block(self, evidence_block_id: int) -> None:
+        if self.overlay_for_block(evidence_block_id) is None:
+            return
+        self._hidden_evidence_block_ids.add(evidence_block_id)
+        if self.active_evidence_block_id == evidence_block_id:
+            self.set_active_evidence_block(None)
+
+    def show_evidence_block(self, evidence_block_id: int) -> None:
+        self._hidden_evidence_block_ids.discard(evidence_block_id)
+
+    def is_evidence_block_hidden(self, evidence_block_id: int) -> bool:
+        return evidence_block_id in self._hidden_evidence_block_ids
 
     def update_overlay_slots(
         self,

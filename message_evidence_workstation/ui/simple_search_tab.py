@@ -6,10 +6,11 @@ import json
 import sqlite3
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, Qt, Signal
+from PySide6.QtCore import QDate, QMimeData, Qt, Signal
 from PySide6.QtGui import QColor, QDrag
 from PySide6.QtWidgets import (
     QComboBox,
+    QDateEdit,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -29,6 +30,7 @@ from message_evidence_workstation.db import repositories
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.nim.client import NimClientError, nim_error_user_message
 from message_evidence_workstation.search import fts
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.embedding_search import EmbeddingIndexNotReadyError
 from message_evidence_workstation.search.grouping import group_hits
 from message_evidence_workstation.search.result_models import GroupedSearchResult
@@ -96,6 +98,9 @@ class SimpleSearchTab(QWidget):
         self._fts_has_more = False
         self._fts_page_hit_count = 0
         self._vector_groups: list[GroupedSearchResult] = []
+        default_start_date = QDate.currentDate()
+        default_start_date = QDate(default_start_date.year(), 1, 1)
+        default_end_date = QDate.currentDate()
 
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Simple Search"))
@@ -113,6 +118,20 @@ class SimpleSearchTab(QWidget):
             self.mode_combo.addItem(SEARCH_MODE_LABELS[mode], mode)  # type: ignore[index]
         self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
         mode_row.addWidget(self.mode_combo, stretch=1)
+        mode_row.addWidget(QLabel("From"))
+        self.date_start = QDateEdit()
+        self.date_start.setCalendarPopup(True)
+        self.date_start.setSpecialValueText(" ")
+        self.date_start.setDate(default_start_date)
+        self.date_start.dateChanged.connect(self._on_date_range_changed)
+        mode_row.addWidget(self.date_start)
+        mode_row.addWidget(QLabel("To"))
+        self.date_end = QDateEdit()
+        self.date_end.setCalendarPopup(True)
+        self.date_end.setSpecialValueText(" ")
+        self.date_end.setDate(default_end_date)
+        self.date_end.dateChanged.connect(self._on_date_range_changed)
+        mode_row.addWidget(self.date_end)
         self.search_button = QPushButton("Search")
         self.search_button.clicked.connect(self._on_search_committed)
         self.cancel_button = QPushButton("Cancel")
@@ -289,6 +308,34 @@ class SimpleSearchTab(QWidget):
             2: "narrow",
         }.get(int(self.embedding_selectivity.value()), "balanced")
 
+    def _date_scope_status_suffix(self) -> str:
+        scope = self._current_date_scope()
+        if not scope.is_active:
+            return ""
+        parts: list[str] = []
+        if scope.start_timestamp:
+            parts.append(f"from {scope.start_timestamp[:10]}")
+        if scope.end_timestamp:
+            parts.append(f"through {scope.end_timestamp[:10]}")
+        return " " + " ".join(parts)
+
+    def _current_date_scope(self) -> MessageDateScope:
+        scope = MessageDateScope()
+        if self.date_start.date() > self.date_start.minimumDate():
+            start_dt = self.date_start.date().startOfDay()
+            scope = MessageDateScope(start_timestamp=start_dt.toString("yyyy-MM-ddTHH:mm:ss"))
+        if self.date_end.date() > self.date_end.minimumDate():
+            end_dt = self.date_end.date().endOfDay()
+            end_ts = end_dt.toString("yyyy-MM-ddT23:59:59")
+            scope = MessageDateScope(
+                start_timestamp=scope.start_timestamp,
+                end_timestamp=end_ts,
+            )
+        return scope
+
+    def _on_date_range_changed(self) -> None:
+        self._fts_page_offset = 0
+
     def _fts_page_size(self) -> int:
         return max(1, int(load_settings().search.fts_page_size))
 
@@ -365,6 +412,7 @@ class SimpleSearchTab(QWidget):
             use_message_vectors=mode == "message_embedding",
             use_chunk_vectors=mode == "chunk_embedding",
             embedding_selectivity=self._embedding_selectivity_value(),
+            date_scope=self._current_date_scope(),
         )
 
         def on_success(vector_hits: object) -> None:
@@ -429,7 +477,7 @@ class SimpleSearchTab(QWidget):
         self._search_cancel_token = SearchCancellationToken()
         cancel_token = self._search_cancel_token
         self.cancel_button.setEnabled(True)
-        self.status_label.setText(f"Searching ({SEARCH_MODE_LABELS[mode]})...")
+        self.status_label.setText(f"Searching ({SEARCH_MODE_LABELS[mode]}){self._date_scope_status_suffix()}...")
 
         if mode in ("message_embedding", "chunk_embedding"):
             self._run_embedding_search(query, generation)
@@ -445,6 +493,7 @@ class SimpleSearchTab(QWidget):
             keyword_terms=list(self._active_chips),
             expand_keywords=expand_keywords and mode == "expanded_keyword",
             generation=generation,
+            date_scope=self._current_date_scope(),
         )
 
         def on_success(result: SearchJobResult) -> None:

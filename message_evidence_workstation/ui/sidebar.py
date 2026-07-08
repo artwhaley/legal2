@@ -6,12 +6,14 @@ import json
 import sqlite3
 
 from PySide6.QtCore import QMimeData, Qt, Signal
-from PySide6.QtGui import QDrag, QDropEvent, QWheelEvent
+from PySide6.QtGui import QAction, QDrag, QDropEvent, QWheelEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
@@ -99,11 +101,46 @@ class CategoryDropTree(QTreeWidget):
             return None
         return int(item.data(0, ROLE_ITEM_ID))
 
+    def contextMenuEvent(self, event) -> None:  # noqa: ANN001
+        item = self.itemAt(event.pos())
+        if item is None or item.data(0, ROLE_ITEM_KIND) != "evidence_block":
+            super().contextMenuEvent(event)
+            return
+        self.setCurrentItem(item)
+        evidence_block_id = int(item.data(0, ROLE_ITEM_ID))
+        menu = QMenu(self)
+        hidden_in_virtual_transcript = self._sidebar.is_evidence_block_hidden_in_virtual_transcript(
+            evidence_block_id
+        )
+        visibility_action = QAction(
+            "Show in virtual transcript" if hidden_in_virtual_transcript else "Hide in virtual transcript",
+            self,
+        )
+        visibility_action.triggered.connect(
+            lambda checked=False, block_id=evidence_block_id, hidden=not hidden_in_virtual_transcript: self._sidebar.request_virtual_transcript_visibility_change(
+                block_id,
+                hidden=hidden,
+            )
+        )
+        menu.addAction(visibility_action)
+        edit_action = QAction("Edit evidence block name", self)
+        edit_action.triggered.connect(
+            lambda checked=False, block_id=evidence_block_id: self._sidebar.prompt_edit_evidence_block_title(block_id)
+        )
+        menu.addAction(edit_action)
+        delete_action = QAction("Delete evidence block", self)
+        delete_action.triggered.connect(
+            lambda checked=False, block_id=evidence_block_id: self._sidebar.prompt_delete_evidence_block(block_id)
+        )
+        menu.addAction(delete_action)
+        menu.exec(event.globalPos())
+
 
 class Sidebar(QWidget):
     source_thread_selected = Signal(str, str)
     evidence_block_activated = Signal(int)
     search_drop_evidence_block_created = Signal(object)
+    evidence_block_virtual_transcript_visibility_requested = Signal(int, bool)
 
     def __init__(
         self,
@@ -116,6 +153,7 @@ class Sidebar(QWidget):
         self.logger = logger
         self.dataset_id: int | None = None
         self._threads: list = []
+        self._virtual_transcript_hidden_state_provider = None
 
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Source thread"))
@@ -177,6 +215,26 @@ class Sidebar(QWidget):
     def refresh_evidence_blocks(self) -> None:
         self._refresh_categories()
 
+    def set_virtual_transcript_hidden_state_provider(self, provider) -> None:
+        self._virtual_transcript_hidden_state_provider = provider
+
+    def is_evidence_block_hidden_in_virtual_transcript(self, evidence_block_id: int) -> bool:
+        provider = self._virtual_transcript_hidden_state_provider
+        if provider is None:
+            return False
+        return bool(provider(evidence_block_id))
+
+    def request_virtual_transcript_visibility_change(
+        self,
+        evidence_block_id: int,
+        *,
+        hidden: bool,
+    ) -> None:
+        self.evidence_block_virtual_transcript_visibility_requested.emit(
+            evidence_block_id,
+            hidden,
+        )
+
     def reveal_evidence_block(self, evidence_block_id: int) -> None:
         block = evidence_blocks.get_evidence_block(self.conn, evidence_block_id)
         if block is None:
@@ -186,6 +244,47 @@ class Sidebar(QWidget):
             block.category_id,
             evidence_block_id=evidence_block_id,
         )
+
+    def _evidence_block_sort_keys(
+        self,
+        blocks: list[EvidenceBlock],
+    ) -> dict[int, tuple[bool, str, str, int, str, int]]:
+        if self.dataset_id is None or not blocks:
+            return {}
+        block_ids = [block.evidence_block_id for block in blocks]
+        placeholders = ",".join("?" * len(block_ids))
+        rows = self.conn.execute(
+            f"""
+            SELECT eb.evidence_block_id,
+                   eb.source_thread_id,
+                   COALESCE(context_message.timestamp, core_message.timestamp, '') AS sort_timestamp,
+                   COALESCE(context_message.sort_index, core_message.sort_index, 0) AS sort_index,
+                   COALESCE(context_message.message_id, core_message.message_id, '') AS sort_message_id
+            FROM evidence_block AS eb
+            LEFT JOIN message AS context_message
+                ON context_message.dataset_id = eb.dataset_id
+               AND context_message.source_thread_id = eb.source_thread_id
+               AND context_message.thread_ordinal = eb.context_start_slot
+            LEFT JOIN message AS core_message
+                ON core_message.dataset_id = eb.dataset_id
+               AND core_message.message_id = eb.core_hit_message_id
+            WHERE eb.evidence_block_id IN ({placeholders})
+            """,
+            block_ids,
+        ).fetchall()
+        sort_keys: dict[int, tuple[bool, str, str, int, str, int]] = {}
+        for row in rows:
+            evidence_block_id = int(row["evidence_block_id"])
+            sort_timestamp = str(row["sort_timestamp"] or "")
+            sort_keys[evidence_block_id] = (
+                sort_timestamp == "",
+                sort_timestamp,
+                str(row["source_thread_id"] or ""),
+                int(row["sort_index"] or 0),
+                str(row["sort_message_id"] or ""),
+                evidence_block_id,
+            )
+        return sort_keys
 
     def _refresh_categories(self) -> None:
         self.category_tree.blockSignals(True)
@@ -205,12 +304,21 @@ class Sidebar(QWidget):
             category_by_id[uncategorized.category_id] = uncategorized
 
         all_blocks = evidence_blocks.list_evidence_blocks(self.conn, self.dataset_id)
+        sort_keys = self._evidence_block_sort_keys(all_blocks)
         blocks_by_category: dict[int, list] = {category.category_id: [] for category in categories}
         for block in all_blocks:
             category_id = block.category_id
             if category_id not in blocks_by_category:
                 category_id = uncategorized.category_id
             blocks_by_category.setdefault(category_id, []).append(block)
+        for category_id, blocks in blocks_by_category.items():
+            blocks_by_category[category_id] = sorted(
+                blocks,
+                key=lambda block: sort_keys.get(
+                    block.evidence_block_id,
+                    (True, "", block.source_thread_id, 0, block.core_hit_message_id, block.evidence_block_id),
+                ),
+            )
 
         def _category_sort_key(category) -> tuple[int, str]:
             if category.name == UNCATEGORIZED_CATEGORY_NAME:
@@ -230,7 +338,10 @@ class Sidebar(QWidget):
                 & ~Qt.ItemFlag.ItemIsUserCheckable
             )
             for block in blocks_by_category.get(category.category_id, []):
-                child = QTreeWidgetItem([block.title])
+                title = block.title
+                if self.is_evidence_block_hidden_in_virtual_transcript(block.evidence_block_id):
+                    title = f"{title} [hidden]"
+                child = QTreeWidgetItem([title])
                 child.setData(0, ROLE_ITEM_ID, block.evidence_block_id)
                 child.setData(0, ROLE_ITEM_KIND, "evidence_block")
                 child.setFlags(
@@ -357,6 +468,51 @@ class Sidebar(QWidget):
         self._refresh_categories_and_reveal(
             block.category_id,
             evidence_block_id=block.evidence_block_id,
+        )
+
+    def prompt_delete_evidence_block(self, evidence_block_id: int) -> None:
+        block = evidence_blocks.get_evidence_block(self.conn, evidence_block_id)
+        if block is None:
+            self.refresh_evidence_blocks()
+            return
+        reply = QMessageBox.question(
+            self,
+            "Delete evidence block?",
+            f"Delete evidence block '{block.title}'?\n\nThis cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        evidence_blocks.delete_evidence_block(
+            self.conn,
+            self.logger,
+            evidence_block_id=evidence_block_id,
+        )
+        self.refresh_evidence_blocks()
+
+    def prompt_edit_evidence_block_title(self, evidence_block_id: int) -> None:
+        block = evidence_blocks.get_evidence_block(self.conn, evidence_block_id)
+        if block is None:
+            self.refresh_evidence_blocks()
+            return
+        new_title, ok = QInputDialog.getText(
+            self,
+            "Edit Evidence Block Name",
+            "Evidence block name:",
+            text=block.title,
+        )
+        if not ok or not new_title.strip():
+            return
+        updated = evidence_blocks.update_evidence_block_metadata(
+            self.conn,
+            self.logger,
+            evidence_block_id=evidence_block_id,
+            title=new_title.strip(),
+        )
+        self._refresh_categories_and_reveal(
+            updated.category_id,
+            evidence_block_id=updated.evidence_block_id,
         )
 
     def handle_search_drop(

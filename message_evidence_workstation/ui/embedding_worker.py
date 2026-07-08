@@ -20,6 +20,7 @@ from PySide6.QtCore import QObject, Signal
 from message_evidence_workstation.diagnostics.trace_log import trace
 from message_evidence_workstation.embeddings.adapters import EmbeddingAdapter, EmbeddingAdapterInfo
 from message_evidence_workstation.embeddings.service import EmbeddingService
+from message_evidence_workstation.search.date_scope import MessageDateScope
 
 
 class _EmbeddingDeliveryBridge(QObject):
@@ -83,6 +84,7 @@ class EmbeddingJobSpec:
     harness_user_query: str = ""
     harness_strategy_summary: str = ""
     harness_extra_queries: list[str] = field(default_factory=list)
+    date_scope: MessageDateScope = field(default_factory=MessageDateScope)
 
 
 @dataclass(slots=True)
@@ -176,6 +178,7 @@ def _execute(spec: EmbeddingJobSpec, on_progress: Callable[[dict], None] | None 
             )
             from message_evidence_workstation.search.result_models import SearchHit
 
+            effective_scope = spec.date_scope if spec.date_scope.is_active else None
             vector_hits: list[SearchHit] = []
             if spec.use_message_vectors:
                 vector_hits.extend(
@@ -187,6 +190,7 @@ def _execute(spec: EmbeddingJobSpec, on_progress: Callable[[dict], None] | None 
                         model_name=spec.model_id,
                         adapter=adapter,
                         selectivity=spec.embedding_selectivity,
+                        date_scope=effective_scope,
                     )
                 )
             if spec.use_chunk_vectors:
@@ -199,6 +203,7 @@ def _execute(spec: EmbeddingJobSpec, on_progress: Callable[[dict], None] | None 
                         model_name=spec.model_id,
                         adapter=adapter,
                         selectivity=spec.embedding_selectivity,
+                        date_scope=effective_scope,
                     )
                 )
             return vector_hits

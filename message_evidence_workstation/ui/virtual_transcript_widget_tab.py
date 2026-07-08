@@ -217,6 +217,19 @@ class VirtualTranscriptWidgetTab(QWidget):
         self.transcript_widget.select_evidence_block(evidence_block_id)
         self._update_status(last_action=f"revealed block {evidence_block_id}")
 
+    def hide_evidence_block(self, evidence_block_id: int) -> None:
+        self.ensure_thread_loaded()
+        self.transcript_widget.hide_evidence_block(evidence_block_id)
+        self._update_status(last_action=f"hid block {evidence_block_id}")
+
+    def show_evidence_block(self, evidence_block_id: int) -> None:
+        self.ensure_thread_loaded()
+        self.transcript_widget.show_evidence_block(evidence_block_id)
+        self._update_status(last_action=f"showed block {evidence_block_id}")
+
+    def is_evidence_block_hidden(self, evidence_block_id: int) -> bool:
+        return self.transcript_widget.is_evidence_block_hidden(evidence_block_id)
+
     def _set_controls_enabled(self, enabled: bool) -> None:
         for widget in (
             self.jump_50_button,

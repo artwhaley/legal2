@@ -6,6 +6,7 @@ import math
 import sqlite3
 from dataclasses import dataclass
 
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 from message_evidence_workstation.search.transcript import CHARS_PER_TOKEN_ESTIMATE
 
 # Conservative overhead for `[message_id] timestamp | sender: ` formatting per row.
@@ -35,9 +36,15 @@ class TranscriptTokenEstimate:
     thread_overhead_chars: int
 
 
-def compute_dataset_budget_stats(conn: sqlite3.Connection, dataset_id: int) -> DatasetBudgetStats:
-    summary = conn.execute(
-        """
+def compute_dataset_budget_stats(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    date_scope: MessageDateScope | None = None,
+) -> DatasetBudgetStats:
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
+    shared_params = (dataset_id,) + date_params
+    summary_sql = f"""
         SELECT
             COUNT(*) AS message_count,
             COUNT(DISTINCT source_thread_id) AS thread_count,
@@ -45,21 +52,21 @@ def compute_dataset_budget_stats(conn: sqlite3.Connection, dataset_id: int) -> D
             COALESCE(SUM(LENGTH(body_normalized)), 0) AS total_body_normalized_chars
         FROM message
         WHERE dataset_id = ?
-        """,
-        (dataset_id,),
-    ).fetchone()
-    largest_row = conn.execute(
+        {"AND " + date_clause if date_clause else ""}
         """
+    summary = conn.execute(summary_sql, shared_params).fetchone()
+
+    largest_sql = f"""
         SELECT COALESCE(MAX(thread_count), 0) AS largest_thread_message_count
         FROM (
             SELECT COUNT(*) AS thread_count
             FROM message
             WHERE dataset_id = ?
+            {"AND " + date_clause if date_clause else ""}
             GROUP BY source_thread_id
         )
-        """,
-        (dataset_id,),
-    ).fetchone()
+        """
+    largest_row = conn.execute(largest_sql, shared_params).fetchone()
     return DatasetBudgetStats(
         message_count=int(summary["message_count"] or 0),
         thread_count=int(summary["thread_count"] or 0),

@@ -45,6 +45,7 @@ from message_evidence_workstation.search.conversational_answer import (
     run_exhaustive_window_scan_answer,
     run_whole_transcript_answer,
 )
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.exhaustive_hints import ExhaustiveHintCollection
 from message_evidence_workstation.search.dataset_budget import (
     DatasetBudgetStats,
@@ -1176,3 +1177,85 @@ def test_exhaustive_scan_planning_uses_resolved_input_budget(answer_db) -> None:
     assert preflight.details_json["per_call_input_budget"] == expected_budget.usable_input_tokens
     assert "scan_window_target_tokens" not in preflight.details_json
     assert "planning_reason" not in preflight.details_json
+
+
+# ── T102: scoped whole-transcript conversational ─────────────────────
+
+def test_resolve_answer_budget_with_scoped_stats(answer_db) -> None:
+    conn, _, dataset_id = answer_db
+    stats = compute_dataset_budget_stats(
+        conn, dataset_id,
+        date_scope=MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00"),
+    )
+    budget = resolve_answer_budget(
+        stats,
+        AnswerSettings(answer_strategy=ANSWER_STRATEGY_WHOLE_TRANSCRIPT),
+        "test-model",
+        nim_settings=NimSettings(context_window_tokens=1_000_000),
+    )
+    assert budget.decision == ANSWER_MODE_WHOLE_TRANSCRIPT
+    assert budget.transcript_tokens > 0
+
+
+def test_build_dataset_transcript_scoped(answer_db) -> None:
+    conn, _, dataset_id = answer_db
+    full = build_dataset_transcript(conn, dataset_id)
+    scope = MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00")
+    scoped = build_dataset_transcript(conn, dataset_id, date_scope=scope)
+    assert len(scoped.message_ids) < len(full.message_ids)
+    assert len(scoped.message_ids) > 0
+    for message_id in scoped.message_ids:
+        assert message_id in full.message_ids
+
+
+def test_whole_transcript_answer_rejects_out_of_scope_citations(answer_db) -> None:
+    conn, logger, dataset_id = answer_db
+    scope = MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00")
+    scoped = build_dataset_transcript(conn, dataset_id, date_scope=scope)
+    # Find a message ID that exists in full but not in scoped.
+    full = build_dataset_transcript(conn, dataset_id)
+    out_of_scope = next(
+        message_id for message_id in full.message_ids
+        if message_id not in scoped.message_ids
+    )
+    content = json.dumps({
+        "answer": "Test",
+        "cited_message_ids": [out_of_scope],
+        "candidate_evidence_blocks": [],
+        "uncertainties": [],
+        "coverage_summary": {
+            "mode": "whole_transcript",
+            "messages_considered": len(scoped.message_ids),
+            "source_thread_ids": [],
+        },
+    })
+    result = parse_whole_transcript_answer_response(
+        content,
+        valid_message_ids=set(scoped.message_ids),
+        message_thread_by_id={},
+        source_thread_ids=[],
+        messages_considered=len(scoped.message_ids),
+    )
+    assert out_of_scope in result.removed_invalid_citation_ids
+
+
+def test_run_whole_transcript_answer_raises_on_empty_scope(answer_db) -> None:
+    conn, logger, dataset_id = answer_db
+    transcript = build_dataset_transcript(
+        conn, dataset_id,
+        date_scope=MessageDateScope(
+            start_timestamp="2020-01-01T00:00:00+00:00",
+            end_timestamp="2020-01-02T00:00:00+00:00",
+        ),
+    )
+    assert transcript.message_ids == []
+    from tests.router_helpers import router_with_role_models
+    router = router_with_role_models()
+    with pytest.raises(ConversationalAnswerParseError) as exc_info:
+        run_whole_transcript_answer(
+            conn, logger, router,
+            user_query="test",
+            dataset_id=dataset_id,
+            transcript=transcript,
+        )
+    assert "No messages" in str(exc_info.value)

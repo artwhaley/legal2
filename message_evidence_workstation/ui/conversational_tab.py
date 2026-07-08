@@ -9,9 +9,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, QPoint, Qt, Signal
+from PySide6.QtCore import QDate, QMimeData, QPoint, Qt, Signal
 from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import (
+    QDateEdit,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -43,6 +44,7 @@ from message_evidence_workstation.nim.client import (
     nim_error_user_message,
 )
 from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.conversational_answer import (
     ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN,
     ANSWER_MODE_WHOLE_TRANSCRIPT,
@@ -132,9 +134,28 @@ class ConversationalTab(QWidget):
         self._conversation_results: list[ConversationResultEntry] = []
         self._last_query_text = ""
         self._category_refresh_handler: Callable[[], None] | None = None
+        default_start_date = QDate.currentDate()
+        default_start_date = QDate(default_start_date.year(), 1, 1)
+        default_end_date = QDate.currentDate()
 
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Conversational Interface"))
+
+        date_row = QHBoxLayout()
+        date_row.addWidget(QLabel("From"))
+        self.date_start = QDateEdit()
+        self.date_start.setCalendarPopup(True)
+        self.date_start.setSpecialValueText(" ")
+        self.date_start.setDate(default_start_date)
+        date_row.addWidget(self.date_start)
+        date_row.addWidget(QLabel("To"))
+        self.date_end = QDateEdit()
+        self.date_end.setCalendarPopup(True)
+        self.date_end.setSpecialValueText(" ")
+        self.date_end.setDate(default_end_date)
+        date_row.addWidget(self.date_end)
+        date_row.addStretch()
+        layout.addLayout(date_row)
 
         self.status_label = QLabel("Load a dataset to search.")
         layout.addWidget(self.status_label)
@@ -179,6 +200,31 @@ class ConversationalTab(QWidget):
         self.send_button.clicked.connect(self._submit_query)
         input_layout.addWidget(self.send_button)
         layout.addWidget(input_row)
+
+    def _date_scope_status_suffix(self) -> str:
+        scope = self._current_date_scope()
+        if not scope.is_active:
+            return ""
+        parts: list[str] = []
+        if scope.start_timestamp:
+            parts.append(f"from {scope.start_timestamp[:10]}")
+        if scope.end_timestamp:
+            parts.append(f"through {scope.end_timestamp[:10]}")
+        return " ".join(parts)
+
+    def _current_date_scope(self) -> MessageDateScope:
+        scope = MessageDateScope()
+        if self.date_start.date() > self.date_start.minimumDate():
+            start_dt = self.date_start.date().startOfDay()
+            scope = MessageDateScope(start_timestamp=start_dt.toString("yyyy-MM-ddTHH:mm:ss"))
+        if self.date_end.date() > self.date_end.minimumDate():
+            end_dt = self.date_end.date().endOfDay()
+            end_ts = end_dt.toString("yyyy-MM-ddT23:59:59")
+            scope = MessageDateScope(
+                start_timestamp=scope.start_timestamp,
+                end_timestamp=end_ts,
+            )
+        return scope
 
     def set_dataset(self, dataset_id: int | None) -> None:
         self.dataset_id = dataset_id
@@ -509,7 +555,25 @@ class ConversationalTab(QWidget):
         writing_model = resolve_role_model(settings, UserFacingModelRole.WRITING)
         provider_metadata = settings.model_metadata.get(writing_model, {})
 
-        stats = compute_dataset_budget_stats(self.conn, dataset_id)
+        date_scope = self._current_date_scope()
+        stats = compute_dataset_budget_stats(self.conn, dataset_id, date_scope=date_scope if date_scope.is_active else None)
+        if date_scope.is_active and stats.message_count == 0:
+            self.status_label.setText("No messages found in the selected date range.")
+            self.send_button.setEnabled(True)
+            return
+        if date_scope.is_active:
+            self.logger.info(
+                component="ui.conversational_tab",
+                operation="date_scope_active",
+                message="Conversational search using active date scope",
+                details={
+                    "start_timestamp": date_scope.start_timestamp,
+                    "end_timestamp": date_scope.end_timestamp,
+                    "scoped_message_count": stats.message_count,
+                    "scoped_thread_count": stats.thread_count,
+                },
+                dataset_id=dataset_id,
+            )
         budget = resolve_answer_budget(
             stats,
             answer_settings,
@@ -581,7 +645,9 @@ class ConversationalTab(QWidget):
             )
         answer_mode = budget.decision
         if answer_mode == ANSWER_MODE_WHOLE_TRANSCRIPT:
-            self.status_label.setText("Answering from full transcript…")
+            scope_suffix = " " + self._date_scope_status_suffix() if self._date_scope_status_suffix() else ""
+            label = f"Answering from scoped transcript{scope_suffix}..." if scope_suffix else "Answering from full transcript..."
+            self.status_label.setText(label)
             self._run_whole_transcript_answer(
                 generation,
                 query,
@@ -592,7 +658,9 @@ class ConversationalTab(QWidget):
             )
             return
         if answer_mode == ANSWER_MODE_EXHAUSTIVE_WINDOW_SCAN:
-            self.status_label.setText("Answering with exhaustive transcript window scan...")
+            scope_suffix = " " + self._date_scope_status_suffix() if self._date_scope_status_suffix() else ""
+            label = f"Answering with exhaustive scoped window scan{scope_suffix}..." if scope_suffix else "Answering with exhaustive transcript window scan..."
+            self.status_label.setText(label)
             self._run_exhaustive_window_scan_answer(
                 generation,
                 query,
@@ -789,6 +857,7 @@ class ConversationalTab(QWidget):
         answer_settings,
         budget: AnswerBudget,
     ) -> None:
+        date_scope = self._current_date_scope()
         app_settings = load_settings()
         model_id = resolve_role_model(app_settings, UserFacingModelRole.WRITING)
         answer_run_id = str(uuid.uuid4())
@@ -836,7 +905,8 @@ class ConversationalTab(QWidget):
                     dataset_id=dataset_id,
                 )
                 router = ModelRouter(app_settings)
-                transcript = build_dataset_transcript(worker_conn, dataset_id)
+                effective_scope = date_scope if date_scope.is_active else None
+                transcript = build_dataset_transcript(worker_conn, dataset_id, date_scope=effective_scope)
                 result = run_whole_transcript_answer(
                     worker_conn,
                     worker_logger,

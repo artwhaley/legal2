@@ -15,6 +15,7 @@ from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.nim.model_runs import run_nim_chat
 from message_evidence_workstation.nim.prompts import RUN_TYPE_EXHAUSTIVE_SCAN_RETRIEVAL_TERMS
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 from message_evidence_workstation.search.embedding_search import (
     search_chunk_embeddings,
     search_message_embeddings,
@@ -106,19 +107,23 @@ def _thread_message_ids(
     conn: sqlite3.Connection,
     dataset_id: int,
     source_thread_ids: set[str],
+    *,
+    date_scope: MessageDateScope | None = None,
 ) -> dict[str, list[str]]:
     if not source_thread_ids:
         return {}
     placeholders = ",".join("?" for _ in source_thread_ids)
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
     rows = conn.execute(
         f"""
         SELECT source_thread_id, message_id
         FROM message
         WHERE dataset_id = ?
           AND source_thread_id IN ({placeholders})
+          {"AND " + date_clause if date_clause else ""}
         ORDER BY source_thread_id, timestamp, sort_index, message_id
         """,
-        (dataset_id, *sorted(source_thread_ids)),
+        (dataset_id, *sorted(source_thread_ids), *date_params),
     ).fetchall()
     thread_ids: dict[str, list[str]] = {}
     for row in rows:
@@ -288,11 +293,12 @@ def _fts_hint_items(
     *,
     dataset_id: int,
     terms: list[str],
+    date_scope: MessageDateScope | None = None,
 ) -> tuple[list[ExhaustiveHintItem], dict[str, int]]:
     items: list[ExhaustiveHintItem] = []
     counts: dict[str, int] = {}
     for term in terms:
-        page = search_keyword_terms(conn, logger, dataset_id, [term], limit=None)
+        page = search_keyword_terms(conn, logger, dataset_id, [term], limit=None, date_scope=date_scope)
         hits = page["hits"]
         counts[term] = len(hits)
         for hit in hits:
@@ -317,6 +323,7 @@ def _message_embedding_hint_items(
     terms: list[str],
     adapter: EmbeddingAdapter,
     model_name: str,
+    date_scope: MessageDateScope | None = None,
 ) -> tuple[list[ExhaustiveHintItem], dict[str, int]]:
     items: list[ExhaustiveHintItem] = []
     counts: dict[str, int] = {}
@@ -329,6 +336,7 @@ def _message_embedding_hint_items(
             model_name=model_name,
             adapter=adapter,
             selectivity="broad",
+            date_scope=date_scope,
         )
         counts[term] = len(hits)
         for hit in hits:
@@ -353,6 +361,7 @@ def _chunk_embedding_hint_items(
     terms: list[str],
     adapter: EmbeddingAdapter,
     model_name: str,
+    date_scope: MessageDateScope | None = None,
 ) -> tuple[list[ExhaustiveHintItem], dict[str, int]]:
     items: list[ExhaustiveHintItem] = []
     counts: dict[str, int] = {}
@@ -365,6 +374,7 @@ def _chunk_embedding_hint_items(
             model_name=model_name,
             adapter=adapter,
             selectivity="broad",
+            date_scope=date_scope,
         )
         counts[term] = len(hits)
         if not hits:
@@ -417,6 +427,7 @@ def collect_exhaustive_window_hints(
     user_query: str,
     planned_windows: list[TranscriptWindow],
     deps: ToolRunnerDeps | None = None,
+    date_scope: MessageDateScope | None = None,
 ) -> ExhaustiveHintCollection:
     logger.info(
         component="search.exhaustive_hints",
@@ -472,10 +483,10 @@ def collect_exhaustive_window_hints(
     )
 
     source_thread_ids = {window.source_thread_id for window in planned_windows}
-    ordered_ids = _thread_message_ids(conn, dataset_id, source_thread_ids)
+    ordered_ids = _thread_message_ids(conn, dataset_id, source_thread_ids, date_scope=date_scope)
 
     all_items: list[ExhaustiveHintItem] = []
-    fts_items, fts_counts = _fts_hint_items(conn, logger, dataset_id=dataset_id, terms=terms)
+    fts_items, fts_counts = _fts_hint_items(conn, logger, dataset_id=dataset_id, terms=terms, date_scope=date_scope)
     all_items.extend(fts_items)
     logger.info(
         component="search.exhaustive_hints",
@@ -507,6 +518,7 @@ def collect_exhaustive_window_hints(
             terms=terms,
             adapter=adapter,
             model_name=resolved_model_name,
+            date_scope=date_scope,
         )
         all_items.extend(message_items)
         logger.info(
@@ -539,6 +551,7 @@ def collect_exhaustive_window_hints(
             terms=terms,
             adapter=adapter,
             model_name=resolved_model_name,
+            date_scope=date_scope,
         )
         all_items.extend(chunk_items)
         logger.info(

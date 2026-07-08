@@ -12,6 +12,7 @@ from dataclasses import dataclass
 _log = logging.getLogger(__name__)
 
 from message_evidence_workstation.domain.models import Message
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 from message_evidence_workstation.search.token_budget import estimate_tokens as _estimate_tokens
 from message_evidence_workstation.search.transcript import estimate_token_count, load_dataset_messages, serialize_messages
 
@@ -69,14 +70,16 @@ def iter_thread_messages_for_window_planning(
     source_thread_id: str,
     *,
     batch_size: int = DEFAULT_WINDOW_PLANNING_BATCH_SIZE,
+    date_scope: MessageDateScope | None = None,
 ) -> Iterator[Message]:
     """Yield thread messages in chronological order without loading the full thread."""
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
     last_timestamp = ""
     last_sort_index = -1
     last_message_id = ""
     while True:
         rows = conn.execute(
-            """
+            f"""
             SELECT message_id, dataset_id, source_thread_id, source_platform,
                    source_message_id, timestamp, sender_id, sender_display, body,
                    body_normalized, has_attachment, attachment_summary, sort_index,
@@ -89,6 +92,7 @@ def iter_thread_messages_for_window_planning(
                     OR (timestamp = ? AND sort_index > ?)
                     OR (timestamp = ? AND sort_index = ? AND message_id > ?)
                   )
+              {"AND " + date_clause if date_clause else ""}
             ORDER BY timestamp, sort_index, message_id
             LIMIT ?
             """,
@@ -101,6 +105,7 @@ def iter_thread_messages_for_window_planning(
                 last_timestamp,
                 last_sort_index,
                 last_message_id,
+                *date_params,
                 batch_size,
             ),
         ).fetchall()
@@ -127,13 +132,13 @@ def _serialize_thread_window(
     return f"{header}\n{transcript.text}", transcript.message_ids
 
 
-def _compute_chars_per_token(conn: sqlite3.Connection, dataset_id: int) -> int:
+def _compute_chars_per_token(conn: sqlite3.Connection, dataset_id: int, *, date_scope: MessageDateScope | None = None) -> int:
     """Call tiktoken once on the full dataset transcript to derive actual chars/token ratio.
 
     Returns ceil(total_chars / actual_tokens) so downstream ``window_planner`` can use
     ``ceil(chars / chars_per_token)`` instead of guessing ``ceil(chars / 4)``.
     """
-    all_messages = load_dataset_messages(conn, dataset_id)
+    all_messages = load_dataset_messages(conn, dataset_id, date_scope=date_scope)
     serialized = serialize_messages(all_messages)
     if not serialized.text:
         return estimate_token_count(1)  # fallback: chars/4, returns 1
@@ -241,6 +246,7 @@ def build_token_bounded_windows_for_dataset(
     target_tokens: int,
     overlap_messages: int,
     model_id: str,
+    date_scope: MessageDateScope | None = None,
 ) -> list[TranscriptWindow]:
     """Pack each source thread's messages into token-bounded windows with overlap.
 
@@ -248,22 +254,25 @@ def build_token_bounded_windows_for_dataset(
     """
     target_tokens = max(MIN_WINDOW_TARGET_TOKENS, target_tokens)
     overlap_messages = max(0, overlap_messages)
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
+    row_params = (dataset_id,) + date_params
     rows = conn.execute(
-        """
+        f"""
         SELECT DISTINCT source_thread_id
         FROM message
         WHERE dataset_id = ?
+        {"AND " + date_clause if date_clause else ""}
         ORDER BY source_thread_id
         """,
-        (dataset_id,),
+        row_params,
     ).fetchall()
-    chars_per_token = _compute_chars_per_token(conn, dataset_id)
+    chars_per_token = _compute_chars_per_token(conn, dataset_id, date_scope=date_scope)
     windows: list[TranscriptWindow] = []
     window_counter = 0
     for row in rows:
         thread_id = str(row["source_thread_id"])
         thread_windows, window_counter = _pack_thread_message_stream_into_windows(
-            iter_thread_messages_for_window_planning(conn, dataset_id, thread_id),
+            iter_thread_messages_for_window_planning(conn, dataset_id, thread_id, date_scope=date_scope),
             source_thread_id=thread_id,
             window_id_prefix=thread_id,
             target_tokens=target_tokens,

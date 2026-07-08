@@ -10,6 +10,7 @@ from message_evidence_workstation.db.connection import connect
 from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.window_planner import (
     build_token_bounded_windows_for_dataset,
     iter_thread_messages_for_window_planning,
@@ -238,3 +239,76 @@ def test_streaming_planner_keyset_matches_timestamp_order(planner_db) -> None:
         "out_of_sort_early",
         "out_of_sort_late",
     ]
+
+
+# ── T103: scoped window planning ──────────────────────────────────────
+
+def test_scoped_windows_contain_only_scoped_messages(planner_db) -> None:
+    conn, _logger, dataset_id = planner_db
+    scope = MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00")
+    windows = build_token_bounded_windows_for_dataset(
+        conn, dataset_id,
+        target_tokens=50_000,
+        overlap_messages=0,
+        model_id="test-model",
+        date_scope=scope,
+    )
+    assert len(windows) == 1
+    scoped_ids = {message_id for window in windows for message_id in window.message_ids}
+    full_ids = {
+        row["message_id"]
+        for row in conn.execute(
+            "SELECT message_id FROM message WHERE dataset_id = ? AND timestamp <= ?",
+            (dataset_id, scope.end_timestamp),
+        ).fetchall()
+    }
+    assert scoped_ids == full_ids
+    assert len(scoped_ids) < 100
+
+
+def test_scoped_windows_empty_range_returns_no_windows(planner_db) -> None:
+    conn, _logger, dataset_id = planner_db
+    scope = MessageDateScope(
+        start_timestamp="2020-01-01T00:00:00+00:00",
+        end_timestamp="2020-01-02T00:00:00+00:00",
+    )
+    windows = build_token_bounded_windows_for_dataset(
+        conn, dataset_id,
+        target_tokens=50_000,
+        overlap_messages=0,
+        model_id="test-model",
+        date_scope=scope,
+    )
+    assert windows == []
+
+
+def test_scoped_windows_no_scope_same_as_full(planner_db) -> None:
+    conn, _logger, dataset_id = planner_db
+    full = build_token_bounded_windows_for_dataset(
+        conn, dataset_id,
+        target_tokens=50_000,
+        overlap_messages=0,
+        model_id="test-model",
+    )
+    scoped = build_token_bounded_windows_for_dataset(
+        conn, dataset_id,
+        target_tokens=50_000,
+        overlap_messages=0,
+        model_id="test-model",
+        date_scope=MessageDateScope(),
+    )
+    assert len(scoped) == len(full)
+    assert scoped[0].message_ids == full[0].message_ids
+
+
+def test_scoped_thread_iterator_yields_only_scoped(planner_db) -> None:
+    conn, _logger, dataset_id = planner_db
+    scope = MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00")
+    messages = list(
+        iter_thread_messages_for_window_planning(
+            conn, dataset_id, "thread_001", date_scope=scope,
+        )
+    )
+    assert len(messages) < 100
+    for message in messages:
+        assert message.timestamp <= scope.end_timestamp

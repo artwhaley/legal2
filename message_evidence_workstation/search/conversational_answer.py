@@ -32,6 +32,7 @@ from message_evidence_workstation.search.ledger_validator import (
     validate_assembled_ledger_output,
     validate_ledger_analysis_output,
 )
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.dataset_budget import (
     DatasetBudgetStats,
     compute_dataset_budget_stats,
@@ -273,8 +274,10 @@ def resolve_answer_mode(
 def build_dataset_transcript(
     conn: sqlite3.Connection,
     dataset_id: int,
+    *,
+    date_scope: MessageDateScope | None = None,
 ) -> SerializedTranscript:
-    messages = load_dataset_messages(conn, dataset_id)
+    messages = load_dataset_messages(conn, dataset_id, date_scope=date_scope)
     thread_ids = sorted({message.source_thread_id for message in messages})
     transcript = serialize_messages(messages)
     transcript.source_thread_id = thread_ids[0] if len(thread_ids) == 1 else ""
@@ -687,8 +690,13 @@ def run_whole_transcript_answer(
     dataset_id: int,
     transcript: SerializedTranscript | None = None,
     max_tokens: int | None = None,
+    date_scope: MessageDateScope | None = None,
 ) -> ConversationalAnswerResult:
-    transcript = transcript or build_dataset_transcript(conn, dataset_id)
+    transcript = transcript or build_dataset_transcript(conn, dataset_id, date_scope=date_scope)
+    if not transcript.message_ids:
+        raise ConversationalAnswerParseError(
+            "No messages found in the selected date range."
+        )
     valid_ids = set(transcript.message_ids)
     message_thread_by_id = {line.message_id: line.source_thread_id for line in transcript.lines}
     source_thread_ids = sorted({line.source_thread_id for line in transcript.lines})
@@ -1374,6 +1382,7 @@ def run_exhaustive_window_scan_answer(
     model_id: str | None = None,
     provider_metadata: dict | None = None,
     max_tokens: int | None = None,
+    date_scope: MessageDateScope | None = None,
 ) -> ConversationalAnswerResult:
     logger.info(
         component="search.conversational_answer",
@@ -1401,7 +1410,7 @@ def run_exhaustive_window_scan_answer(
         dataset_id=dataset_id,
     )
     budget = resolve_answer_budget(
-        compute_dataset_budget_stats(conn, dataset_id),
+        compute_dataset_budget_stats(conn, dataset_id, date_scope=date_scope),
         settings,
         selected_model,
         nim_settings=nim,
@@ -1436,6 +1445,7 @@ def run_exhaustive_window_scan_answer(
         target_tokens=budget.usable_input_tokens,
         overlap_messages=nim.window_overlap_messages,
         model_id=selected_model,
+        date_scope=date_scope,
     )
     if not planned_windows:
         raise ConversationalAnswerParseError("No transcript windows available for exhaustive window scan")
@@ -1495,6 +1505,7 @@ def run_exhaustive_window_scan_answer(
         user_query=user_query,
         planned_windows=planned_windows,
         deps=deps,
+        date_scope=date_scope,
     )
     retrieval_assists: list[dict[str, Any]] = []
     window_results: list[dict[str, Any]] = []

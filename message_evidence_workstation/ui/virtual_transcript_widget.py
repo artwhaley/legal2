@@ -223,6 +223,7 @@ class VirtualTranscriptWidget(QWidget):
             self.load_source_thread(block.source_thread_id, source_action="evidence_block_reveal")
         elif self._model.overlay_for_block(evidence_block_id) is None:
             self._model.append_or_update_evidence_block(block)
+        self._model.show_evidence_block(evidence_block_id)
         self._model.set_active_evidence_block(evidence_block_id)
         ordinal = self._model.ordinal_for_message_id(block.core_hit_message_id)
         if ordinal is not None:
@@ -243,10 +244,37 @@ class VirtualTranscriptWidget(QWidget):
             self.load_source_thread(block.source_thread_id, source_action=source_action)
         elif self._model.overlay_for_block(block.evidence_block_id) is None:
             self._model.append_or_update_evidence_block(block)
+        self._model.show_evidence_block(block.evidence_block_id)
         ordinal = self._model.ordinal_for_message_id(block.core_hit_message_id)
         if ordinal is not None:
             self.scroll_to_center_ordinal(ordinal)
         self.update()
+
+    def hide_evidence_block(self, evidence_block_id: int) -> None:
+        block = evidence_blocks.get_evidence_block(self.conn, evidence_block_id)
+        if block is not None:
+            if self._model.source_thread_id != block.source_thread_id:
+                self.load_source_thread(block.source_thread_id, source_action="evidence_block_hide")
+            elif self._model.overlay_for_block(evidence_block_id) is None:
+                self._model.append_or_update_evidence_block(block)
+        self._model.hide_evidence_block(evidence_block_id)
+        self.active_block_changed.emit(self._model.active_evidence_block_id)
+        self.status_changed.emit()
+        self.update()
+
+    def show_evidence_block(self, evidence_block_id: int) -> None:
+        block = evidence_blocks.get_evidence_block(self.conn, evidence_block_id)
+        if block is not None:
+            if self._model.source_thread_id != block.source_thread_id:
+                self.load_source_thread(block.source_thread_id, source_action="evidence_block_show")
+            elif self._model.overlay_for_block(evidence_block_id) is None:
+                self._model.append_or_update_evidence_block(block)
+        self._model.show_evidence_block(evidence_block_id)
+        self.status_changed.emit()
+        self.update()
+
+    def is_evidence_block_hidden(self, evidence_block_id: int) -> bool:
+        return self._model.is_evidence_block_hidden(evidence_block_id)
 
     def scroll_to_offset(self, offset: float) -> None:
         if self._height_index is None:

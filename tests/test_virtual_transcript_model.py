@@ -290,3 +290,79 @@ def test_load_thread_does_not_auto_activate_evidence_blocks(logger) -> None:
     assert model.active_overlay() is None
     assert len(model.block_overlays()) == 1
     assert model.message_zone(5) == "relevant"
+
+
+def test_hidden_evidence_block_is_excluded_from_overlay_queries(logger) -> None:
+    thread_id = "thread_large"
+    messages = [_sample_message(index, thread_id) for index in range(20)]
+    block = EvidenceBlock(
+        evidence_block_id=1,
+        dataset_id=1,
+        category_id=1,
+        source_thread_id=thread_id,
+        title="Block",
+        summary="",
+        core_hit_message_id="msg_00005",
+        context_start_slot=3,
+        relevant_start_slot=5,
+        relevant_end_slot=6,
+        context_end_slot=8,
+        created_by="manual",
+        created_at="2024-01-01T00:00:00+00:00",
+        updated_at="2024-01-01T00:00:00+00:00",
+        highlighted_message_ids=frozenset({"msg_00005"}),
+    )
+    model = in_memory_model(
+        logger.conn,
+        logger,
+        dataset_id=1,
+        messages_by_thread={thread_id: messages},
+        blocks_by_thread={thread_id: [block]},
+    )
+    model.load_thread(thread_id)
+    model.set_active_evidence_block(1)
+    model.hide_evidence_block(1)
+
+    assert model.is_evidence_block_hidden(1) is True
+    assert model.block_overlays() == []
+    assert model.active_overlay() is None
+    assert model.message_zone(5) is None
+    assert model.overlay_containing_ordinal(5) is None
+    assert model.message_is_highlighted_in_any_block("msg_00005") is False
+
+
+def test_show_hidden_evidence_block_restores_overlay_queries(logger) -> None:
+    thread_id = "thread_large"
+    messages = [_sample_message(index, thread_id) for index in range(20)]
+    block = EvidenceBlock(
+        evidence_block_id=1,
+        dataset_id=1,
+        category_id=1,
+        source_thread_id=thread_id,
+        title="Block",
+        summary="",
+        core_hit_message_id="msg_00005",
+        context_start_slot=3,
+        relevant_start_slot=5,
+        relevant_end_slot=6,
+        context_end_slot=8,
+        created_by="manual",
+        created_at="2024-01-01T00:00:00+00:00",
+        updated_at="2024-01-01T00:00:00+00:00",
+        highlighted_message_ids=frozenset({"msg_00005"}),
+    )
+    model = in_memory_model(
+        logger.conn,
+        logger,
+        dataset_id=1,
+        messages_by_thread={thread_id: messages},
+        blocks_by_thread={thread_id: [block]},
+    )
+    model.load_thread(thread_id)
+    model.hide_evidence_block(1)
+    model.show_evidence_block(1)
+
+    assert model.is_evidence_block_hidden(1) is False
+    assert len(model.block_overlays()) == 1
+    assert model.message_zone(5) == "relevant"
+    assert model.overlay_containing_ordinal(5) is not None

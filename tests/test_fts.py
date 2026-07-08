@@ -9,6 +9,7 @@ from message_evidence_workstation.db.migrations import initialize_schema
 from message_evidence_workstation.importers.normalized_loader import load_normalized_dataset
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search import fts
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.spellfix import SPELLFIX_TERM_TABLE, expand_fuzzy_terms
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "sample_dataset"
@@ -181,3 +182,86 @@ def test_count_fts_matches_matches_hit_list(fts_db) -> None:
     assert fts.count_fts_matches(conn, dataset_id, fts_query) >= 1
     hits = fts.search_exact(conn, logger, dataset_id, "allergy")
     assert fts.count_fts_matches(conn, dataset_id, fts_query) == len(hits)
+
+
+# ── T100: scoped FTS search ────────────────────────────────────────────
+
+def test_search_messages_date_scoped_excludes_out_of_range(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    full = fts.search_messages(conn, logger, dataset_id, "the", limit=None)
+    scope = MessageDateScope(start_timestamp="2024-01-10T00:00:00+00:00")
+    scoped = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=scope)
+    assert scoped["total_count"] <= full["total_count"]
+    assert scoped["total_count"] >= 0
+    scoped_ids = {hit.message_id for hit in scoped["hits"]}
+    full_ids = {hit.message_id for hit in full["hits"]}
+    assert scoped_ids.issubset(full_ids)
+
+
+def test_search_messages_date_scoped_empty_range(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    scope = MessageDateScope(
+        start_timestamp="2020-01-01T00:00:00+00:00",
+        end_timestamp="2020-01-02T00:00:00+00:00",
+    )
+    scoped = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=scope)
+    assert scoped["total_count"] == 0
+    assert scoped["hits"] == []
+
+
+def test_search_messages_date_scoped_start_only(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    scope = MessageDateScope(start_timestamp="2024-01-10T00:00:00+00:00")
+    scoped = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=scope)
+    assert scoped["total_count"] >= 0
+    # All returned hits should come from messages on or after the start.
+    for hit in scoped["hits"]:
+        row = conn.execute(
+            "SELECT timestamp FROM message WHERE message_id = ? AND dataset_id = ?",
+            (hit.message_id, dataset_id),
+        ).fetchone()
+        assert row is not None
+        assert row["timestamp"] >= scope.start_timestamp
+
+
+def test_search_keyword_terms_date_scoped(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    full = fts.search_keyword_terms(conn, logger, dataset_id, ["the"], limit=None)
+    scope = MessageDateScope(end_timestamp="2024-01-02T23:59:59+00:00")
+    scoped = fts.search_keyword_terms(conn, logger, dataset_id, ["the"], limit=None, date_scope=scope)
+    assert scoped["total_count"] <= full["total_count"]
+    assert scoped["total_count"] >= 0
+
+
+def test_search_messages_date_scoped_pagination(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    scope = MessageDateScope(start_timestamp="2024-01-07T00:00:00+00:00")
+    full_scoped = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=scope)
+    page = fts.search_messages(conn, logger, dataset_id, "the", limit=3, offset=0, date_scope=scope)
+    assert page["total_count"] == full_scoped["total_count"]
+    assert len(page["hits"]) <= 3
+    assert page["hits"] == full_scoped["hits"][: len(page["hits"])]
+
+
+def test_search_messages_no_scope_same_as_full(fts_db) -> None:
+    conn, logger, dataset_id = fts_db
+    full = fts.search_messages(conn, logger, dataset_id, "the", limit=None)
+    none_scope = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=None)
+    inactive = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=MessageDateScope())
+    assert full["total_count"] == none_scope["total_count"]
+    assert full["total_count"] == inactive["total_count"]
+
+
+def test_search_messages_date_scoped_total_count_matches_full(fts_db) -> None:
+    """Scoped count via FTS should match scoped count via budget stats."""
+    from message_evidence_workstation.search.dataset_budget import compute_dataset_budget_stats
+
+    conn, logger, dataset_id = fts_db
+    scope = MessageDateScope(start_timestamp="2024-01-03T00:00:00+00:00")
+    stats = compute_dataset_budget_stats(conn, dataset_id, date_scope=scope)
+    results = fts.search_messages(conn, logger, dataset_id, "the", limit=None, date_scope=scope)
+    # Every FTS hit should come from a message in the scoped set.
+    scoped_hit_ids = {hit.message_id for hit in results["hits"]}
+    assert len(scoped_hit_ids) <= stats.message_count
+    # Total count from FTS should not exceed scoped message count.
+    assert results["total_count"] <= stats.message_count

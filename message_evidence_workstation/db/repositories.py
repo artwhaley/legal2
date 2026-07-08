@@ -147,35 +147,40 @@ def thread_message_count(
 
 def backfill_thread_ordinals(conn: sqlite3.Connection, dataset_id: int) -> int:
     """Assign per-thread ordinals in chronological order; idempotent."""
-    conn.execute(
+    rows = conn.execute(
         """
-        WITH ordered AS (
-            SELECT dataset_id,
-                   message_id,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY dataset_id, source_thread_id
-                       ORDER BY timestamp, sort_index, message_id
-                   ) - 1 AS ordinal
-            FROM message
-            WHERE dataset_id = ?
-        )
-        UPDATE message
-        SET thread_ordinal = (
-            SELECT ordinal
-            FROM ordered
-            WHERE ordered.dataset_id = message.dataset_id
-              AND ordered.message_id = message.message_id
-        )
+        SELECT source_thread_id, message_id
+        FROM message
         WHERE dataset_id = ?
+        ORDER BY source_thread_id, timestamp, sort_index, message_id
         """,
-        (dataset_id, dataset_id),
+        (dataset_id,),
+    ).fetchall()
+    if not rows:
+        return 0
+
+    batch: list[tuple[int, int, str]] = []
+    current_thread_id = ""
+    current_ordinal = -1
+    for row in rows:
+        source_thread_id = str(row["source_thread_id"])
+        if source_thread_id != current_thread_id:
+            current_thread_id = source_thread_id
+            current_ordinal = 0
+        else:
+            current_ordinal += 1
+        batch.append((current_ordinal, dataset_id, str(row["message_id"])))
+
+    conn.executemany(
+        """
+        UPDATE message
+        SET thread_ordinal = ?
+        WHERE dataset_id = ? AND message_id = ?
+        """,
+        batch,
     )
     conn.commit()
-    row = conn.execute(
-        "SELECT COUNT(*) AS message_count FROM message WHERE dataset_id = ?",
-        (dataset_id,),
-    ).fetchone()
-    return int(row["message_count"] or 0)
+    return len(batch)
 
 
 def message_ordinal(

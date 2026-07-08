@@ -13,6 +13,7 @@ _log = logging.getLogger(__name__)
 from message_evidence_workstation.db import repositories
 from message_evidence_workstation.db.repositories import _json_loads
 from message_evidence_workstation.domain.models import Message
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 
 CHARS_PER_TOKEN_ESTIMATE = 4
 _EMPTY_BODY_PLACEHOLDER = "(empty message)"
@@ -91,19 +92,26 @@ def load_thread_messages(
     )
 
 
-def load_dataset_messages(conn: sqlite3.Connection, dataset_id: int) -> list[Message]:
-    rows = conn.execute(
-        """
+def load_dataset_messages(
+    conn: sqlite3.Connection,
+    dataset_id: int,
+    *,
+    date_scope: MessageDateScope | None = None,
+) -> list[Message]:
+    date_clause, date_params = date_scope_sql_clauses(date_scope)
+    base_params = (dataset_id,)
+    all_params = base_params + date_params
+    sql = f"""
         SELECT message_id, dataset_id, source_thread_id, source_platform,
                source_message_id, timestamp, sender_id, sender_display, body,
                body_normalized, has_attachment, attachment_summary, sort_index,
                source_metadata_json
         FROM message
         WHERE dataset_id = ?
+        {"AND " + date_clause if date_clause else ""}
         ORDER BY source_thread_id, timestamp, sort_index, message_id
-        """,
-        (dataset_id,),
-    ).fetchall()
+        """
+    rows = conn.execute(sql, all_params).fetchall()
     messages = [
         Message(
             message_id=row["message_id"],

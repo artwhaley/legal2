@@ -18,6 +18,7 @@ from message_evidence_workstation.embeddings.sqlite_vec_backend import (
 )
 from message_evidence_workstation.db.repositories import fetch_messages_by_ids
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.result_models import SearchHit
 
 
@@ -99,6 +100,7 @@ def search_message_embeddings(
     adapter: EmbeddingAdapter,
     top_k: int | None = None,
     selectivity: str = "balanced",
+    date_scope: MessageDateScope | None = None,
 ) -> list[SearchHit]:
     index = _require_ready_index(conn, dataset_id, "message", model_name)
     if index["dimensions"] is None:
@@ -112,6 +114,7 @@ def search_message_embeddings(
         query_vector=vectors[0],
         model_name=model_name,
         top_k=top_k if top_k is not None else resolved_selectivity.top_k,
+        date_scope=date_scope,
     )
     raw_hits = filter_vector_hits_by_selectivity(raw_hits, selectivity)
     messages_by_id = fetch_messages_by_ids(
@@ -153,6 +156,7 @@ def search_chunk_embeddings(
     adapter: EmbeddingAdapter,
     top_k: int | None = None,
     selectivity: str = "balanced",
+    date_scope: MessageDateScope | None = None,
 ) -> list[SearchHit]:
     _require_ready_index(conn, dataset_id, "chunk", model_name)
     vectors = adapter.embed_texts([query])
@@ -164,6 +168,7 @@ def search_chunk_embeddings(
         query_vector=vectors[0],
         model_name=model_name,
         top_k=top_k if top_k is not None else resolved_selectivity.top_k,
+        date_scope=date_scope,
     )
     raw_hits = filter_vector_hits_by_selectivity(raw_hits, selectivity)
     messages_by_id = fetch_messages_by_ids(

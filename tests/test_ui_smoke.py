@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QMimeData, QPoint, Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QInputDialog, QMessageBox
 
 from message_evidence_workstation.app_bootstrap import StartupLoadOptions, bootstrap_app
 from message_evidence_workstation.dataset_load_pipeline import DatasetLoadRequest, run_import_pipeline
@@ -358,6 +358,189 @@ def test_sidebar_category_tree_shows_names_and_child_evidence_blocks(tmp_path, q
     tree.setCurrentItem(school_item.child(0))
     qapp.processEvents()
     assert tree.currentItem() is school_item.child(0)
+
+
+def test_sidebar_can_delete_evidence_block_from_context_action(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
+    messages = repositories.list_messages_for_thread(context.conn, context.dataset_id, "thread_001")
+    block = evidence_blocks.create_evidence_block(
+        context.conn,
+        context.logger,
+        dataset_id=context.dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Delete me",
+        core_hit_message_id="msg_001",
+        ordered_message_ids=[message.message_id for message in messages],
+    )
+
+    sidebar = Sidebar(context.conn, context.logger)
+    sidebar.set_dataset(context.dataset_id)
+    school_item = _find_top_level_item(sidebar, "school")
+    assert school_item is not None
+    assert school_item.childCount() == 1
+
+    monkeypatch.setattr(
+        QMessageBox,
+        "question",
+        lambda *args, **kwargs: QMessageBox.StandardButton.Yes,
+    )
+    sidebar.prompt_delete_evidence_block(block.evidence_block_id)
+    qapp.processEvents()
+
+    assert evidence_blocks.get_evidence_block(context.conn, block.evidence_block_id) is None
+    school_item = _find_top_level_item(sidebar, "school")
+    assert school_item is not None
+    assert school_item.childCount() == 0
+
+
+def test_sidebar_can_edit_evidence_block_name_from_context_action(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
+    messages = repositories.list_messages_for_thread(context.conn, context.dataset_id, "thread_001")
+    block = evidence_blocks.create_evidence_block(
+        context.conn,
+        context.logger,
+        dataset_id=context.dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Old title",
+        core_hit_message_id="msg_001",
+        ordered_message_ids=[message.message_id for message in messages],
+    )
+
+    sidebar = Sidebar(context.conn, context.logger)
+    sidebar.set_dataset(context.dataset_id)
+    monkeypatch.setattr(
+        QInputDialog,
+        "getText",
+        lambda *args, **kwargs: ("New title", True),
+    )
+    sidebar.prompt_edit_evidence_block_title(block.evidence_block_id)
+    qapp.processEvents()
+
+    updated = evidence_blocks.get_evidence_block(context.conn, block.evidence_block_id)
+    assert updated is not None
+    assert updated.title == "New title"
+    school_item = _find_top_level_item(sidebar, "school")
+    assert school_item is not None
+    assert school_item.childCount() == 1
+    assert school_item.child(0).text(0) == "New title"
+
+
+def test_sidebar_sorts_category_evidence_blocks_by_message_time_ascending(
+    tmp_path,
+    qapp,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    category = repositories.create_category(context.conn, context.logger, context.dataset_id, "school")
+    messages = repositories.list_messages_for_thread(context.conn, context.dataset_id, "thread_001")
+    ordered_ids = [message.message_id for message in messages]
+
+    evidence_blocks.create_evidence_block(
+        context.conn,
+        context.logger,
+        dataset_id=context.dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Later block",
+        core_hit_message_id="msg_090",
+        ordered_message_ids=ordered_ids,
+    )
+    evidence_blocks.create_evidence_block(
+        context.conn,
+        context.logger,
+        dataset_id=context.dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Earlier block",
+        core_hit_message_id="msg_010",
+        ordered_message_ids=ordered_ids,
+    )
+    evidence_blocks.create_evidence_block(
+        context.conn,
+        context.logger,
+        dataset_id=context.dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Middle block",
+        core_hit_message_id="msg_050",
+        ordered_message_ids=ordered_ids,
+    )
+
+    sidebar = Sidebar(context.conn, context.logger)
+    sidebar.set_dataset(context.dataset_id)
+    school_item = _find_top_level_item(sidebar, "school")
+
+    assert school_item is not None
+    assert school_item.childCount() == 3
+    assert [school_item.child(index).text(0) for index in range(school_item.childCount())] == [
+        "Earlier block",
+        "Middle block",
+        "Later block",
+    ]
+
+
+def test_sidebar_can_toggle_virtual_transcript_hidden_marker(tmp_path, qapp, monkeypatch) -> None:
+    monkeypatch.setenv("MEW_DB_PATH", str(tmp_path / "ui.db"))
+    monkeypatch.setattr(
+        "message_evidence_workstation.ui.home_tab.preload_embedding_model",
+        lambda *args, **kwargs: False,
+    )
+    context = _bootstrap_ui_context(tmp_path, monkeypatch)
+    window = _main_window_for_context(context, qapp)
+    window.tabs.setCurrentWidget(window.virtual_transcript_widget_tab)
+    window.virtual_transcript_widget_tab.ensure_thread_loaded()
+    messages = repositories.list_messages_for_thread(context.conn, context.dataset_id, "thread_001")
+    category = evidence_blocks.ensure_uncategorized_category(
+        context.conn,
+        context.logger,
+        context.dataset_id,
+    )
+    block = evidence_blocks.create_evidence_block(
+        context.conn,
+        context.logger,
+        dataset_id=context.dataset_id,
+        category_id=category.category_id,
+        source_thread_id="thread_001",
+        title="Hide me",
+        core_hit_message_id="msg_001",
+        ordered_message_ids=[message.message_id for message in messages],
+    )
+    window.sidebar.reveal_evidence_block(block.evidence_block_id)
+    qapp.processEvents()
+
+    window.sidebar.request_virtual_transcript_visibility_change(
+        block.evidence_block_id,
+        hidden=True,
+    )
+    qapp.processEvents()
+
+    assert window.virtual_transcript_widget_tab.is_evidence_block_hidden(block.evidence_block_id) is True
+    uncategorized_item = _find_top_level_item(window.sidebar, UNCATEGORIZED_CATEGORY_NAME)
+    assert uncategorized_item is not None
+    assert uncategorized_item.childCount() >= 1
+    assert any(
+        uncategorized_item.child(index).text(0) == "Hide me [hidden]"
+        for index in range(uncategorized_item.childCount())
+    )
+
+    window.virtual_transcript_widget_tab.reveal_evidence_block(block.evidence_block_id)
+    window.sidebar.refresh_evidence_blocks()
+    qapp.processEvents()
+
+    assert window.virtual_transcript_widget_tab.is_evidence_block_hidden(block.evidence_block_id) is False
+    uncategorized_item = _find_top_level_item(window.sidebar, UNCATEGORIZED_CATEGORY_NAME)
+    assert uncategorized_item is not None
+    assert any(
+        uncategorized_item.child(index).text(0) == "Hide me"
+        for index in range(uncategorized_item.childCount())
+    )
 
 
 def test_sidebar_search_drop_uses_target_category(tmp_path, qapp, monkeypatch) -> None:

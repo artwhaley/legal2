@@ -18,6 +18,7 @@ from message_evidence_workstation.llm.router import ModelRouter
 from message_evidence_workstation.llm.types import UserFacingModelRole
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger
 from message_evidence_workstation.search import fts
+from message_evidence_workstation.search.date_scope import MessageDateScope
 from message_evidence_workstation.search.embedding_search import EmbeddingIndexNotReadyError
 from message_evidence_workstation.search.fusion import fuse_hits
 from message_evidence_workstation.search.grouping import group_hits
@@ -39,6 +40,7 @@ class SearchJobSpec:
     embedding_model: str = ""
     embedding_selectivity: str = "balanced"
     generation: int = 0
+    date_scope: MessageDateScope = field(default_factory=MessageDateScope)
 
 
 @dataclass(slots=True)
@@ -178,6 +180,7 @@ def run_search_job(spec: SearchJobSpec, cancel_token: SearchCancellationToken | 
                 spec.query,
                 limit=spec.page_size,
                 offset=spec.offset,
+                date_scope=spec.date_scope if spec.date_scope.is_active else None,
             )
             total_count = int(page["total_count"])
             has_more = bool(page["has_more"])
@@ -192,6 +195,7 @@ def run_search_job(spec: SearchJobSpec, cancel_token: SearchCancellationToken | 
                 terms,
                 limit=spec.page_size,
                 offset=spec.offset,
+                date_scope=spec.date_scope if spec.date_scope.is_active else None,
             )
             total_count = int(page["total_count"])
             has_more = bool(page["has_more"])

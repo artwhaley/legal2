@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
+from message_evidence_workstation.search.date_scope import MessageDateScope, date_scope_sql_clauses
 
 MESSAGE_VEC_TABLE = "message_embedding_vec"
 CHUNK_VEC_TABLE = "chunk_embedding_vec"
@@ -450,6 +451,7 @@ def search_message_vectors(
     query_vector: list[float],
     model_name: str,
     top_k: int = 20,
+    date_scope: MessageDateScope | None = None,
 ) -> list[VectorSearchHit]:
     if not _table_exists(conn, MESSAGE_VEC_TABLE):
         raise RuntimeError("Message embedding index table is missing")
@@ -472,7 +474,40 @@ def search_message_vectors(
         """,
         tuple(params),
     ).fetchall()
-    rows = [row for row in rows if int(row["dataset_id"]) == dataset_id][:top_k]
+    rows = [row for row in rows if int(row["dataset_id"]) == dataset_id]
+
+    # Date scope filter: fetch timestamps and exclude out-of-range messages.
+    scoped_count_before = len(rows)
+    if date_scope is not None and date_scope.is_active and rows:
+        date_clause, date_params = date_scope_sql_clauses(date_scope)
+        message_ids = [row["message_id"] for row in rows]
+        placeholders = ",".join("?" * len(message_ids))
+        ts_rows = conn.execute(
+            f"""
+            SELECT message_id FROM message
+            WHERE dataset_id = ? AND message_id IN ({placeholders})
+            {"AND " + date_clause if date_clause else ""}
+            """,
+            (dataset_id, *message_ids, *date_params),
+        ).fetchall()
+        in_scope_ids = {row["message_id"] for row in ts_rows}
+        rows = [row for row in rows if row["message_id"] in in_scope_ids]
+        logger.info(
+            component="embeddings.sqlite_vec_backend",
+            operation="message_vector_date_filter",
+            message="Applied date scope to message vector candidates",
+            details={
+                "dataset_id": dataset_id,
+                "model_name": model_name,
+                "candidates_before_date_filter": scoped_count_before,
+                "candidates_after_date_filter": len(rows),
+                "start_timestamp": date_scope.start_timestamp,
+                "end_timestamp": date_scope.end_timestamp,
+            },
+            dataset_id=dataset_id,
+        )
+
+    rows = rows[:top_k]
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     hits = [
         VectorSearchHit(
@@ -511,6 +546,7 @@ def search_chunk_vectors(
     query_vector: list[float],
     model_name: str,
     top_k: int = 20,
+    date_scope: MessageDateScope | None = None,
 ) -> list[VectorSearchHit]:
     if not _table_exists(conn, CHUNK_VEC_TABLE):
         raise RuntimeError("Chunk embedding index table is missing")
@@ -532,7 +568,9 @@ def search_chunk_vectors(
         """,
         tuple(params),
     ).fetchall()
-    rows = [row for row in rows if int(row["dataset_id"]) == dataset_id][:top_k]
+    rows = [row for row in rows if int(row["dataset_id"]) == dataset_id]
+
+    # Chunk metadata: fetch range info for all candidate chunks.
     chunk_meta: dict[int, tuple[str, str]] = {}
     if rows:
         placeholders = ",".join("?" for _ in rows)
@@ -548,6 +586,73 @@ def search_chunk_vectors(
             int(meta["chunk_id"]): (meta["start_message_id"], meta["end_message_id"])
             for meta in meta_rows
         }
+
+    # Date scope filter: include chunk if any message in its range intersects scope.
+    scoped_count_before = len(rows)
+    if date_scope is not None and date_scope.is_active and rows:
+        # Collect all message IDs referenced by chunk ranges (start + end).
+        range_ids: set[str] = set()
+        for row in rows:
+            chunk_id = int(row["chunk_id"])
+            start_id, end_id = chunk_meta.get(chunk_id, ("", ""))
+            if start_id:
+                range_ids.add(start_id)
+            if end_id:
+                range_ids.add(end_id)
+        # Fetch timestamps for all boundary messages.
+        range_timestamps: dict[str, str] = {}
+        if range_ids:
+            id_list = list(range_ids)
+            placeholders = ",".join("?" * len(id_list))
+            ts_rows = conn.execute(
+                f"""
+                SELECT message_id, timestamp FROM message
+                WHERE dataset_id = ? AND message_id IN ({placeholders})
+                """,
+                (dataset_id, *id_list),
+            ).fetchall()
+            range_timestamps = {row["message_id"]: row["timestamp"] for row in ts_rows}
+
+        date_clause, date_params = date_scope_sql_clauses(date_scope)
+        in_scope_chunk_ids: set[int] = set()
+        for row in rows:
+            chunk_id = int(row["chunk_id"])
+            start_id, end_id = chunk_meta.get(chunk_id, ("", ""))
+            start_ts = range_timestamps.get(start_id, "")
+            end_ts = range_timestamps.get(end_id, "")
+            # Include chunk if any part of its range intersects the date scope.
+            # Intersection: chunk_range overlaps date_range if:
+            #   chunk_min_ts <= date_max_ts AND chunk_max_ts >= date_min_ts
+            if not start_ts and not end_ts:
+                continue
+            chunk_min = start_ts or end_ts
+            chunk_max = end_ts or start_ts
+            date_min = date_scope.start_timestamp or ""
+            date_max = date_scope.end_timestamp or ""
+            intersects = True
+            if date_max and chunk_min > date_max:
+                intersects = False
+            if date_min and chunk_max < date_min:
+                intersects = False
+            if intersects:
+                in_scope_chunk_ids.add(chunk_id)
+        rows = [row for row in rows if int(row["chunk_id"]) in in_scope_chunk_ids]
+        logger.info(
+            component="embeddings.sqlite_vec_backend",
+            operation="chunk_vector_date_filter",
+            message="Applied date scope (range intersection) to chunk vector candidates",
+            details={
+                "dataset_id": dataset_id,
+                "model_name": model_name,
+                "candidates_before_date_filter": scoped_count_before,
+                "candidates_after_date_filter": len(rows),
+                "start_timestamp": date_scope.start_timestamp,
+                "end_timestamp": date_scope.end_timestamp,
+            },
+            dataset_id=dataset_id,
+        )
+
+    rows = rows[:top_k]
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     hits: list[VectorSearchHit] = []
     for index, row in enumerate(rows):
