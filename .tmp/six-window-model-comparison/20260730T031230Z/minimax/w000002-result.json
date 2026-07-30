@@ -1,0 +1,132 @@
+{
+  "window_id": "w000002",
+  "status_code": 200,
+  "elapsed_seconds": 88.59017680000034,
+  "response": {
+    "id": "chatcmpl-d37eb693-5b13-41e3-a4ca-07882a476afb",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000002\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3572\",\"end_message_id\":\"decipher_message_1:3548\",\"summary\":\"Extended disagreement about how Olivia's non-school days should be divided between the farm and Julie's house, including criticism of Julie's spending, accusations about financial responsibility, and explicit statements that they are fighting. The exchange also includes a substantive debate about Olivia's schooling (private vs. public, Wildflower commitment, reading/math curriculum concerns).\",\"relevance\":\"This is the clearest 'fight about school' exchange in the window. It combines a custody/time dispute with a direct disagreement over Olivia's education (school choice, academic push, reading instruction), and both participants explicitly acknowledge they are arguing.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3518\",\"end_message_id\":\"decipher_message_1:3514\",\"summary\":\"Discussion of Olivia's reading progress at school: Art pushes for more pressure on reading and math, Julie agrees she also wishes there was more focus on core skills, and they discuss Olivia refusing to move into the actual reading curriculum because she prefers coloring pages.\",\"relevance\":\"Captures the school-focused portion of the larger argument, showing the specific educational disagreement (reading instruction, curriculum push) that is part of the fight.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3529\",\"end_message_id\":\"decipher_message_1:3522\",\"summary\":\"Exchange about school quality: Art argues private schools guarantee kids with parents who care about education and suggests small-town public schools; Julie counters that Deer Creek (public) has the best ratings but has grown too fast, and explains why she chose Wildflower over public school.\",\"relevance\":\"Direct disagreement about school choice and educational philosophy that is part of the broader fight.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:4899\",\"end_message_id\":\"decipher_message_1:4891\",\"summary\":\"Discussion of Olivia's school progress report and teacher comments. Art criticizes the school for not pushing Olivia more on reading and questions the 'passive and quiet' characterization; Julie agrees the comments were weird but defends the school and Olivia's teacher. They also discuss Olivia's attitude toward leadership.\",\"relevance\":\"A meaningful disagreement about the school's evaluation of Olivia and the school's approach to pushing her academically, which qualifies as a school-related conflict even though it does not escalate into a full argument.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3274\",\"end_message_id\":\"decipher_message_1:3267\",\"summary\":\"Discussion about homeschooling vs. current school: Art jokes about homeschooling Olivia because she's so smart, Julie firmly rejects homeschooling, and they discuss her math homework and ADHD-related focus issues at school.\",\"relevance\":\"Captures a lighter but substantive disagreement about Olivia's schooling and academic needs, including Julie's stated inability to homeschool.\"}],\"uncertainties\":[\"The March 28, 2023 exchange is the only passage where participants explicitly use the word 'fight'; other school-related disagreements are more measured but still show competing positions and tension.\",\"The school-progress discussion around October 27, 2022 is included as a qualifying/borderline disagreement because it involves criticism of the school's approach but does not escalate into overt conflict.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785382551,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 155592,
+      "completion_tokens": 736,
+      "total_tokens": 156328,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 128
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000002",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3572",
+          "end_message_id": "decipher_message_1:3548",
+          "summary": "Extended disagreement about how Olivia's non-school days should be divided between the farm and Julie's house, including criticism of Julie's spending, accusations about financial responsibility, and explicit statements that they are fighting. The exchange also includes a substantive debate about Olivia's schooling (private vs. public, Wildflower commitment, reading/math curriculum concerns).",
+          "relevance": "This is the clearest 'fight about school' exchange in the window. It combines a custody/time dispute with a direct disagreement over Olivia's education (school choice, academic push, reading instruction), and both participants explicitly acknowledge they are arguing."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3518",
+          "end_message_id": "decipher_message_1:3514",
+          "summary": "Discussion of Olivia's reading progress at school: Art pushes for more pressure on reading and math, Julie agrees she also wishes there was more focus on core skills, and they discuss Olivia refusing to move into the actual reading curriculum because she prefers coloring pages.",
+          "relevance": "Captures the school-focused portion of the larger argument, showing the specific educational disagreement (reading instruction, curriculum push) that is part of the fight."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3529",
+          "end_message_id": "decipher_message_1:3522",
+          "summary": "Exchange about school quality: Art argues private schools guarantee kids with parents who care about education and suggests small-town public schools; Julie counters that Deer Creek (public) has the best ratings but has grown too fast, and explains why she chose Wildflower over public school.",
+          "relevance": "Direct disagreement about school choice and educational philosophy that is part of the broader fight."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:4899",
+          "end_message_id": "decipher_message_1:4891",
+          "summary": "Discussion of Olivia's school progress report and teacher comments. Art criticizes the school for not pushing Olivia more on reading and questions the 'passive and quiet' characterization; Julie agrees the comments were weird but defends the school and Olivia's teacher. They also discuss Olivia's attitude toward leadership.",
+          "relevance": "A meaningful disagreement about the school's evaluation of Olivia and the school's approach to pushing her academically, which qualifies as a school-related conflict even though it does not escalate into a full argument."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3274",
+          "end_message_id": "decipher_message_1:3267",
+          "summary": "Discussion about homeschooling vs. current school: Art jokes about homeschooling Olivia because she's so smart, Julie firmly rejects homeschooling, and they discuss her math homework and ADHD-related focus issues at school.",
+          "relevance": "Captures a lighter but substantive disagreement about Olivia's schooling and academic needs, including Julie's stated inability to homeschool."
+        }
+      ],
+      "uncertainties": [
+        "The March 28, 2023 exchange is the only passage where participants explicitly use the word 'fight'; other school-related disagreements are more measured but still show competing positions and tension.",
+        "The school-progress discussion around October 27, 2022 is included as a qualifying/borderline disagreement because it involves criticism of the school's approach but does not escalate into overt conflict."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000002",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3572",
+          "end_message_id": "decipher_message_1:3548",
+          "summary": "Extended disagreement about how Olivia's non-school days should be divided between the farm and Julie's house, including criticism of Julie's spending, accusations about financial responsibility, and explicit statements that they are fighting. The exchange also includes a substantive debate about Olivia's schooling (private vs. public, Wildflower commitment, reading/math curriculum concerns).",
+          "relevance": "This is the clearest 'fight about school' exchange in the window. It combines a custody/time dispute with a direct disagreement over Olivia's education (school choice, academic push, reading instruction), and both participants explicitly acknowledge they are arguing."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3518",
+          "end_message_id": "decipher_message_1:3514",
+          "summary": "Discussion of Olivia's reading progress at school: Art pushes for more pressure on reading and math, Julie agrees she also wishes there was more focus on core skills, and they discuss Olivia refusing to move into the actual reading curriculum because she prefers coloring pages.",
+          "relevance": "Captures the school-focused portion of the larger argument, showing the specific educational disagreement (reading instruction, curriculum push) that is part of the fight."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3529",
+          "end_message_id": "decipher_message_1:3522",
+          "summary": "Exchange about school quality: Art argues private schools guarantee kids with parents who care about education and suggests small-town public schools; Julie counters that Deer Creek (public) has the best ratings but has grown too fast, and explains why she chose Wildflower over public school.",
+          "relevance": "Direct disagreement about school choice and educational philosophy that is part of the broader fight."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:4899",
+          "end_message_id": "decipher_message_1:4891",
+          "summary": "Discussion of Olivia's school progress report and teacher comments. Art criticizes the school for not pushing Olivia more on reading and questions the 'passive and quiet' characterization; Julie agrees the comments were weird but defends the school and Olivia's teacher. They also discuss Olivia's attitude toward leadership.",
+          "relevance": "A meaningful disagreement about the school's evaluation of Olivia and the school's approach to pushing her academically, which qualifies as a school-related conflict even though it does not escalate into a full argument."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3274",
+          "end_message_id": "decipher_message_1:3267",
+          "summary": "Discussion about homeschooling vs. current school: Art jokes about homeschooling Olivia because she's so smart, Julie firmly rejects homeschooling, and they discuss her math homework and ADHD-related focus issues at school.",
+          "relevance": "Captures a lighter but substantive disagreement about Olivia's schooling and academic needs, including Julie's stated inability to homeschool."
+        }
+      ],
+      "uncertainties": [
+        "The March 28, 2023 exchange is the only passage where participants explicitly use the word 'fight'; other school-related disagreements are more measured but still show competing positions and tension.",
+        "The school-progress discussion around October 27, 2022 is included as a qualifying/borderline disagreement because it involves criticism of the school's approach but does not escalate into overt conflict."
+      ]
+    },
+    "evidence_range_count": 5
+  }
+}

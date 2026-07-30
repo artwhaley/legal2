@@ -1,0 +1,579 @@
+{
+  "events": [
+    {
+      "config_version": 57,
+      "data": {
+        "endpoint": "/v1/conversational-analysis",
+        "message_count": 12402,
+        "scope_id": "retrieval-investigation-revision-4"
+      },
+      "event": "accepted",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 1,
+      "timestamp": "2026-07-30T02:23:49.529375Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "analysis_input_tokens": 699310,
+        "context_window_tokens": 262144,
+        "corpus_tokens": 693912,
+        "reserved_output_tokens": 16384,
+        "safety_margin_tokens": 1498,
+        "strategy": "multi_window_ledger"
+      },
+      "event": "accounting_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 2,
+      "timestamp": "2026-07-30T02:23:49.529515Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "compatibility_fingerprint": "0bcdfa95d3802e08f4db0db84ee2d9fd3b41b7880d2274fbf0dde93428d7ef4d",
+        "mode": "semantic_ranges",
+        "query_count": 20,
+        "raw_hit_count": 2000
+      },
+      "event": "retrieval_assistance_accepted",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 3,
+      "timestamp": "2026-07-30T02:23:49.529582Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "selected_suggestion_message_count": 40,
+        "suggestion_range_count": 40,
+        "unique_candidate_message_count": 397,
+        "unselected_candidate_message_count": 357
+      },
+      "event": "retrieval_suggestions_built",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 4,
+      "timestamp": "2026-07-30T02:23:49.529641Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "hard_input_tokens": 244262,
+        "message_count": 12402,
+        "retrieval_reserve_tokens": 5398,
+        "strategy": "multi_window_ledger",
+        "target_input_tokens": 219835,
+        "utilization_percent": 90.0,
+        "window_count": 5,
+        "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+      },
+      "event": "window_plan_created",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 5,
+      "timestamp": "2026-07-30T02:23:49.529852Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "message_count": 2647,
+        "suggestion_range_count": 13,
+        "window_count": 5,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_started",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 6,
+      "timestamp": "2026-07-30T02:23:49.530261Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 10011,
+        "operation": "window_evidence_extraction",
+        "window_count": 5
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 7,
+      "timestamp": "2026-07-30T02:23:59.537948Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 20016,
+        "operation": "window_evidence_extraction",
+        "window_count": 5
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 8,
+      "timestamp": "2026-07-30T02:24:09.543208Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 187736,
+        "output_tokens": 88,
+        "usage_source": "provider_reported",
+        "window_count": 5,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 9,
+      "timestamp": "2026-07-30T02:24:12.817001Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "message_count": 2547,
+        "suggestion_range_count": 4,
+        "window_count": 5,
+        "window_id": "w000002",
+        "window_index": 1
+      },
+      "event": "window_started",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 10,
+      "timestamp": "2026-07-30T02:24:12.817297Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 1,
+        "elapsed_ms": 33295,
+        "operation": "window_evidence_extraction",
+        "window_count": 5
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 11,
+      "timestamp": "2026-07-30T02:24:22.822366Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 186812,
+        "output_tokens": 90,
+        "usage_source": "provider_reported",
+        "window_count": 5,
+        "window_id": "w000002",
+        "window_index": 1
+      },
+      "event": "window_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 12,
+      "timestamp": "2026-07-30T02:24:31.007158Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "message_count": 2490,
+        "suggestion_range_count": 17,
+        "window_count": 5,
+        "window_id": "w000003",
+        "window_index": 2
+      },
+      "event": "window_started",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 13,
+      "timestamp": "2026-07-30T02:24:31.007441Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 2,
+        "elapsed_ms": 51493,
+        "operation": "window_evidence_extraction",
+        "window_count": 5
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 14,
+      "timestamp": "2026-07-30T02:24:41.019638Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 188381,
+        "output_tokens": 87,
+        "usage_source": "provider_reported",
+        "window_count": 5,
+        "window_id": "w000003",
+        "window_index": 2
+      },
+      "event": "window_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 15,
+      "timestamp": "2026-07-30T02:24:47.290856Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "message_count": 2590,
+        "suggestion_range_count": 2,
+        "window_count": 5,
+        "window_id": "w000004",
+        "window_index": 3
+      },
+      "event": "window_started",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 16,
+      "timestamp": "2026-07-30T02:24:47.291137Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 3,
+        "elapsed_ms": 67780,
+        "operation": "window_evidence_extraction",
+        "window_count": 5
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 17,
+      "timestamp": "2026-07-30T02:24:57.307076Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 186406,
+        "output_tokens": 89,
+        "usage_source": "provider_reported",
+        "window_count": 5,
+        "window_id": "w000004",
+        "window_index": 3
+      },
+      "event": "window_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 18,
+      "timestamp": "2026-07-30T02:24:57.971653Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "message_count": 2128,
+        "suggestion_range_count": 4,
+        "window_count": 5,
+        "window_id": "w000005",
+        "window_index": 4
+      },
+      "event": "window_started",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 19,
+      "timestamp": "2026-07-30T02:24:57.972025Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 4,
+        "elapsed_ms": 78458,
+        "operation": "window_evidence_extraction",
+        "window_count": 5
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 20,
+      "timestamp": "2026-07-30T02:25:07.985803Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 187150,
+        "output_tokens": 89,
+        "usage_source": "provider_reported",
+        "window_count": 5,
+        "window_id": "w000005",
+        "window_index": 4
+      },
+      "event": "window_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 21,
+      "timestamp": "2026-07-30T02:25:10.216163Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "evidence_range_count": 0,
+        "window_count": 5
+      },
+      "event": "ledger_built",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 22,
+      "timestamp": "2026-07-30T02:25:10.218807Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "direct_fit": true,
+        "evidence_message_count": 0,
+        "evidence_range_count": 0,
+        "excess_input_tokens": 0,
+        "required_input_tokens": 1217,
+        "usable_input_tokens": 244262
+      },
+      "event": "ledger_synthesis_preflight",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 23,
+      "timestamp": "2026-07-30T02:25:10.221686Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "evidence_range_count": 0
+      },
+      "event": "ledger_synthesis_started",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 24,
+      "timestamp": "2026-07-30T02:25:10.221783Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 10001,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 25,
+      "timestamp": "2026-07-30T02:25:20.223645Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 20002,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 26,
+      "timestamp": "2026-07-30T02:25:30.224662Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 30012,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 27,
+      "timestamp": "2026-07-30T02:25:40.234983Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 40020,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 28,
+      "timestamp": "2026-07-30T02:25:50.242646Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 999,
+        "output_tokens": 327,
+        "usage_source": "provider_reported"
+      },
+      "event": "ledger_synthesis_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 29,
+      "timestamp": "2026-07-30T02:25:52.734000Z"
+    },
+    {
+      "config_version": 57,
+      "data": {
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 0,
+        "suggestions_without_final_evidence": 40,
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 0
+      },
+      "event": "retrieval_overlap_completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "sequence": 30,
+      "timestamp": "2026-07-30T02:25:52.734144Z"
+    },
+    {
+      "config_version": 57,
+      "event": "completed",
+      "request_id": "fc5acfe9-9484-4954-82b0-703678345c81",
+      "result": {
+        "answer": "No evidence was found in any of the five scanned windows (w000001 through w000005) describing a fight, argument, disagreement, or conflict between the participants about school. Across the entire scanned corpus, school-related discussion is limited to logistics (pickups, drop-offs, school events, school choice, schoolwork, school supplies, school forms, scheduling, curriculum, teachers, activities, gymnastics, medical/dental issues at school, custody-related school matters, and travel) and to general disagreements about education quality in the homeschooling context. No passage identifies a specific 'fight about school,' no such exchange is quoted or paraphrased, and no date is associated with such an event. Because ledger_metadata contains no range IDs, no range dispositions are required beyond noting that no evidence ranges were produced.",
+        "answer_summary": "Across all five scanned windows covering the full message corpus, there is no evidence of a fight about school between the participants; school-related content is confined to logistics and general education-quality discussion, with no dated argumentative exchange on that topic.",
+        "coverage": {
+          "evidence_range_count": 0,
+          "message_count": 12402,
+          "window_count": 5
+        },
+        "evidence_ledger": [],
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 1217,
+          "synthesis_usable_input_tokens": 244262
+        },
+        "retrieval_diagnostics": {
+          "final_ranges_outside_suggestions": 0,
+          "final_ranges_overlapping_suggestions": 0,
+          "mode": "semantic_ranges",
+          "query_count": 20,
+          "raw_hit_count": 2000,
+          "selected_suggestion_message_count": 40,
+          "suggestion_range_count": 40,
+          "suggestions_without_final_evidence": 40,
+          "unique_candidate_message_count": 397,
+          "used_ranges_outside_suggestions": 0,
+          "used_ranges_overlapping_suggestions": 0
+        },
+        "strategy": "multi_window_ledger",
+        "uncertainties": [
+          "No evidence of a 'fight about school' was found in any scanned window; the question may refer to an event outside the supplied corpus or may conflate routine logistical school discussions with a conflict.",
+          "Without ledger_metadata range IDs, no per-range dispositions can be assigned; the absence of evidence ranges is consistent with the coverage report's finding of zero evidence ranges across all windows.",
+          "It is unclear whether the question refers to a specific past incident, a recurring pattern, or a general characterization of the participants' relationship regarding school matters."
+        ],
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 937484,
+          "output_tokens": 770,
+          "source": "provider_reported"
+        }
+      },
+      "sequence": 31,
+      "timestamp": "2026-07-30T02:25:52.734346Z"
+    }
+  ],
+  "metrics": {
+    "coverage": {
+      "evidence_range_count": 0,
+      "message_count": 12402,
+      "window_count": 5
+    },
+    "final_range_inventory": [],
+    "final_ranges_outside_suggestions": 0,
+    "final_ranges_overlapping_suggestions": 0,
+    "ledger_processing": {
+      "compaction_applied": false,
+      "compaction_group_calls": 0,
+      "compaction_levels": 0,
+      "direct_synthesis_input_tokens": 1217,
+      "synthesis_usable_input_tokens": 244262
+    },
+    "mode_projection": {
+      "active_config_version": 57,
+      "configuration_fingerprint": "43c99bf2639a10ea9cda6e5dabe43adcd6b09f2b39ae7634480857e0276d458d",
+      "mode_independent_configuration_fingerprint": "33338e2139ed5190eb03fa112970934683d309abd99a734339cd4787194b675f",
+      "retrieval_assistance_mode": "semantic_ranges"
+    },
+    "partial": false,
+    "provider_retry_or_queue_events": 0,
+    "provisional_gold_recall": {
+      "count": 0,
+      "found": [],
+      "total": 7
+    },
+    "selected_suggestion_message_ids": [
+      "decipher_export_19:1847",
+      "decipher_message_1:19",
+      "decipher_message_1:7278",
+      "decipher_message_1:2148",
+      "decipher_message_1:1817",
+      "decipher_message_1:1194",
+      "decipher_message_1:5352",
+      "decipher_export_19:3382",
+      "decipher_message_1:1966",
+      "decipher_message_1:5694",
+      "decipher_message_1:3529",
+      "decipher_message_1:1956",
+      "decipher_export_19:3392",
+      "decipher_message_1:375",
+      "decipher_message_1:5790",
+      "decipher_message_1:600",
+      "decipher_message_1:997",
+      "decipher_message_1:3034",
+      "decipher_message_1:7162",
+      "decipher_message_1:2024",
+      "decipher_message_1:6520",
+      "decipher_message_1:5700",
+      "decipher_message_1:3708",
+      "decipher_export_19:3396",
+      "decipher_export_19:586",
+      "decipher_message_1:1473",
+      "decipher_message_1:587",
+      "decipher_message_1:5690",
+      "decipher_message_1:6573",
+      "decipher_message_1:5140",
+      "decipher_message_1:2096",
+      "decipher_message_1:1269",
+      "decipher_message_1:1420",
+      "decipher_message_1:2136",
+      "decipher_message_1:5797",
+      "decipher_message_1:7170",
+      "decipher_message_1:6770",
+      "decipher_message_1:2626",
+      "decipher_export_19:4635",
+      "decipher_message_1:931"
+    ],
+    "strategy": "multi_window_ledger",
+    "suggestions_without_final_evidence": 40,
+    "terminal_event": "completed",
+    "usage": {
+      "cost_complete": false,
+      "currency": "USD",
+      "estimated_cost": null,
+      "input_tokens": 937484,
+      "output_tokens": 770,
+      "source": "provider_reported"
+    },
+    "used_ranges_outside_suggestions": 0,
+    "used_ranges_overlapping_suggestions": 0,
+    "wall_time_ms": 128817.70250000045,
+    "window_count": 5,
+    "window_durations_ms": [
+      23286.74006462097,
+      18189.861059188843,
+      16283.414840698242,
+      10680.516004562378,
+      12244.13800239563
+    ],
+    "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+  }
+}

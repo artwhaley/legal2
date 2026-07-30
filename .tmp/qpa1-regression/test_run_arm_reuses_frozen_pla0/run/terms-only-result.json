@@ -1,0 +1,104 @@
+{
+  "events": [
+    {
+      "data": {
+        "window_count": 1,
+        "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "event": "window_plan_created",
+      "sequence": 1,
+      "timestamp": "2026-01-01T00:00:00Z"
+    },
+    {
+      "event": "completed",
+      "result": {
+        "answer": "Answer",
+        "answer_summary": "Summary",
+        "coverage": {
+          "evidence_range_count": 1,
+          "message_count": 1,
+          "window_count": 1
+        },
+        "evidence_ledger": [
+          {
+            "disposition": "used",
+            "end_message_id": "m1",
+            "range_id": "r000001",
+            "start_message_id": "m1",
+            "thread_id": "t1"
+          }
+        ],
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0
+        },
+        "retrieval_diagnostics": {
+          "final_ranges_outside_suggestions": 0,
+          "final_ranges_overlapping_suggestions": 1,
+          "suggestions_without_final_evidence": 0,
+          "used_ranges_outside_suggestions": 0,
+          "used_ranges_overlapping_suggestions": 1
+        },
+        "strategy": "single_window_ledger",
+        "uncertainties": [],
+        "usage": {
+          "input_tokens": 1
+        }
+      },
+      "sequence": 2,
+      "timestamp": "2026-01-01T00:00:01Z"
+    }
+  ],
+  "metrics": {
+    "coverage": {
+      "evidence_range_count": 1,
+      "message_count": 1,
+      "window_count": 1
+    },
+    "final_range_inventory": [
+      {
+        "disposition": "used",
+        "end_message_id": "m1",
+        "range_id": "r000001",
+        "start_message_id": "m1",
+        "thread_id": "t1"
+      }
+    ],
+    "final_ranges_outside_suggestions": 0,
+    "final_ranges_overlapping_suggestions": 1,
+    "ledger_processing": {
+      "compaction_applied": false,
+      "compaction_group_calls": 0,
+      "compaction_levels": 0
+    },
+    "mode_projection": {
+      "active_config_version": 1,
+      "configuration_fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "mode_independent_configuration_fingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "retrieval_assistance_mode": "semantic_ranges"
+    },
+    "partial": false,
+    "provider_retry_or_queue_events": 0,
+    "provisional_gold_recall": {
+      "count": 1,
+      "found": [
+        0
+      ],
+      "total": 1
+    },
+    "selected_suggestion_message_ids": [],
+    "strategy": "single_window_ledger",
+    "suggestions_without_final_evidence": 0,
+    "terminal_event": "completed",
+    "usage": {
+      "input_tokens": 1
+    },
+    "used_ranges_outside_suggestions": 0,
+    "used_ranges_overlapping_suggestions": 1,
+    "wall_time_ms": 0.0025000008463393897,
+    "window_count": 1,
+    "window_durations_ms": [],
+    "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  }
+}

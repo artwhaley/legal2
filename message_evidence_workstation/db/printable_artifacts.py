@@ -15,7 +15,7 @@ from message_evidence_workstation.domain.models import (
     PrintableArtifactGroup,
     SourceThread,
 )
-from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
+from message_evidence_workstation.logging_ui.diagnostic_logger import DiagnosticLogger, utc_now_iso
 from message_evidence_workstation.output.block_labels import block_label_for_index
 
 
@@ -95,18 +95,17 @@ def _messages_for_evidence_block(
     conn: sqlite3.Connection,
     block: EvidenceBlock,
 ) -> list:
-    return repositories.fetch_messages_for_slot_range(
-        conn,
-        block.dataset_id,
-        block.source_thread_id,
-        block.context_start_slot,
-        block.context_end_slot,
-    )
+    rows = conn.execute(
+        """SELECT m.* FROM evidence_block_message ebm JOIN message m ON m.message_id=ebm.message_id
+           WHERE ebm.evidence_block_id=? ORDER BY ebm.ordinal""",
+        (block.evidence_block_id,),
+    ).fetchall()
+    return [repositories._message_from_row(row) for row in rows]
 
 
 def ensure_default_printable_artifact_group(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     dataset_id: int,
 ) -> PrintableArtifactGroup:
     row = conn.execute(
@@ -186,7 +185,7 @@ def list_printable_artifacts(
 
 def create_printable_artifact_group(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     dataset_id: int,
     name: str,
 ) -> PrintableArtifactGroup:
@@ -222,7 +221,7 @@ def create_printable_artifact_group(
 
 def rename_printable_artifact_group(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     group_id: int,
     name: str,
 ) -> None:
@@ -246,7 +245,7 @@ def rename_printable_artifact_group(
 
 def set_printable_artifact_group_collapsed(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     group_id: int,
     is_collapsed: bool,
 ) -> None:
@@ -270,7 +269,7 @@ def set_printable_artifact_group_collapsed(
 
 def create_printable_artifact_from_evidence_block(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     dataset_id: int,
     group_id: int,
     evidence_block_id: int,
@@ -326,7 +325,7 @@ def create_printable_artifact_from_evidence_block(
 
 def append_evidence_block_to_printable_artifact(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     printable_artifact_id: int,
     evidence_block_id: int,
 ) -> PrintableArtifactEvidenceBlock:
@@ -367,7 +366,7 @@ def append_evidence_block_to_printable_artifact(
 
 def move_printable_artifact_to_group(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     printable_artifact_id: int,
     group_id: int,
     sort_order: int | None = None,
@@ -398,7 +397,7 @@ def move_printable_artifact_to_group(
 
 def update_printable_artifact_metadata(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     printable_artifact_id: int,
     title: str,
     exhibit_number: str,
@@ -434,7 +433,7 @@ def update_printable_artifact_metadata(
 
 def reorder_printable_artifact_blocks(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     printable_artifact_id: int,
     ordered_join_ids: list[int],
 ) -> None:
@@ -462,7 +461,7 @@ def reorder_printable_artifact_blocks(
 
 def remove_printable_artifact_block(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     printable_artifact_evidence_block_id: int,
 ) -> None:
     conn.execute(

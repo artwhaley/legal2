@@ -1,0 +1,91 @@
+{
+  "window_id": "w000006",
+  "status_code": 200,
+  "elapsed_seconds": 56.03425210000023,
+  "response": {
+    "id": "chatcmpl-1018e404-e882-4585-bbe3-2cf03107592c",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000006\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:3370\",\"end_message_id\":\"decipher_export_19:3397\",\"summary\":\"Art raises concerns that Olivia has gone weeks without doing school at Julie's house and argues she should be out of gymnastics until her education is on track; Julie pushes back, saying she has paid tuition 35 of 36 months, that Olivia is on track, and that Art's farm lessons were too easy. Art says he only knows what she tells him about school; Julie says Olivia told her she hated the farm school but was scared to tell Art. They then argue about homeschooling vs public/private school, with Julie defending homeschooling and Art saying she just needs regular lessons.\",\"relevance\":\"Direct disagreement about Olivia's schooling, academic progress, and responsibility for educational decisions, intertwined with the gymnastics/schedule conflict.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:3451\",\"end_message_id\":\"decipher_export_19:3456\",\"summary\":\"Julie asks about voice lessons on weekends she's with her; Art says if she's only doing school work at his place she needs to be there as often as possible. Julie pushes back that she does school 3-4 days a week and doesn't want Olivia committed to Ada every Friday.\",\"relevance\":\"Disagreement about Olivia's school schedule and how it interacts with weekend parenting time.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:4635\",\"end_message_id\":\"decipher_export_19:4641\",\"summary\":\"During the broader custody fight, Art accuses Julie of neglecting school for almost a full semester and says gymnastics is all that's important to her. Julie counters that she did school with Olivia all year and only stopped monitoring reports because she trusted Art had set up the online program correctly, which he had not.\",\"relevance\":\"Renewed argument about who is responsible for Olivia's education and whether Julie neglected it.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:5131\",\"end_message_id\":\"decipher_export_19:5141\",\"summary\":\"Art says he won't agree to any settlement where he doesn't have final say about activities and education, accusing Julie of torturing Olivia by sending her back to be bullied, not letting her quit gymnastics, and neglecting her education. Julie denies forcing gymnastics and details her own extensive involvement in Olivia's schooling, contrasting it with Art's minimal contribution.\",\"relevance\":\"Sustained argument specifically about education, curriculum, and who controls educational decisions for Olivia.\"}],\"uncertainties\":[\"The July 16, 2025 exchange (3370-3397) is the clearest 'fight about school' but it is also entangled with the gymnastics/finances dispute, so the school-specific portion is a subset of a larger argument.\",\"The later 2026 exchanges (4635-4641 and 5131-5141) occur inside a much larger custody/hostility conflict; the school-related accusations are part of that broader fight rather than a standalone dispute about school.\",\"Whether Art's July 2025 statement that Olivia 'should be OUT of gymnastics until her education is on track' counts as a fight about school or about activity vs. education trade-offs is borderline; included because education is the stated reason for the position.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785383596,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 156208,
+      "completion_tokens": 722,
+      "total_tokens": 156930,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 1024
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": false,
+    "normalized_ledger_valid": false,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000006",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:3370",
+          "end_message_id": "decipher_export_19:3397",
+          "summary": "Art raises concerns that Olivia has gone weeks without doing school at Julie's house and argues she should be out of gymnastics until her education is on track; Julie pushes back, saying she has paid tuition 35 of 36 months, that Olivia is on track, and that Art's farm lessons were too easy. Art says he only knows what she tells him about school; Julie says Olivia told her she hated the farm school but was scared to tell Art. They then argue about homeschooling vs public/private school, with Julie defending homeschooling and Art saying she just needs regular lessons.",
+          "relevance": "Direct disagreement about Olivia's schooling, academic progress, and responsibility for educational decisions, intertwined with the gymnastics/schedule conflict."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:3451",
+          "end_message_id": "decipher_export_19:3456",
+          "summary": "Julie asks about voice lessons on weekends she's with her; Art says if she's only doing school work at his place she needs to be there as often as possible. Julie pushes back that she does school 3-4 days a week and doesn't want Olivia committed to Ada every Friday.",
+          "relevance": "Disagreement about Olivia's school schedule and how it interacts with weekend parenting time."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:4635",
+          "end_message_id": "decipher_export_19:4641",
+          "summary": "During the broader custody fight, Art accuses Julie of neglecting school for almost a full semester and says gymnastics is all that's important to her. Julie counters that she did school with Olivia all year and only stopped monitoring reports because she trusted Art had set up the online program correctly, which he had not.",
+          "relevance": "Renewed argument about who is responsible for Olivia's education and whether Julie neglected it."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:5131",
+          "end_message_id": "decipher_export_19:5141",
+          "summary": "Art says he won't agree to any settlement where he doesn't have final say about activities and education, accusing Julie of torturing Olivia by sending her back to be bullied, not letting her quit gymnastics, and neglecting her education. Julie denies forcing gymnastics and details her own extensive involvement in Olivia's schooling, contrasting it with Art's minimal contribution.",
+          "relevance": "Sustained argument specifically about education, curriculum, and who controls educational decisions for Olivia."
+        }
+      ],
+      "uncertainties": [
+        "The July 16, 2025 exchange (3370-3397) is the clearest 'fight about school' but it is also entangled with the gymnastics/finances dispute, so the school-specific portion is a subset of a larger argument.",
+        "The later 2026 exchanges (4635-4641 and 5131-5141) occur inside a much larger custody/hostility conflict; the school-related accusations are part of that broader fight rather than a standalone dispute about school.",
+        "Whether Art's July 2025 statement that Olivia 'should be OUT of gymnastics until her education is on track' counts as a fight about school or about activity vs. education trade-offs is borderline; included because education is the stated reason for the position."
+      ]
+    },
+    "strict_ledger_error": {
+      "message": "evidence range references an unknown or blank value",
+      "details": {
+        "reason": "unknown_or_blank_value",
+        "window_id": "w000006",
+        "range_index": 3,
+        "start_message_id": "decipher_export_19:5131",
+        "end_message_id": "decipher_export_19:5141",
+        "declared_thread_id": "julie_kramer"
+      }
+    }
+  }
+}

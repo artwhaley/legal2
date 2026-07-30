@@ -1,0 +1,141 @@
+[
+  {
+    "best_raw_rank_by_query": {
+      "q0001": 1,
+      "q0002": 26,
+      "q0003": 2
+    },
+    "end_message_id": "decipher_message_1:3516",
+    "end_ordinal": 3866,
+    "event_date": "2023-03-28",
+    "retrieved": true,
+    "retrieved_by_query": {
+      "q0001": [
+        "decipher_message_1:3549",
+        "decipher_message_1:3548"
+      ],
+      "q0002": [
+        "decipher_message_1:3525",
+        "decipher_message_1:3527",
+        "decipher_message_1:3529"
+      ],
+      "q0003": [
+        "decipher_message_1:3529",
+        "decipher_message_1:3549",
+        "decipher_message_1:3548",
+        "decipher_message_1:3544",
+        "decipher_message_1:3525"
+      ]
+    },
+    "start_message_id": "decipher_message_1:3572",
+    "start_ordinal": 3810,
+    "thread_id": "julie_kramer"
+  },
+  {
+    "best_raw_rank_by_query": {
+      "q0003": 72
+    },
+    "end_message_id": "decipher_message_1:972",
+    "end_ordinal": 6410,
+    "event_date": "2023-11-13",
+    "retrieved": true,
+    "retrieved_by_query": {
+      "q0003": [
+        "decipher_message_1:978"
+      ]
+    },
+    "start_message_id": "decipher_message_1:986",
+    "start_ordinal": 6396,
+    "thread_id": "julie_kramer"
+  },
+  {
+    "best_raw_rank_by_query": {
+      "q0002": 71,
+      "q0003": 14
+    },
+    "end_message_id": "decipher_export_19:603",
+    "end_ordinal": 7986,
+    "event_date": "2024-06-26",
+    "retrieved": true,
+    "retrieved_by_query": {
+      "q0002": [
+        "decipher_export_19:586"
+      ],
+      "q0003": [
+        "decipher_export_19:586",
+        "decipher_export_19:600",
+        "decipher_export_19:603"
+      ]
+    },
+    "start_message_id": "decipher_export_19:583",
+    "start_ordinal": 7966,
+    "thread_id": "julie_kramer"
+  },
+  {
+    "best_raw_rank_by_query": {},
+    "end_message_id": "decipher_export_19:793",
+    "end_ordinal": 8176,
+    "event_date": "2024-07-10",
+    "retrieved": false,
+    "retrieved_by_query": {},
+    "start_message_id": "decipher_export_19:788",
+    "start_ordinal": 8171,
+    "thread_id": "julie_kramer"
+  },
+  {
+    "best_raw_rank_by_query": {
+      "q0002": 23,
+      "q0003": 7
+    },
+    "end_message_id": "decipher_export_19:3397",
+    "end_ordinal": 10780,
+    "event_date": "2025-07-16",
+    "retrieved": true,
+    "retrieved_by_query": {
+      "q0002": [
+        "decipher_export_19:3372",
+        "decipher_export_19:3397"
+      ],
+      "q0003": [
+        "decipher_export_19:3382",
+        "decipher_export_19:3372",
+        "decipher_export_19:3392",
+        "decipher_export_19:3396",
+        "decipher_export_19:3397",
+        "decipher_export_19:3380",
+        "decipher_export_19:3374"
+      ]
+    },
+    "start_message_id": "decipher_export_19:3370",
+    "start_ordinal": 10753,
+    "thread_id": "julie_kramer"
+  },
+  {
+    "best_raw_rank_by_query": {},
+    "end_message_id": "decipher_export_19:3456",
+    "end_ordinal": 10839,
+    "event_date": "2025-08-04",
+    "retrieved": false,
+    "retrieved_by_query": {},
+    "start_message_id": "decipher_export_19:3451",
+    "start_ordinal": 10834,
+    "thread_id": "julie_kramer"
+  },
+  {
+    "best_raw_rank_by_query": {
+      "q0003": 43
+    },
+    "end_message_id": "decipher_export_5:142",
+    "end_ordinal": 12401,
+    "event_date": "2026-07-01",
+    "retrieved": true,
+    "retrieved_by_query": {
+      "q0003": [
+        "decipher_export_5:131"
+      ]
+    },
+    "start_message_id": "decipher_export_5:131",
+    "start_ordinal": 12390,
+    "thread_id": "julie_kramer"
+  }
+]

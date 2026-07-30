@@ -1,0 +1,672 @@
+{"phase": "cleared", "artifacts_deleted": 10842, "revision_indexes_marked_missing": 2}
+{"phase": "inventory", "completed": 0, "total": 12402, "batch": 0, "batch_count": 0, "message": "Reading 12,402 messages from the selected revision", "elapsed_seconds": 0.0}
+{"phase": "inventory", "completed": 1800, "total": 10530, "batch": 0, "batch_count": 0, "message": "Checking local vector cache: 1,800/10,530 unique inputs", "elapsed_seconds": 0.1}
+{"phase": "inventory", "completed": 3600, "total": 10530, "batch": 0, "batch_count": 0, "message": "Checking local vector cache: 3,600/10,530 unique inputs", "elapsed_seconds": 0.1}
+{"phase": "inventory", "completed": 5400, "total": 10530, "batch": 0, "batch_count": 0, "message": "Checking local vector cache: 5,400/10,530 unique inputs", "elapsed_seconds": 0.1}
+{"phase": "inventory", "completed": 7200, "total": 10530, "batch": 0, "batch_count": 0, "message": "Checking local vector cache: 7,200/10,530 unique inputs", "elapsed_seconds": 0.1}
+{"phase": "inventory", "completed": 9000, "total": 10530, "batch": 0, "batch_count": 0, "message": "Checking local vector cache: 9,000/10,530 unique inputs", "elapsed_seconds": 0.1}
+{"phase": "inventory", "completed": 10530, "total": 10530, "batch": 0, "batch_count": 0, "message": "Checking local vector cache: 10,530/10,530 unique inputs", "elapsed_seconds": 0.1}
+{"phase": "submitting", "completed": 0, "total": 10530, "batch": 0, "batch_count": 0, "message": "Submitting 10,530 cache misses", "elapsed_seconds": 0.1}
+{"phase": "encoding", "completed": 0, "total": 10530, "batch": 1, "batch_count": 330, "message": "Server encoding batch 1/330", "elapsed_seconds": 0.2}
+{"phase": "committed", "completed": 32, "total": 10530, "batch": 1, "batch_count": 330, "message": "Committed 32/10,530 vectors", "elapsed_seconds": 0.4}
+{"phase": "encoding", "completed": 32, "total": 10530, "batch": 2, "batch_count": 330, "message": "Server encoding batch 2/330", "elapsed_seconds": 0.4}
+{"phase": "committed", "completed": 64, "total": 10530, "batch": 2, "batch_count": 330, "message": "Committed 64/10,530 vectors", "elapsed_seconds": 0.5}
+{"phase": "encoding", "completed": 64, "total": 10530, "batch": 3, "batch_count": 330, "message": "Server encoding batch 3/330", "elapsed_seconds": 0.5}
+{"phase": "committed", "completed": 96, "total": 10530, "batch": 3, "batch_count": 330, "message": "Committed 96/10,530 vectors", "elapsed_seconds": 0.8}
+{"phase": "encoding", "completed": 96, "total": 10530, "batch": 4, "batch_count": 330, "message": "Server encoding batch 4/330", "elapsed_seconds": 0.8}
+{"phase": "committed", "completed": 128, "total": 10530, "batch": 4, "batch_count": 330, "message": "Committed 128/10,530 vectors", "elapsed_seconds": 1.1}
+{"phase": "encoding", "completed": 128, "total": 10530, "batch": 5, "batch_count": 330, "message": "Server encoding batch 5/330", "elapsed_seconds": 1.1}
+{"phase": "committed", "completed": 160, "total": 10530, "batch": 5, "batch_count": 330, "message": "Committed 160/10,530 vectors", "elapsed_seconds": 1.3}
+{"phase": "encoding", "completed": 160, "total": 10530, "batch": 6, "batch_count": 330, "message": "Server encoding batch 6/330", "elapsed_seconds": 1.3}
+{"phase": "committed", "completed": 192, "total": 10530, "batch": 6, "batch_count": 330, "message": "Committed 192/10,530 vectors", "elapsed_seconds": 1.4}
+{"phase": "encoding", "completed": 192, "total": 10530, "batch": 7, "batch_count": 330, "message": "Server encoding batch 7/330", "elapsed_seconds": 1.4}
+{"phase": "committed", "completed": 224, "total": 10530, "batch": 7, "batch_count": 330, "message": "Committed 224/10,530 vectors", "elapsed_seconds": 1.6}
+{"phase": "encoding", "completed": 224, "total": 10530, "batch": 8, "batch_count": 330, "message": "Server encoding batch 8/330", "elapsed_seconds": 1.6}
+{"phase": "committed", "completed": 256, "total": 10530, "batch": 8, "batch_count": 330, "message": "Committed 256/10,530 vectors", "elapsed_seconds": 1.6}
+{"phase": "encoding", "completed": 256, "total": 10530, "batch": 9, "batch_count": 330, "message": "Server encoding batch 9/330", "elapsed_seconds": 1.6}
+{"phase": "committed", "completed": 288, "total": 10530, "batch": 9, "batch_count": 330, "message": "Committed 288/10,530 vectors", "elapsed_seconds": 1.7}
+{"phase": "encoding", "completed": 288, "total": 10530, "batch": 10, "batch_count": 330, "message": "Server encoding batch 10/330", "elapsed_seconds": 1.7}
+{"phase": "committed", "completed": 320, "total": 10530, "batch": 10, "batch_count": 330, "message": "Committed 320/10,530 vectors", "elapsed_seconds": 1.8}
+{"phase": "encoding", "completed": 320, "total": 10530, "batch": 11, "batch_count": 330, "message": "Server encoding batch 11/330", "elapsed_seconds": 1.8}
+{"phase": "committed", "completed": 352, "total": 10530, "batch": 11, "batch_count": 330, "message": "Committed 352/10,530 vectors", "elapsed_seconds": 1.9}
+{"phase": "encoding", "completed": 352, "total": 10530, "batch": 12, "batch_count": 330, "message": "Server encoding batch 12/330", "elapsed_seconds": 1.9}
+{"phase": "committed", "completed": 384, "total": 10530, "batch": 12, "batch_count": 330, "message": "Committed 384/10,530 vectors", "elapsed_seconds": 2.1}
+{"phase": "encoding", "completed": 384, "total": 10530, "batch": 13, "batch_count": 330, "message": "Server encoding batch 13/330", "elapsed_seconds": 2.1}
+{"phase": "committed", "completed": 416, "total": 10530, "batch": 13, "batch_count": 330, "message": "Committed 416/10,530 vectors", "elapsed_seconds": 2.2}
+{"phase": "encoding", "completed": 416, "total": 10530, "batch": 14, "batch_count": 330, "message": "Server encoding batch 14/330", "elapsed_seconds": 2.2}
+{"phase": "committed", "completed": 448, "total": 10530, "batch": 14, "batch_count": 330, "message": "Committed 448/10,530 vectors", "elapsed_seconds": 2.5}
+{"phase": "encoding", "completed": 448, "total": 10530, "batch": 15, "batch_count": 330, "message": "Server encoding batch 15/330", "elapsed_seconds": 2.5}
+{"phase": "committed", "completed": 480, "total": 10530, "batch": 15, "batch_count": 330, "message": "Committed 480/10,530 vectors", "elapsed_seconds": 2.7}
+{"phase": "encoding", "completed": 480, "total": 10530, "batch": 16, "batch_count": 330, "message": "Server encoding batch 16/330", "elapsed_seconds": 2.7}
+{"phase": "committed", "completed": 512, "total": 10530, "batch": 16, "batch_count": 330, "message": "Committed 512/10,530 vectors", "elapsed_seconds": 2.9}
+{"phase": "encoding", "completed": 512, "total": 10530, "batch": 17, "batch_count": 330, "message": "Server encoding batch 17/330", "elapsed_seconds": 2.9}
+{"phase": "committed", "completed": 544, "total": 10530, "batch": 17, "batch_count": 330, "message": "Committed 544/10,530 vectors", "elapsed_seconds": 3.0}
+{"phase": "encoding", "completed": 544, "total": 10530, "batch": 18, "batch_count": 330, "message": "Server encoding batch 18/330", "elapsed_seconds": 3.0}
+{"phase": "committed", "completed": 576, "total": 10530, "batch": 18, "batch_count": 330, "message": "Committed 576/10,530 vectors", "elapsed_seconds": 3.2}
+{"phase": "encoding", "completed": 576, "total": 10530, "batch": 19, "batch_count": 330, "message": "Server encoding batch 19/330", "elapsed_seconds": 3.2}
+{"phase": "committed", "completed": 608, "total": 10530, "batch": 19, "batch_count": 330, "message": "Committed 608/10,530 vectors", "elapsed_seconds": 3.4}
+{"phase": "encoding", "completed": 608, "total": 10530, "batch": 20, "batch_count": 330, "message": "Server encoding batch 20/330", "elapsed_seconds": 3.4}
+{"phase": "committed", "completed": 640, "total": 10530, "batch": 20, "batch_count": 330, "message": "Committed 640/10,530 vectors", "elapsed_seconds": 3.5}
+{"phase": "encoding", "completed": 640, "total": 10530, "batch": 21, "batch_count": 330, "message": "Server encoding batch 21/330", "elapsed_seconds": 3.5}
+{"phase": "committed", "completed": 672, "total": 10530, "batch": 21, "batch_count": 330, "message": "Committed 672/10,530 vectors", "elapsed_seconds": 3.6}
+{"phase": "encoding", "completed": 672, "total": 10530, "batch": 22, "batch_count": 330, "message": "Server encoding batch 22/330", "elapsed_seconds": 3.6}
+{"phase": "committed", "completed": 704, "total": 10530, "batch": 22, "batch_count": 330, "message": "Committed 704/10,530 vectors", "elapsed_seconds": 3.7}
+{"phase": "encoding", "completed": 704, "total": 10530, "batch": 23, "batch_count": 330, "message": "Server encoding batch 23/330", "elapsed_seconds": 3.7}
+{"phase": "committed", "completed": 736, "total": 10530, "batch": 23, "batch_count": 330, "message": "Committed 736/10,530 vectors", "elapsed_seconds": 3.9}
+{"phase": "encoding", "completed": 736, "total": 10530, "batch": 24, "batch_count": 330, "message": "Server encoding batch 24/330", "elapsed_seconds": 3.9}
+{"phase": "committed", "completed": 768, "total": 10530, "batch": 24, "batch_count": 330, "message": "Committed 768/10,530 vectors", "elapsed_seconds": 4.0}
+{"phase": "encoding", "completed": 768, "total": 10530, "batch": 25, "batch_count": 330, "message": "Server encoding batch 25/330", "elapsed_seconds": 4.0}
+{"phase": "committed", "completed": 800, "total": 10530, "batch": 25, "batch_count": 330, "message": "Committed 800/10,530 vectors", "elapsed_seconds": 4.1}
+{"phase": "encoding", "completed": 800, "total": 10530, "batch": 26, "batch_count": 330, "message": "Server encoding batch 26/330", "elapsed_seconds": 4.1}
+{"phase": "committed", "completed": 832, "total": 10530, "batch": 26, "batch_count": 330, "message": "Committed 832/10,530 vectors", "elapsed_seconds": 4.2}
+{"phase": "encoding", "completed": 832, "total": 10530, "batch": 27, "batch_count": 330, "message": "Server encoding batch 27/330", "elapsed_seconds": 4.2}
+{"phase": "committed", "completed": 864, "total": 10530, "batch": 27, "batch_count": 330, "message": "Committed 864/10,530 vectors", "elapsed_seconds": 4.4}
+{"phase": "encoding", "completed": 864, "total": 10530, "batch": 28, "batch_count": 330, "message": "Server encoding batch 28/330", "elapsed_seconds": 4.4}
+{"phase": "committed", "completed": 896, "total": 10530, "batch": 28, "batch_count": 330, "message": "Committed 896/10,530 vectors", "elapsed_seconds": 4.5}
+{"phase": "encoding", "completed": 896, "total": 10530, "batch": 29, "batch_count": 330, "message": "Server encoding batch 29/330", "elapsed_seconds": 4.5}
+{"phase": "committed", "completed": 928, "total": 10530, "batch": 29, "batch_count": 330, "message": "Committed 928/10,530 vectors", "elapsed_seconds": 4.6}
+{"phase": "encoding", "completed": 928, "total": 10530, "batch": 30, "batch_count": 330, "message": "Server encoding batch 30/330", "elapsed_seconds": 4.6}
+{"phase": "committed", "completed": 960, "total": 10530, "batch": 30, "batch_count": 330, "message": "Committed 960/10,530 vectors", "elapsed_seconds": 4.7}
+{"phase": "encoding", "completed": 960, "total": 10530, "batch": 31, "batch_count": 330, "message": "Server encoding batch 31/330", "elapsed_seconds": 4.7}
+{"phase": "committed", "completed": 992, "total": 10530, "batch": 31, "batch_count": 330, "message": "Committed 992/10,530 vectors", "elapsed_seconds": 4.8}
+{"phase": "encoding", "completed": 992, "total": 10530, "batch": 32, "batch_count": 330, "message": "Server encoding batch 32/330", "elapsed_seconds": 4.8}
+{"phase": "committed", "completed": 1024, "total": 10530, "batch": 32, "batch_count": 330, "message": "Committed 1,024/10,530 vectors", "elapsed_seconds": 5.0}
+{"phase": "encoding", "completed": 1024, "total": 10530, "batch": 33, "batch_count": 330, "message": "Server encoding batch 33/330", "elapsed_seconds": 5.0}
+{"phase": "committed", "completed": 1056, "total": 10530, "batch": 33, "batch_count": 330, "message": "Committed 1,056/10,530 vectors", "elapsed_seconds": 5.1}
+{"phase": "encoding", "completed": 1056, "total": 10530, "batch": 34, "batch_count": 330, "message": "Server encoding batch 34/330", "elapsed_seconds": 5.1}
+{"phase": "committed", "completed": 1088, "total": 10530, "batch": 34, "batch_count": 330, "message": "Committed 1,088/10,530 vectors", "elapsed_seconds": 5.3}
+{"phase": "encoding", "completed": 1088, "total": 10530, "batch": 35, "batch_count": 330, "message": "Server encoding batch 35/330", "elapsed_seconds": 5.3}
+{"phase": "committed", "completed": 1120, "total": 10530, "batch": 35, "batch_count": 330, "message": "Committed 1,120/10,530 vectors", "elapsed_seconds": 5.4}
+{"phase": "encoding", "completed": 1120, "total": 10530, "batch": 36, "batch_count": 330, "message": "Server encoding batch 36/330", "elapsed_seconds": 5.4}
+{"phase": "committed", "completed": 1152, "total": 10530, "batch": 36, "batch_count": 330, "message": "Committed 1,152/10,530 vectors", "elapsed_seconds": 5.5}
+{"phase": "encoding", "completed": 1152, "total": 10530, "batch": 37, "batch_count": 330, "message": "Server encoding batch 37/330", "elapsed_seconds": 5.5}
+{"phase": "committed", "completed": 1184, "total": 10530, "batch": 37, "batch_count": 330, "message": "Committed 1,184/10,530 vectors", "elapsed_seconds": 5.7}
+{"phase": "encoding", "completed": 1184, "total": 10530, "batch": 38, "batch_count": 330, "message": "Server encoding batch 38/330", "elapsed_seconds": 5.7}
+{"phase": "committed", "completed": 1216, "total": 10530, "batch": 38, "batch_count": 330, "message": "Committed 1,216/10,530 vectors", "elapsed_seconds": 5.8}
+{"phase": "encoding", "completed": 1216, "total": 10530, "batch": 39, "batch_count": 330, "message": "Server encoding batch 39/330", "elapsed_seconds": 5.8}
+{"phase": "committed", "completed": 1248, "total": 10530, "batch": 39, "batch_count": 330, "message": "Committed 1,248/10,530 vectors", "elapsed_seconds": 6.0}
+{"phase": "encoding", "completed": 1248, "total": 10530, "batch": 40, "batch_count": 330, "message": "Server encoding batch 40/330", "elapsed_seconds": 6.0}
+{"phase": "committed", "completed": 1280, "total": 10530, "batch": 40, "batch_count": 330, "message": "Committed 1,280/10,530 vectors", "elapsed_seconds": 6.1}
+{"phase": "encoding", "completed": 1280, "total": 10530, "batch": 41, "batch_count": 330, "message": "Server encoding batch 41/330", "elapsed_seconds": 6.1}
+{"phase": "committed", "completed": 1312, "total": 10530, "batch": 41, "batch_count": 330, "message": "Committed 1,312/10,530 vectors", "elapsed_seconds": 6.2}
+{"phase": "encoding", "completed": 1312, "total": 10530, "batch": 42, "batch_count": 330, "message": "Server encoding batch 42/330", "elapsed_seconds": 6.2}
+{"phase": "committed", "completed": 1344, "total": 10530, "batch": 42, "batch_count": 330, "message": "Committed 1,344/10,530 vectors", "elapsed_seconds": 6.3}
+{"phase": "encoding", "completed": 1344, "total": 10530, "batch": 43, "batch_count": 330, "message": "Server encoding batch 43/330", "elapsed_seconds": 6.3}
+{"phase": "committed", "completed": 1376, "total": 10530, "batch": 43, "batch_count": 330, "message": "Committed 1,376/10,530 vectors", "elapsed_seconds": 6.4}
+{"phase": "encoding", "completed": 1376, "total": 10530, "batch": 44, "batch_count": 330, "message": "Server encoding batch 44/330", "elapsed_seconds": 6.4}
+{"phase": "committed", "completed": 1408, "total": 10530, "batch": 44, "batch_count": 330, "message": "Committed 1,408/10,530 vectors", "elapsed_seconds": 6.5}
+{"phase": "encoding", "completed": 1408, "total": 10530, "batch": 45, "batch_count": 330, "message": "Server encoding batch 45/330", "elapsed_seconds": 6.5}
+{"phase": "committed", "completed": 1440, "total": 10530, "batch": 45, "batch_count": 330, "message": "Committed 1,440/10,530 vectors", "elapsed_seconds": 6.7}
+{"phase": "encoding", "completed": 1440, "total": 10530, "batch": 46, "batch_count": 330, "message": "Server encoding batch 46/330", "elapsed_seconds": 6.7}
+{"phase": "committed", "completed": 1472, "total": 10530, "batch": 46, "batch_count": 330, "message": "Committed 1,472/10,530 vectors", "elapsed_seconds": 6.8}
+{"phase": "encoding", "completed": 1472, "total": 10530, "batch": 47, "batch_count": 330, "message": "Server encoding batch 47/330", "elapsed_seconds": 6.8}
+{"phase": "committed", "completed": 1504, "total": 10530, "batch": 47, "batch_count": 330, "message": "Committed 1,504/10,530 vectors", "elapsed_seconds": 7.0}
+{"phase": "encoding", "completed": 1504, "total": 10530, "batch": 48, "batch_count": 330, "message": "Server encoding batch 48/330", "elapsed_seconds": 7.0}
+{"phase": "committed", "completed": 1536, "total": 10530, "batch": 48, "batch_count": 330, "message": "Committed 1,536/10,530 vectors", "elapsed_seconds": 7.2}
+{"phase": "encoding", "completed": 1536, "total": 10530, "batch": 49, "batch_count": 330, "message": "Server encoding batch 49/330", "elapsed_seconds": 7.2}
+{"phase": "committed", "completed": 1568, "total": 10530, "batch": 49, "batch_count": 330, "message": "Committed 1,568/10,530 vectors", "elapsed_seconds": 7.3}
+{"phase": "encoding", "completed": 1568, "total": 10530, "batch": 50, "batch_count": 330, "message": "Server encoding batch 50/330", "elapsed_seconds": 7.3}
+{"phase": "committed", "completed": 1600, "total": 10530, "batch": 50, "batch_count": 330, "message": "Committed 1,600/10,530 vectors", "elapsed_seconds": 7.4}
+{"phase": "encoding", "completed": 1600, "total": 10530, "batch": 51, "batch_count": 330, "message": "Server encoding batch 51/330", "elapsed_seconds": 7.4}
+{"phase": "committed", "completed": 1632, "total": 10530, "batch": 51, "batch_count": 330, "message": "Committed 1,632/10,530 vectors", "elapsed_seconds": 7.5}
+{"phase": "encoding", "completed": 1632, "total": 10530, "batch": 52, "batch_count": 330, "message": "Server encoding batch 52/330", "elapsed_seconds": 7.5}
+{"phase": "committed", "completed": 1664, "total": 10530, "batch": 52, "batch_count": 330, "message": "Committed 1,664/10,530 vectors", "elapsed_seconds": 7.6}
+{"phase": "encoding", "completed": 1664, "total": 10530, "batch": 53, "batch_count": 330, "message": "Server encoding batch 53/330", "elapsed_seconds": 7.6}
+{"phase": "committed", "completed": 1696, "total": 10530, "batch": 53, "batch_count": 330, "message": "Committed 1,696/10,530 vectors", "elapsed_seconds": 7.8}
+{"phase": "encoding", "completed": 1696, "total": 10530, "batch": 54, "batch_count": 330, "message": "Server encoding batch 54/330", "elapsed_seconds": 7.8}
+{"phase": "committed", "completed": 1728, "total": 10530, "batch": 54, "batch_count": 330, "message": "Committed 1,728/10,530 vectors", "elapsed_seconds": 8.0}
+{"phase": "encoding", "completed": 1728, "total": 10530, "batch": 55, "batch_count": 330, "message": "Server encoding batch 55/330", "elapsed_seconds": 8.0}
+{"phase": "committed", "completed": 1760, "total": 10530, "batch": 55, "batch_count": 330, "message": "Committed 1,760/10,530 vectors", "elapsed_seconds": 8.2}
+{"phase": "encoding", "completed": 1760, "total": 10530, "batch": 56, "batch_count": 330, "message": "Server encoding batch 56/330", "elapsed_seconds": 8.2}
+{"phase": "committed", "completed": 1792, "total": 10530, "batch": 56, "batch_count": 330, "message": "Committed 1,792/10,530 vectors", "elapsed_seconds": 8.4}
+{"phase": "encoding", "completed": 1792, "total": 10530, "batch": 57, "batch_count": 330, "message": "Server encoding batch 57/330", "elapsed_seconds": 8.4}
+{"phase": "committed", "completed": 1824, "total": 10530, "batch": 57, "batch_count": 330, "message": "Committed 1,824/10,530 vectors", "elapsed_seconds": 8.6}
+{"phase": "encoding", "completed": 1824, "total": 10530, "batch": 58, "batch_count": 330, "message": "Server encoding batch 58/330", "elapsed_seconds": 8.6}
+{"phase": "committed", "completed": 1856, "total": 10530, "batch": 58, "batch_count": 330, "message": "Committed 1,856/10,530 vectors", "elapsed_seconds": 8.7}
+{"phase": "encoding", "completed": 1856, "total": 10530, "batch": 59, "batch_count": 330, "message": "Server encoding batch 59/330", "elapsed_seconds": 8.7}
+{"phase": "committed", "completed": 1888, "total": 10530, "batch": 59, "batch_count": 330, "message": "Committed 1,888/10,530 vectors", "elapsed_seconds": 8.9}
+{"phase": "encoding", "completed": 1888, "total": 10530, "batch": 60, "batch_count": 330, "message": "Server encoding batch 60/330", "elapsed_seconds": 8.9}
+{"phase": "committed", "completed": 1920, "total": 10530, "batch": 60, "batch_count": 330, "message": "Committed 1,920/10,530 vectors", "elapsed_seconds": 9.0}
+{"phase": "encoding", "completed": 1920, "total": 10530, "batch": 61, "batch_count": 330, "message": "Server encoding batch 61/330", "elapsed_seconds": 9.0}
+{"phase": "committed", "completed": 1952, "total": 10530, "batch": 61, "batch_count": 330, "message": "Committed 1,952/10,530 vectors", "elapsed_seconds": 9.3}
+{"phase": "encoding", "completed": 1952, "total": 10530, "batch": 62, "batch_count": 330, "message": "Server encoding batch 62/330", "elapsed_seconds": 9.3}
+{"phase": "committed", "completed": 1984, "total": 10530, "batch": 62, "batch_count": 330, "message": "Committed 1,984/10,530 vectors", "elapsed_seconds": 9.5}
+{"phase": "encoding", "completed": 1984, "total": 10530, "batch": 63, "batch_count": 330, "message": "Server encoding batch 63/330", "elapsed_seconds": 9.5}
+{"phase": "committed", "completed": 2016, "total": 10530, "batch": 63, "batch_count": 330, "message": "Committed 2,016/10,530 vectors", "elapsed_seconds": 9.6}
+{"phase": "encoding", "completed": 2016, "total": 10530, "batch": 64, "batch_count": 330, "message": "Server encoding batch 64/330", "elapsed_seconds": 9.6}
+{"phase": "committed", "completed": 2048, "total": 10530, "batch": 64, "batch_count": 330, "message": "Committed 2,048/10,530 vectors", "elapsed_seconds": 9.7}
+{"phase": "encoding", "completed": 2048, "total": 10530, "batch": 65, "batch_count": 330, "message": "Server encoding batch 65/330", "elapsed_seconds": 9.7}
+{"phase": "committed", "completed": 2080, "total": 10530, "batch": 65, "batch_count": 330, "message": "Committed 2,080/10,530 vectors", "elapsed_seconds": 9.9}
+{"phase": "encoding", "completed": 2080, "total": 10530, "batch": 66, "batch_count": 330, "message": "Server encoding batch 66/330", "elapsed_seconds": 9.9}
+{"phase": "committed", "completed": 2112, "total": 10530, "batch": 66, "batch_count": 330, "message": "Committed 2,112/10,530 vectors", "elapsed_seconds": 10.1}
+{"phase": "encoding", "completed": 2112, "total": 10530, "batch": 67, "batch_count": 330, "message": "Server encoding batch 67/330", "elapsed_seconds": 10.1}
+{"phase": "committed", "completed": 2144, "total": 10530, "batch": 67, "batch_count": 330, "message": "Committed 2,144/10,530 vectors", "elapsed_seconds": 10.2}
+{"phase": "encoding", "completed": 2144, "total": 10530, "batch": 68, "batch_count": 330, "message": "Server encoding batch 68/330", "elapsed_seconds": 10.2}
+{"phase": "committed", "completed": 2176, "total": 10530, "batch": 68, "batch_count": 330, "message": "Committed 2,176/10,530 vectors", "elapsed_seconds": 10.3}
+{"phase": "encoding", "completed": 2176, "total": 10530, "batch": 69, "batch_count": 330, "message": "Server encoding batch 69/330", "elapsed_seconds": 10.3}
+{"phase": "committed", "completed": 2208, "total": 10530, "batch": 69, "batch_count": 330, "message": "Committed 2,208/10,530 vectors", "elapsed_seconds": 10.4}
+{"phase": "encoding", "completed": 2208, "total": 10530, "batch": 70, "batch_count": 330, "message": "Server encoding batch 70/330", "elapsed_seconds": 10.4}
+{"phase": "committed", "completed": 2240, "total": 10530, "batch": 70, "batch_count": 330, "message": "Committed 2,240/10,530 vectors", "elapsed_seconds": 10.5}
+{"phase": "encoding", "completed": 2240, "total": 10530, "batch": 71, "batch_count": 330, "message": "Server encoding batch 71/330", "elapsed_seconds": 10.5}
+{"phase": "committed", "completed": 2272, "total": 10530, "batch": 71, "batch_count": 330, "message": "Committed 2,272/10,530 vectors", "elapsed_seconds": 10.7}
+{"phase": "encoding", "completed": 2272, "total": 10530, "batch": 72, "batch_count": 330, "message": "Server encoding batch 72/330", "elapsed_seconds": 10.7}
+{"phase": "committed", "completed": 2304, "total": 10530, "batch": 72, "batch_count": 330, "message": "Committed 2,304/10,530 vectors", "elapsed_seconds": 10.9}
+{"phase": "encoding", "completed": 2304, "total": 10530, "batch": 73, "batch_count": 330, "message": "Server encoding batch 73/330", "elapsed_seconds": 10.9}
+{"phase": "committed", "completed": 2336, "total": 10530, "batch": 73, "batch_count": 330, "message": "Committed 2,336/10,530 vectors", "elapsed_seconds": 11.0}
+{"phase": "encoding", "completed": 2336, "total": 10530, "batch": 74, "batch_count": 330, "message": "Server encoding batch 74/330", "elapsed_seconds": 11.0}
+{"phase": "committed", "completed": 2368, "total": 10530, "batch": 74, "batch_count": 330, "message": "Committed 2,368/10,530 vectors", "elapsed_seconds": 11.2}
+{"phase": "encoding", "completed": 2368, "total": 10530, "batch": 75, "batch_count": 330, "message": "Server encoding batch 75/330", "elapsed_seconds": 11.2}
+{"phase": "committed", "completed": 2400, "total": 10530, "batch": 75, "batch_count": 330, "message": "Committed 2,400/10,530 vectors", "elapsed_seconds": 11.3}
+{"phase": "encoding", "completed": 2400, "total": 10530, "batch": 76, "batch_count": 330, "message": "Server encoding batch 76/330", "elapsed_seconds": 11.3}
+{"phase": "committed", "completed": 2432, "total": 10530, "batch": 76, "batch_count": 330, "message": "Committed 2,432/10,530 vectors", "elapsed_seconds": 11.4}
+{"phase": "encoding", "completed": 2432, "total": 10530, "batch": 77, "batch_count": 330, "message": "Server encoding batch 77/330", "elapsed_seconds": 11.4}
+{"phase": "committed", "completed": 2464, "total": 10530, "batch": 77, "batch_count": 330, "message": "Committed 2,464/10,530 vectors", "elapsed_seconds": 11.6}
+{"phase": "encoding", "completed": 2464, "total": 10530, "batch": 78, "batch_count": 330, "message": "Server encoding batch 78/330", "elapsed_seconds": 11.6}
+{"phase": "committed", "completed": 2496, "total": 10530, "batch": 78, "batch_count": 330, "message": "Committed 2,496/10,530 vectors", "elapsed_seconds": 11.7}
+{"phase": "encoding", "completed": 2496, "total": 10530, "batch": 79, "batch_count": 330, "message": "Server encoding batch 79/330", "elapsed_seconds": 11.7}
+{"phase": "committed", "completed": 2528, "total": 10530, "batch": 79, "batch_count": 330, "message": "Committed 2,528/10,530 vectors", "elapsed_seconds": 11.9}
+{"phase": "encoding", "completed": 2528, "total": 10530, "batch": 80, "batch_count": 330, "message": "Server encoding batch 80/330", "elapsed_seconds": 11.9}
+{"phase": "committed", "completed": 2560, "total": 10530, "batch": 80, "batch_count": 330, "message": "Committed 2,560/10,530 vectors", "elapsed_seconds": 12.0}
+{"phase": "encoding", "completed": 2560, "total": 10530, "batch": 81, "batch_count": 330, "message": "Server encoding batch 81/330", "elapsed_seconds": 12.0}
+{"phase": "committed", "completed": 2592, "total": 10530, "batch": 81, "batch_count": 330, "message": "Committed 2,592/10,530 vectors", "elapsed_seconds": 12.2}
+{"phase": "encoding", "completed": 2592, "total": 10530, "batch": 82, "batch_count": 330, "message": "Server encoding batch 82/330", "elapsed_seconds": 12.2}
+{"phase": "committed", "completed": 2624, "total": 10530, "batch": 82, "batch_count": 330, "message": "Committed 2,624/10,530 vectors", "elapsed_seconds": 12.3}
+{"phase": "encoding", "completed": 2624, "total": 10530, "batch": 83, "batch_count": 330, "message": "Server encoding batch 83/330", "elapsed_seconds": 12.3}
+{"phase": "committed", "completed": 2656, "total": 10530, "batch": 83, "batch_count": 330, "message": "Committed 2,656/10,530 vectors", "elapsed_seconds": 12.5}
+{"phase": "encoding", "completed": 2656, "total": 10530, "batch": 84, "batch_count": 330, "message": "Server encoding batch 84/330", "elapsed_seconds": 12.5}
+{"phase": "committed", "completed": 2688, "total": 10530, "batch": 84, "batch_count": 330, "message": "Committed 2,688/10,530 vectors", "elapsed_seconds": 12.6}
+{"phase": "encoding", "completed": 2688, "total": 10530, "batch": 85, "batch_count": 330, "message": "Server encoding batch 85/330", "elapsed_seconds": 12.6}
+{"phase": "committed", "completed": 2720, "total": 10530, "batch": 85, "batch_count": 330, "message": "Committed 2,720/10,530 vectors", "elapsed_seconds": 12.7}
+{"phase": "encoding", "completed": 2720, "total": 10530, "batch": 86, "batch_count": 330, "message": "Server encoding batch 86/330", "elapsed_seconds": 12.7}
+{"phase": "committed", "completed": 2752, "total": 10530, "batch": 86, "batch_count": 330, "message": "Committed 2,752/10,530 vectors", "elapsed_seconds": 12.8}
+{"phase": "encoding", "completed": 2752, "total": 10530, "batch": 87, "batch_count": 330, "message": "Server encoding batch 87/330", "elapsed_seconds": 12.8}
+{"phase": "committed", "completed": 2784, "total": 10530, "batch": 87, "batch_count": 330, "message": "Committed 2,784/10,530 vectors", "elapsed_seconds": 13.0}
+{"phase": "encoding", "completed": 2784, "total": 10530, "batch": 88, "batch_count": 330, "message": "Server encoding batch 88/330", "elapsed_seconds": 13.0}
+{"phase": "committed", "completed": 2816, "total": 10530, "batch": 88, "batch_count": 330, "message": "Committed 2,816/10,530 vectors", "elapsed_seconds": 13.2}
+{"phase": "encoding", "completed": 2816, "total": 10530, "batch": 89, "batch_count": 330, "message": "Server encoding batch 89/330", "elapsed_seconds": 13.2}
+{"phase": "committed", "completed": 2848, "total": 10530, "batch": 89, "batch_count": 330, "message": "Committed 2,848/10,530 vectors", "elapsed_seconds": 13.4}
+{"phase": "encoding", "completed": 2848, "total": 10530, "batch": 90, "batch_count": 330, "message": "Server encoding batch 90/330", "elapsed_seconds": 13.4}
+{"phase": "committed", "completed": 2880, "total": 10530, "batch": 90, "batch_count": 330, "message": "Committed 2,880/10,530 vectors", "elapsed_seconds": 13.5}
+{"phase": "encoding", "completed": 2880, "total": 10530, "batch": 91, "batch_count": 330, "message": "Server encoding batch 91/330", "elapsed_seconds": 13.5}
+{"phase": "committed", "completed": 2912, "total": 10530, "batch": 91, "batch_count": 330, "message": "Committed 2,912/10,530 vectors", "elapsed_seconds": 13.7}
+{"phase": "encoding", "completed": 2912, "total": 10530, "batch": 92, "batch_count": 330, "message": "Server encoding batch 92/330", "elapsed_seconds": 13.7}
+{"phase": "committed", "completed": 2944, "total": 10530, "batch": 92, "batch_count": 330, "message": "Committed 2,944/10,530 vectors", "elapsed_seconds": 13.8}
+{"phase": "encoding", "completed": 2944, "total": 10530, "batch": 93, "batch_count": 330, "message": "Server encoding batch 93/330", "elapsed_seconds": 13.8}
+{"phase": "committed", "completed": 2976, "total": 10530, "batch": 93, "batch_count": 330, "message": "Committed 2,976/10,530 vectors", "elapsed_seconds": 14.0}
+{"phase": "encoding", "completed": 2976, "total": 10530, "batch": 94, "batch_count": 330, "message": "Server encoding batch 94/330", "elapsed_seconds": 14.0}
+{"phase": "committed", "completed": 3008, "total": 10530, "batch": 94, "batch_count": 330, "message": "Committed 3,008/10,530 vectors", "elapsed_seconds": 14.1}
+{"phase": "encoding", "completed": 3008, "total": 10530, "batch": 95, "batch_count": 330, "message": "Server encoding batch 95/330", "elapsed_seconds": 14.1}
+{"phase": "committed", "completed": 3040, "total": 10530, "batch": 95, "batch_count": 330, "message": "Committed 3,040/10,530 vectors", "elapsed_seconds": 14.3}
+{"phase": "encoding", "completed": 3040, "total": 10530, "batch": 96, "batch_count": 330, "message": "Server encoding batch 96/330", "elapsed_seconds": 14.3}
+{"phase": "committed", "completed": 3072, "total": 10530, "batch": 96, "batch_count": 330, "message": "Committed 3,072/10,530 vectors", "elapsed_seconds": 14.5}
+{"phase": "encoding", "completed": 3072, "total": 10530, "batch": 97, "batch_count": 330, "message": "Server encoding batch 97/330", "elapsed_seconds": 14.5}
+{"phase": "committed", "completed": 3104, "total": 10530, "batch": 97, "batch_count": 330, "message": "Committed 3,104/10,530 vectors", "elapsed_seconds": 14.6}
+{"phase": "encoding", "completed": 3104, "total": 10530, "batch": 98, "batch_count": 330, "message": "Server encoding batch 98/330", "elapsed_seconds": 14.6}
+{"phase": "committed", "completed": 3136, "total": 10530, "batch": 98, "batch_count": 330, "message": "Committed 3,136/10,530 vectors", "elapsed_seconds": 14.7}
+{"phase": "encoding", "completed": 3136, "total": 10530, "batch": 99, "batch_count": 330, "message": "Server encoding batch 99/330", "elapsed_seconds": 14.7}
+{"phase": "committed", "completed": 3168, "total": 10530, "batch": 99, "batch_count": 330, "message": "Committed 3,168/10,530 vectors", "elapsed_seconds": 14.9}
+{"phase": "encoding", "completed": 3168, "total": 10530, "batch": 100, "batch_count": 330, "message": "Server encoding batch 100/330", "elapsed_seconds": 14.9}
+{"phase": "committed", "completed": 3200, "total": 10530, "batch": 100, "batch_count": 330, "message": "Committed 3,200/10,530 vectors", "elapsed_seconds": 15.1}
+{"phase": "encoding", "completed": 3200, "total": 10530, "batch": 101, "batch_count": 330, "message": "Server encoding batch 101/330", "elapsed_seconds": 15.1}
+{"phase": "committed", "completed": 3232, "total": 10530, "batch": 101, "batch_count": 330, "message": "Committed 3,232/10,530 vectors", "elapsed_seconds": 15.2}
+{"phase": "encoding", "completed": 3232, "total": 10530, "batch": 102, "batch_count": 330, "message": "Server encoding batch 102/330", "elapsed_seconds": 15.2}
+{"phase": "committed", "completed": 3264, "total": 10530, "batch": 102, "batch_count": 330, "message": "Committed 3,264/10,530 vectors", "elapsed_seconds": 15.3}
+{"phase": "encoding", "completed": 3264, "total": 10530, "batch": 103, "batch_count": 330, "message": "Server encoding batch 103/330", "elapsed_seconds": 15.3}
+{"phase": "committed", "completed": 3296, "total": 10530, "batch": 103, "batch_count": 330, "message": "Committed 3,296/10,530 vectors", "elapsed_seconds": 15.4}
+{"phase": "encoding", "completed": 3296, "total": 10530, "batch": 104, "batch_count": 330, "message": "Server encoding batch 104/330", "elapsed_seconds": 15.4}
+{"phase": "committed", "completed": 3328, "total": 10530, "batch": 104, "batch_count": 330, "message": "Committed 3,328/10,530 vectors", "elapsed_seconds": 16.0}
+{"phase": "encoding", "completed": 3328, "total": 10530, "batch": 105, "batch_count": 330, "message": "Server encoding batch 105/330", "elapsed_seconds": 16.0}
+{"phase": "committed", "completed": 3360, "total": 10530, "batch": 105, "batch_count": 330, "message": "Committed 3,360/10,530 vectors", "elapsed_seconds": 16.2}
+{"phase": "encoding", "completed": 3360, "total": 10530, "batch": 106, "batch_count": 330, "message": "Server encoding batch 106/330", "elapsed_seconds": 16.2}
+{"phase": "committed", "completed": 3392, "total": 10530, "batch": 106, "batch_count": 330, "message": "Committed 3,392/10,530 vectors", "elapsed_seconds": 16.3}
+{"phase": "encoding", "completed": 3392, "total": 10530, "batch": 107, "batch_count": 330, "message": "Server encoding batch 107/330", "elapsed_seconds": 16.3}
+{"phase": "committed", "completed": 3424, "total": 10530, "batch": 107, "batch_count": 330, "message": "Committed 3,424/10,530 vectors", "elapsed_seconds": 16.4}
+{"phase": "encoding", "completed": 3424, "total": 10530, "batch": 108, "batch_count": 330, "message": "Server encoding batch 108/330", "elapsed_seconds": 16.4}
+{"phase": "committed", "completed": 3456, "total": 10530, "batch": 108, "batch_count": 330, "message": "Committed 3,456/10,530 vectors", "elapsed_seconds": 16.6}
+{"phase": "encoding", "completed": 3456, "total": 10530, "batch": 109, "batch_count": 330, "message": "Server encoding batch 109/330", "elapsed_seconds": 16.6}
+{"phase": "committed", "completed": 3488, "total": 10530, "batch": 109, "batch_count": 330, "message": "Committed 3,488/10,530 vectors", "elapsed_seconds": 16.7}
+{"phase": "encoding", "completed": 3488, "total": 10530, "batch": 110, "batch_count": 330, "message": "Server encoding batch 110/330", "elapsed_seconds": 16.7}
+{"phase": "committed", "completed": 3520, "total": 10530, "batch": 110, "batch_count": 330, "message": "Committed 3,520/10,530 vectors", "elapsed_seconds": 16.9}
+{"phase": "encoding", "completed": 3520, "total": 10530, "batch": 111, "batch_count": 330, "message": "Server encoding batch 111/330", "elapsed_seconds": 16.9}
+{"phase": "committed", "completed": 3552, "total": 10530, "batch": 111, "batch_count": 330, "message": "Committed 3,552/10,530 vectors", "elapsed_seconds": 17.0}
+{"phase": "encoding", "completed": 3552, "total": 10530, "batch": 112, "batch_count": 330, "message": "Server encoding batch 112/330", "elapsed_seconds": 17.0}
+{"phase": "committed", "completed": 3584, "total": 10530, "batch": 112, "batch_count": 330, "message": "Committed 3,584/10,530 vectors", "elapsed_seconds": 17.2}
+{"phase": "encoding", "completed": 3584, "total": 10530, "batch": 113, "batch_count": 330, "message": "Server encoding batch 113/330", "elapsed_seconds": 17.2}
+{"phase": "committed", "completed": 3616, "total": 10530, "batch": 113, "batch_count": 330, "message": "Committed 3,616/10,530 vectors", "elapsed_seconds": 17.4}
+{"phase": "encoding", "completed": 3616, "total": 10530, "batch": 114, "batch_count": 330, "message": "Server encoding batch 114/330", "elapsed_seconds": 17.4}
+{"phase": "committed", "completed": 3648, "total": 10530, "batch": 114, "batch_count": 330, "message": "Committed 3,648/10,530 vectors", "elapsed_seconds": 17.6}
+{"phase": "encoding", "completed": 3648, "total": 10530, "batch": 115, "batch_count": 330, "message": "Server encoding batch 115/330", "elapsed_seconds": 17.6}
+{"phase": "committed", "completed": 3680, "total": 10530, "batch": 115, "batch_count": 330, "message": "Committed 3,680/10,530 vectors", "elapsed_seconds": 17.7}
+{"phase": "encoding", "completed": 3680, "total": 10530, "batch": 116, "batch_count": 330, "message": "Server encoding batch 116/330", "elapsed_seconds": 17.7}
+{"phase": "committed", "completed": 3712, "total": 10530, "batch": 116, "batch_count": 330, "message": "Committed 3,712/10,530 vectors", "elapsed_seconds": 17.9}
+{"phase": "encoding", "completed": 3712, "total": 10530, "batch": 117, "batch_count": 330, "message": "Server encoding batch 117/330", "elapsed_seconds": 17.9}
+{"phase": "committed", "completed": 3744, "total": 10530, "batch": 117, "batch_count": 330, "message": "Committed 3,744/10,530 vectors", "elapsed_seconds": 18.0}
+{"phase": "encoding", "completed": 3744, "total": 10530, "batch": 118, "batch_count": 330, "message": "Server encoding batch 118/330", "elapsed_seconds": 18.0}
+{"phase": "committed", "completed": 3776, "total": 10530, "batch": 118, "batch_count": 330, "message": "Committed 3,776/10,530 vectors", "elapsed_seconds": 18.2}
+{"phase": "encoding", "completed": 3776, "total": 10530, "batch": 119, "batch_count": 330, "message": "Server encoding batch 119/330", "elapsed_seconds": 18.2}
+{"phase": "committed", "completed": 3808, "total": 10530, "batch": 119, "batch_count": 330, "message": "Committed 3,808/10,530 vectors", "elapsed_seconds": 18.3}
+{"phase": "encoding", "completed": 3808, "total": 10530, "batch": 120, "batch_count": 330, "message": "Server encoding batch 120/330", "elapsed_seconds": 18.3}
+{"phase": "committed", "completed": 3840, "total": 10530, "batch": 120, "batch_count": 330, "message": "Committed 3,840/10,530 vectors", "elapsed_seconds": 18.7}
+{"phase": "encoding", "completed": 3840, "total": 10530, "batch": 121, "batch_count": 330, "message": "Server encoding batch 121/330", "elapsed_seconds": 18.7}
+{"phase": "committed", "completed": 3872, "total": 10530, "batch": 121, "batch_count": 330, "message": "Committed 3,872/10,530 vectors", "elapsed_seconds": 18.8}
+{"phase": "encoding", "completed": 3872, "total": 10530, "batch": 122, "batch_count": 330, "message": "Server encoding batch 122/330", "elapsed_seconds": 18.8}
+{"phase": "committed", "completed": 3904, "total": 10530, "batch": 122, "batch_count": 330, "message": "Committed 3,904/10,530 vectors", "elapsed_seconds": 18.9}
+{"phase": "encoding", "completed": 3904, "total": 10530, "batch": 123, "batch_count": 330, "message": "Server encoding batch 123/330", "elapsed_seconds": 18.9}
+{"phase": "committed", "completed": 3936, "total": 10530, "batch": 123, "batch_count": 330, "message": "Committed 3,936/10,530 vectors", "elapsed_seconds": 19.4}
+{"phase": "encoding", "completed": 3936, "total": 10530, "batch": 124, "batch_count": 330, "message": "Server encoding batch 124/330", "elapsed_seconds": 19.4}
+{"phase": "committed", "completed": 3968, "total": 10530, "batch": 124, "batch_count": 330, "message": "Committed 3,968/10,530 vectors", "elapsed_seconds": 20.0}
+{"phase": "encoding", "completed": 3968, "total": 10530, "batch": 125, "batch_count": 330, "message": "Server encoding batch 125/330", "elapsed_seconds": 20.0}
+{"phase": "committed", "completed": 4000, "total": 10530, "batch": 125, "batch_count": 330, "message": "Committed 4,000/10,530 vectors", "elapsed_seconds": 20.1}
+{"phase": "encoding", "completed": 4000, "total": 10530, "batch": 126, "batch_count": 330, "message": "Server encoding batch 126/330", "elapsed_seconds": 20.1}
+{"phase": "committed", "completed": 4032, "total": 10530, "batch": 126, "batch_count": 330, "message": "Committed 4,032/10,530 vectors", "elapsed_seconds": 20.2}
+{"phase": "encoding", "completed": 4032, "total": 10530, "batch": 127, "batch_count": 330, "message": "Server encoding batch 127/330", "elapsed_seconds": 20.2}
+{"phase": "committed", "completed": 4064, "total": 10530, "batch": 127, "batch_count": 330, "message": "Committed 4,064/10,530 vectors", "elapsed_seconds": 20.7}
+{"phase": "encoding", "completed": 4064, "total": 10530, "batch": 128, "batch_count": 330, "message": "Server encoding batch 128/330", "elapsed_seconds": 20.7}
+{"phase": "committed", "completed": 4096, "total": 10530, "batch": 128, "batch_count": 330, "message": "Committed 4,096/10,530 vectors", "elapsed_seconds": 21.0}
+{"phase": "encoding", "completed": 4096, "total": 10530, "batch": 129, "batch_count": 330, "message": "Server encoding batch 129/330", "elapsed_seconds": 21.0}
+{"phase": "committed", "completed": 4128, "total": 10530, "batch": 129, "batch_count": 330, "message": "Committed 4,128/10,530 vectors", "elapsed_seconds": 21.4}
+{"phase": "encoding", "completed": 4128, "total": 10530, "batch": 130, "batch_count": 330, "message": "Server encoding batch 130/330", "elapsed_seconds": 21.4}
+{"phase": "committed", "completed": 4160, "total": 10530, "batch": 130, "batch_count": 330, "message": "Committed 4,160/10,530 vectors", "elapsed_seconds": 21.5}
+{"phase": "encoding", "completed": 4160, "total": 10530, "batch": 131, "batch_count": 330, "message": "Server encoding batch 131/330", "elapsed_seconds": 21.5}
+{"phase": "committed", "completed": 4192, "total": 10530, "batch": 131, "batch_count": 330, "message": "Committed 4,192/10,530 vectors", "elapsed_seconds": 21.6}
+{"phase": "encoding", "completed": 4192, "total": 10530, "batch": 132, "batch_count": 330, "message": "Server encoding batch 132/330", "elapsed_seconds": 21.6}
+{"phase": "committed", "completed": 4224, "total": 10530, "batch": 132, "batch_count": 330, "message": "Committed 4,224/10,530 vectors", "elapsed_seconds": 21.8}
+{"phase": "encoding", "completed": 4224, "total": 10530, "batch": 133, "batch_count": 330, "message": "Server encoding batch 133/330", "elapsed_seconds": 21.8}
+{"phase": "committed", "completed": 4256, "total": 10530, "batch": 133, "batch_count": 330, "message": "Committed 4,256/10,530 vectors", "elapsed_seconds": 21.9}
+{"phase": "encoding", "completed": 4256, "total": 10530, "batch": 134, "batch_count": 330, "message": "Server encoding batch 134/330", "elapsed_seconds": 21.9}
+{"phase": "committed", "completed": 4288, "total": 10530, "batch": 134, "batch_count": 330, "message": "Committed 4,288/10,530 vectors", "elapsed_seconds": 22.0}
+{"phase": "encoding", "completed": 4288, "total": 10530, "batch": 135, "batch_count": 330, "message": "Server encoding batch 135/330", "elapsed_seconds": 22.0}
+{"phase": "committed", "completed": 4320, "total": 10530, "batch": 135, "batch_count": 330, "message": "Committed 4,320/10,530 vectors", "elapsed_seconds": 22.2}
+{"phase": "encoding", "completed": 4320, "total": 10530, "batch": 136, "batch_count": 330, "message": "Server encoding batch 136/330", "elapsed_seconds": 22.2}
+{"phase": "committed", "completed": 4352, "total": 10530, "batch": 136, "batch_count": 330, "message": "Committed 4,352/10,530 vectors", "elapsed_seconds": 22.5}
+{"phase": "encoding", "completed": 4352, "total": 10530, "batch": 137, "batch_count": 330, "message": "Server encoding batch 137/330", "elapsed_seconds": 22.5}
+{"phase": "committed", "completed": 4384, "total": 10530, "batch": 137, "batch_count": 330, "message": "Committed 4,384/10,530 vectors", "elapsed_seconds": 22.6}
+{"phase": "encoding", "completed": 4384, "total": 10530, "batch": 138, "batch_count": 330, "message": "Server encoding batch 138/330", "elapsed_seconds": 22.6}
+{"phase": "committed", "completed": 4416, "total": 10530, "batch": 138, "batch_count": 330, "message": "Committed 4,416/10,530 vectors", "elapsed_seconds": 22.8}
+{"phase": "encoding", "completed": 4416, "total": 10530, "batch": 139, "batch_count": 330, "message": "Server encoding batch 139/330", "elapsed_seconds": 22.8}
+{"phase": "committed", "completed": 4448, "total": 10530, "batch": 139, "batch_count": 330, "message": "Committed 4,448/10,530 vectors", "elapsed_seconds": 22.9}
+{"phase": "encoding", "completed": 4448, "total": 10530, "batch": 140, "batch_count": 330, "message": "Server encoding batch 140/330", "elapsed_seconds": 22.9}
+{"phase": "committed", "completed": 4480, "total": 10530, "batch": 140, "batch_count": 330, "message": "Committed 4,480/10,530 vectors", "elapsed_seconds": 23.1}
+{"phase": "encoding", "completed": 4480, "total": 10530, "batch": 141, "batch_count": 330, "message": "Server encoding batch 141/330", "elapsed_seconds": 23.1}
+{"phase": "committed", "completed": 4512, "total": 10530, "batch": 141, "batch_count": 330, "message": "Committed 4,512/10,530 vectors", "elapsed_seconds": 23.2}
+{"phase": "encoding", "completed": 4512, "total": 10530, "batch": 142, "batch_count": 330, "message": "Server encoding batch 142/330", "elapsed_seconds": 23.2}
+{"phase": "committed", "completed": 4544, "total": 10530, "batch": 142, "batch_count": 330, "message": "Committed 4,544/10,530 vectors", "elapsed_seconds": 23.4}
+{"phase": "encoding", "completed": 4544, "total": 10530, "batch": 143, "batch_count": 330, "message": "Server encoding batch 143/330", "elapsed_seconds": 23.4}
+{"phase": "committed", "completed": 4576, "total": 10530, "batch": 143, "batch_count": 330, "message": "Committed 4,576/10,530 vectors", "elapsed_seconds": 23.9}
+{"phase": "encoding", "completed": 4576, "total": 10530, "batch": 144, "batch_count": 330, "message": "Server encoding batch 144/330", "elapsed_seconds": 23.9}
+{"phase": "committed", "completed": 4608, "total": 10530, "batch": 144, "batch_count": 330, "message": "Committed 4,608/10,530 vectors", "elapsed_seconds": 24.0}
+{"phase": "encoding", "completed": 4608, "total": 10530, "batch": 145, "batch_count": 330, "message": "Server encoding batch 145/330", "elapsed_seconds": 24.0}
+{"phase": "committed", "completed": 4640, "total": 10530, "batch": 145, "batch_count": 330, "message": "Committed 4,640/10,530 vectors", "elapsed_seconds": 24.2}
+{"phase": "encoding", "completed": 4640, "total": 10530, "batch": 146, "batch_count": 330, "message": "Server encoding batch 146/330", "elapsed_seconds": 24.2}
+{"phase": "committed", "completed": 4672, "total": 10530, "batch": 146, "batch_count": 330, "message": "Committed 4,672/10,530 vectors", "elapsed_seconds": 24.3}
+{"phase": "encoding", "completed": 4672, "total": 10530, "batch": 147, "batch_count": 330, "message": "Server encoding batch 147/330", "elapsed_seconds": 24.3}
+{"phase": "committed", "completed": 4704, "total": 10530, "batch": 147, "batch_count": 330, "message": "Committed 4,704/10,530 vectors", "elapsed_seconds": 24.6}
+{"phase": "encoding", "completed": 4704, "total": 10530, "batch": 148, "batch_count": 330, "message": "Server encoding batch 148/330", "elapsed_seconds": 24.6}
+{"phase": "committed", "completed": 4736, "total": 10530, "batch": 148, "batch_count": 330, "message": "Committed 4,736/10,530 vectors", "elapsed_seconds": 24.9}
+{"phase": "encoding", "completed": 4736, "total": 10530, "batch": 149, "batch_count": 330, "message": "Server encoding batch 149/330", "elapsed_seconds": 24.9}
+{"phase": "committed", "completed": 4768, "total": 10530, "batch": 149, "batch_count": 330, "message": "Committed 4,768/10,530 vectors", "elapsed_seconds": 25.1}
+{"phase": "encoding", "completed": 4768, "total": 10530, "batch": 150, "batch_count": 330, "message": "Server encoding batch 150/330", "elapsed_seconds": 25.1}
+{"phase": "committed", "completed": 4800, "total": 10530, "batch": 150, "batch_count": 330, "message": "Committed 4,800/10,530 vectors", "elapsed_seconds": 25.2}
+{"phase": "encoding", "completed": 4800, "total": 10530, "batch": 151, "batch_count": 330, "message": "Server encoding batch 151/330", "elapsed_seconds": 25.2}
+{"phase": "committed", "completed": 4832, "total": 10530, "batch": 151, "batch_count": 330, "message": "Committed 4,832/10,530 vectors", "elapsed_seconds": 25.5}
+{"phase": "encoding", "completed": 4832, "total": 10530, "batch": 152, "batch_count": 330, "message": "Server encoding batch 152/330", "elapsed_seconds": 25.5}
+{"phase": "committed", "completed": 4864, "total": 10530, "batch": 152, "batch_count": 330, "message": "Committed 4,864/10,530 vectors", "elapsed_seconds": 25.7}
+{"phase": "encoding", "completed": 4864, "total": 10530, "batch": 153, "batch_count": 330, "message": "Server encoding batch 153/330", "elapsed_seconds": 25.7}
+{"phase": "committed", "completed": 4896, "total": 10530, "batch": 153, "batch_count": 330, "message": "Committed 4,896/10,530 vectors", "elapsed_seconds": 25.9}
+{"phase": "encoding", "completed": 4896, "total": 10530, "batch": 154, "batch_count": 330, "message": "Server encoding batch 154/330", "elapsed_seconds": 25.9}
+{"phase": "committed", "completed": 4928, "total": 10530, "batch": 154, "batch_count": 330, "message": "Committed 4,928/10,530 vectors", "elapsed_seconds": 26.1}
+{"phase": "encoding", "completed": 4928, "total": 10530, "batch": 155, "batch_count": 330, "message": "Server encoding batch 155/330", "elapsed_seconds": 26.1}
+{"phase": "committed", "completed": 4960, "total": 10530, "batch": 155, "batch_count": 330, "message": "Committed 4,960/10,530 vectors", "elapsed_seconds": 26.2}
+{"phase": "encoding", "completed": 4960, "total": 10530, "batch": 156, "batch_count": 330, "message": "Server encoding batch 156/330", "elapsed_seconds": 26.2}
+{"phase": "committed", "completed": 4992, "total": 10530, "batch": 156, "batch_count": 330, "message": "Committed 4,992/10,530 vectors", "elapsed_seconds": 26.6}
+{"phase": "encoding", "completed": 4992, "total": 10530, "batch": 157, "batch_count": 330, "message": "Server encoding batch 157/330", "elapsed_seconds": 26.6}
+{"phase": "committed", "completed": 5024, "total": 10530, "batch": 157, "batch_count": 330, "message": "Committed 5,024/10,530 vectors", "elapsed_seconds": 26.7}
+{"phase": "encoding", "completed": 5024, "total": 10530, "batch": 158, "batch_count": 330, "message": "Server encoding batch 158/330", "elapsed_seconds": 26.7}
+{"phase": "committed", "completed": 5056, "total": 10530, "batch": 158, "batch_count": 330, "message": "Committed 5,056/10,530 vectors", "elapsed_seconds": 26.8}
+{"phase": "encoding", "completed": 5056, "total": 10530, "batch": 159, "batch_count": 330, "message": "Server encoding batch 159/330", "elapsed_seconds": 26.8}
+{"phase": "committed", "completed": 5088, "total": 10530, "batch": 159, "batch_count": 330, "message": "Committed 5,088/10,530 vectors", "elapsed_seconds": 27.0}
+{"phase": "encoding", "completed": 5088, "total": 10530, "batch": 160, "batch_count": 330, "message": "Server encoding batch 160/330", "elapsed_seconds": 27.0}
+{"phase": "committed", "completed": 5120, "total": 10530, "batch": 160, "batch_count": 330, "message": "Committed 5,120/10,530 vectors", "elapsed_seconds": 27.2}
+{"phase": "encoding", "completed": 5120, "total": 10530, "batch": 161, "batch_count": 330, "message": "Server encoding batch 161/330", "elapsed_seconds": 27.2}
+{"phase": "committed", "completed": 5152, "total": 10530, "batch": 161, "batch_count": 330, "message": "Committed 5,152/10,530 vectors", "elapsed_seconds": 27.3}
+{"phase": "encoding", "completed": 5152, "total": 10530, "batch": 162, "batch_count": 330, "message": "Server encoding batch 162/330", "elapsed_seconds": 27.3}
+{"phase": "committed", "completed": 5184, "total": 10530, "batch": 162, "batch_count": 330, "message": "Committed 5,184/10,530 vectors", "elapsed_seconds": 27.5}
+{"phase": "encoding", "completed": 5184, "total": 10530, "batch": 163, "batch_count": 330, "message": "Server encoding batch 163/330", "elapsed_seconds": 27.5}
+{"phase": "committed", "completed": 5216, "total": 10530, "batch": 163, "batch_count": 330, "message": "Committed 5,216/10,530 vectors", "elapsed_seconds": 27.8}
+{"phase": "encoding", "completed": 5216, "total": 10530, "batch": 164, "batch_count": 330, "message": "Server encoding batch 164/330", "elapsed_seconds": 27.8}
+{"phase": "committed", "completed": 5248, "total": 10530, "batch": 164, "batch_count": 330, "message": "Committed 5,248/10,530 vectors", "elapsed_seconds": 27.9}
+{"phase": "encoding", "completed": 5248, "total": 10530, "batch": 165, "batch_count": 330, "message": "Server encoding batch 165/330", "elapsed_seconds": 27.9}
+{"phase": "committed", "completed": 5280, "total": 10530, "batch": 165, "batch_count": 330, "message": "Committed 5,280/10,530 vectors", "elapsed_seconds": 28.1}
+{"phase": "encoding", "completed": 5280, "total": 10530, "batch": 166, "batch_count": 330, "message": "Server encoding batch 166/330", "elapsed_seconds": 28.1}
+{"phase": "committed", "completed": 5312, "total": 10530, "batch": 166, "batch_count": 330, "message": "Committed 5,312/10,530 vectors", "elapsed_seconds": 28.3}
+{"phase": "encoding", "completed": 5312, "total": 10530, "batch": 167, "batch_count": 330, "message": "Server encoding batch 167/330", "elapsed_seconds": 28.3}
+{"phase": "committed", "completed": 5344, "total": 10530, "batch": 167, "batch_count": 330, "message": "Committed 5,344/10,530 vectors", "elapsed_seconds": 28.5}
+{"phase": "encoding", "completed": 5344, "total": 10530, "batch": 168, "batch_count": 330, "message": "Server encoding batch 168/330", "elapsed_seconds": 28.5}
+{"phase": "committed", "completed": 5376, "total": 10530, "batch": 168, "batch_count": 330, "message": "Committed 5,376/10,530 vectors", "elapsed_seconds": 28.7}
+{"phase": "encoding", "completed": 5376, "total": 10530, "batch": 169, "batch_count": 330, "message": "Server encoding batch 169/330", "elapsed_seconds": 28.7}
+{"phase": "committed", "completed": 5408, "total": 10530, "batch": 169, "batch_count": 330, "message": "Committed 5,408/10,530 vectors", "elapsed_seconds": 28.8}
+{"phase": "encoding", "completed": 5408, "total": 10530, "batch": 170, "batch_count": 330, "message": "Server encoding batch 170/330", "elapsed_seconds": 28.8}
+{"phase": "committed", "completed": 5440, "total": 10530, "batch": 170, "batch_count": 330, "message": "Committed 5,440/10,530 vectors", "elapsed_seconds": 29.0}
+{"phase": "encoding", "completed": 5440, "total": 10530, "batch": 171, "batch_count": 330, "message": "Server encoding batch 171/330", "elapsed_seconds": 29.0}
+{"phase": "committed", "completed": 5472, "total": 10530, "batch": 171, "batch_count": 330, "message": "Committed 5,472/10,530 vectors", "elapsed_seconds": 29.1}
+{"phase": "encoding", "completed": 5472, "total": 10530, "batch": 172, "batch_count": 330, "message": "Server encoding batch 172/330", "elapsed_seconds": 29.1}
+{"phase": "committed", "completed": 5504, "total": 10530, "batch": 172, "batch_count": 330, "message": "Committed 5,504/10,530 vectors", "elapsed_seconds": 29.6}
+{"phase": "encoding", "completed": 5504, "total": 10530, "batch": 173, "batch_count": 330, "message": "Server encoding batch 173/330", "elapsed_seconds": 29.6}
+{"phase": "committed", "completed": 5536, "total": 10530, "batch": 173, "batch_count": 330, "message": "Committed 5,536/10,530 vectors", "elapsed_seconds": 29.9}
+{"phase": "encoding", "completed": 5536, "total": 10530, "batch": 174, "batch_count": 330, "message": "Server encoding batch 174/330", "elapsed_seconds": 29.9}
+{"phase": "committed", "completed": 5568, "total": 10530, "batch": 174, "batch_count": 330, "message": "Committed 5,568/10,530 vectors", "elapsed_seconds": 30.1}
+{"phase": "encoding", "completed": 5568, "total": 10530, "batch": 175, "batch_count": 330, "message": "Server encoding batch 175/330", "elapsed_seconds": 30.1}
+{"phase": "committed", "completed": 5600, "total": 10530, "batch": 175, "batch_count": 330, "message": "Committed 5,600/10,530 vectors", "elapsed_seconds": 30.2}
+{"phase": "encoding", "completed": 5600, "total": 10530, "batch": 176, "batch_count": 330, "message": "Server encoding batch 176/330", "elapsed_seconds": 30.2}
+{"phase": "committed", "completed": 5632, "total": 10530, "batch": 176, "batch_count": 330, "message": "Committed 5,632/10,530 vectors", "elapsed_seconds": 30.4}
+{"phase": "encoding", "completed": 5632, "total": 10530, "batch": 177, "batch_count": 330, "message": "Server encoding batch 177/330", "elapsed_seconds": 30.4}
+{"phase": "committed", "completed": 5664, "total": 10530, "batch": 177, "batch_count": 330, "message": "Committed 5,664/10,530 vectors", "elapsed_seconds": 30.6}
+{"phase": "encoding", "completed": 5664, "total": 10530, "batch": 178, "batch_count": 330, "message": "Server encoding batch 178/330", "elapsed_seconds": 30.6}
+{"phase": "committed", "completed": 5696, "total": 10530, "batch": 178, "batch_count": 330, "message": "Committed 5,696/10,530 vectors", "elapsed_seconds": 30.8}
+{"phase": "encoding", "completed": 5696, "total": 10530, "batch": 179, "batch_count": 330, "message": "Server encoding batch 179/330", "elapsed_seconds": 30.8}
+{"phase": "committed", "completed": 5728, "total": 10530, "batch": 179, "batch_count": 330, "message": "Committed 5,728/10,530 vectors", "elapsed_seconds": 31.0}
+{"phase": "encoding", "completed": 5728, "total": 10530, "batch": 180, "batch_count": 330, "message": "Server encoding batch 180/330", "elapsed_seconds": 31.0}
+{"phase": "committed", "completed": 5760, "total": 10530, "batch": 180, "batch_count": 330, "message": "Committed 5,760/10,530 vectors", "elapsed_seconds": 31.5}
+{"phase": "encoding", "completed": 5760, "total": 10530, "batch": 181, "batch_count": 330, "message": "Server encoding batch 181/330", "elapsed_seconds": 31.5}
+{"phase": "committed", "completed": 5792, "total": 10530, "batch": 181, "batch_count": 330, "message": "Committed 5,792/10,530 vectors", "elapsed_seconds": 31.8}
+{"phase": "encoding", "completed": 5792, "total": 10530, "batch": 182, "batch_count": 330, "message": "Server encoding batch 182/330", "elapsed_seconds": 31.8}
+{"phase": "committed", "completed": 5824, "total": 10530, "batch": 182, "batch_count": 330, "message": "Committed 5,824/10,530 vectors", "elapsed_seconds": 31.9}
+{"phase": "encoding", "completed": 5824, "total": 10530, "batch": 183, "batch_count": 330, "message": "Server encoding batch 183/330", "elapsed_seconds": 31.9}
+{"phase": "committed", "completed": 5856, "total": 10530, "batch": 183, "batch_count": 330, "message": "Committed 5,856/10,530 vectors", "elapsed_seconds": 32.0}
+{"phase": "encoding", "completed": 5856, "total": 10530, "batch": 184, "batch_count": 330, "message": "Server encoding batch 184/330", "elapsed_seconds": 32.0}
+{"phase": "committed", "completed": 5888, "total": 10530, "batch": 184, "batch_count": 330, "message": "Committed 5,888/10,530 vectors", "elapsed_seconds": 32.1}
+{"phase": "encoding", "completed": 5888, "total": 10530, "batch": 185, "batch_count": 330, "message": "Server encoding batch 185/330", "elapsed_seconds": 32.1}
+{"phase": "committed", "completed": 5920, "total": 10530, "batch": 185, "batch_count": 330, "message": "Committed 5,920/10,530 vectors", "elapsed_seconds": 32.3}
+{"phase": "encoding", "completed": 5920, "total": 10530, "batch": 186, "batch_count": 330, "message": "Server encoding batch 186/330", "elapsed_seconds": 32.3}
+{"phase": "committed", "completed": 5952, "total": 10530, "batch": 186, "batch_count": 330, "message": "Committed 5,952/10,530 vectors", "elapsed_seconds": 32.4}
+{"phase": "encoding", "completed": 5952, "total": 10530, "batch": 187, "batch_count": 330, "message": "Server encoding batch 187/330", "elapsed_seconds": 32.4}
+{"phase": "committed", "completed": 5984, "total": 10530, "batch": 187, "batch_count": 330, "message": "Committed 5,984/10,530 vectors", "elapsed_seconds": 32.5}
+{"phase": "encoding", "completed": 5984, "total": 10530, "batch": 188, "batch_count": 330, "message": "Server encoding batch 188/330", "elapsed_seconds": 32.5}
+{"phase": "committed", "completed": 6016, "total": 10530, "batch": 188, "batch_count": 330, "message": "Committed 6,016/10,530 vectors", "elapsed_seconds": 32.6}
+{"phase": "encoding", "completed": 6016, "total": 10530, "batch": 189, "batch_count": 330, "message": "Server encoding batch 189/330", "elapsed_seconds": 32.6}
+{"phase": "committed", "completed": 6048, "total": 10530, "batch": 189, "batch_count": 330, "message": "Committed 6,048/10,530 vectors", "elapsed_seconds": 32.7}
+{"phase": "encoding", "completed": 6048, "total": 10530, "batch": 190, "batch_count": 330, "message": "Server encoding batch 190/330", "elapsed_seconds": 32.7}
+{"phase": "committed", "completed": 6080, "total": 10530, "batch": 190, "batch_count": 330, "message": "Committed 6,080/10,530 vectors", "elapsed_seconds": 33.0}
+{"phase": "encoding", "completed": 6080, "total": 10530, "batch": 191, "batch_count": 330, "message": "Server encoding batch 191/330", "elapsed_seconds": 33.0}
+{"phase": "committed", "completed": 6112, "total": 10530, "batch": 191, "batch_count": 330, "message": "Committed 6,112/10,530 vectors", "elapsed_seconds": 33.2}
+{"phase": "encoding", "completed": 6112, "total": 10530, "batch": 192, "batch_count": 330, "message": "Server encoding batch 192/330", "elapsed_seconds": 33.2}
+{"phase": "committed", "completed": 6144, "total": 10530, "batch": 192, "batch_count": 330, "message": "Committed 6,144/10,530 vectors", "elapsed_seconds": 33.7}
+{"phase": "encoding", "completed": 6144, "total": 10530, "batch": 193, "batch_count": 330, "message": "Server encoding batch 193/330", "elapsed_seconds": 33.7}
+{"phase": "committed", "completed": 6176, "total": 10530, "batch": 193, "batch_count": 330, "message": "Committed 6,176/10,530 vectors", "elapsed_seconds": 33.8}
+{"phase": "encoding", "completed": 6176, "total": 10530, "batch": 194, "batch_count": 330, "message": "Server encoding batch 194/330", "elapsed_seconds": 33.8}
+{"phase": "committed", "completed": 6208, "total": 10530, "batch": 194, "batch_count": 330, "message": "Committed 6,208/10,530 vectors", "elapsed_seconds": 34.0}
+{"phase": "encoding", "completed": 6208, "total": 10530, "batch": 195, "batch_count": 330, "message": "Server encoding batch 195/330", "elapsed_seconds": 34.0}
+{"phase": "committed", "completed": 6240, "total": 10530, "batch": 195, "batch_count": 330, "message": "Committed 6,240/10,530 vectors", "elapsed_seconds": 34.3}
+{"phase": "encoding", "completed": 6240, "total": 10530, "batch": 196, "batch_count": 330, "message": "Server encoding batch 196/330", "elapsed_seconds": 34.3}
+{"phase": "committed", "completed": 6272, "total": 10530, "batch": 196, "batch_count": 330, "message": "Committed 6,272/10,530 vectors", "elapsed_seconds": 34.8}
+{"phase": "encoding", "completed": 6272, "total": 10530, "batch": 197, "batch_count": 330, "message": "Server encoding batch 197/330", "elapsed_seconds": 34.8}
+{"phase": "committed", "completed": 6304, "total": 10530, "batch": 197, "batch_count": 330, "message": "Committed 6,304/10,530 vectors", "elapsed_seconds": 35.0}
+{"phase": "encoding", "completed": 6304, "total": 10530, "batch": 198, "batch_count": 330, "message": "Server encoding batch 198/330", "elapsed_seconds": 35.0}
+{"phase": "committed", "completed": 6336, "total": 10530, "batch": 198, "batch_count": 330, "message": "Committed 6,336/10,530 vectors", "elapsed_seconds": 35.0}
+{"phase": "encoding", "completed": 6336, "total": 10530, "batch": 199, "batch_count": 330, "message": "Server encoding batch 199/330", "elapsed_seconds": 35.0}
+{"phase": "committed", "completed": 6368, "total": 10530, "batch": 199, "batch_count": 330, "message": "Committed 6,368/10,530 vectors", "elapsed_seconds": 35.2}
+{"phase": "encoding", "completed": 6368, "total": 10530, "batch": 200, "batch_count": 330, "message": "Server encoding batch 200/330", "elapsed_seconds": 35.2}
+{"phase": "committed", "completed": 6400, "total": 10530, "batch": 200, "batch_count": 330, "message": "Committed 6,400/10,530 vectors", "elapsed_seconds": 35.4}
+{"phase": "encoding", "completed": 6400, "total": 10530, "batch": 201, "batch_count": 330, "message": "Server encoding batch 201/330", "elapsed_seconds": 35.4}
+{"phase": "committed", "completed": 6432, "total": 10530, "batch": 201, "batch_count": 330, "message": "Committed 6,432/10,530 vectors", "elapsed_seconds": 35.5}
+{"phase": "encoding", "completed": 6432, "total": 10530, "batch": 202, "batch_count": 330, "message": "Server encoding batch 202/330", "elapsed_seconds": 35.5}
+{"phase": "committed", "completed": 6464, "total": 10530, "batch": 202, "batch_count": 330, "message": "Committed 6,464/10,530 vectors", "elapsed_seconds": 35.8}
+{"phase": "encoding", "completed": 6464, "total": 10530, "batch": 203, "batch_count": 330, "message": "Server encoding batch 203/330", "elapsed_seconds": 35.8}
+{"phase": "committed", "completed": 6496, "total": 10530, "batch": 203, "batch_count": 330, "message": "Committed 6,496/10,530 vectors", "elapsed_seconds": 36.0}
+{"phase": "encoding", "completed": 6496, "total": 10530, "batch": 204, "batch_count": 330, "message": "Server encoding batch 204/330", "elapsed_seconds": 36.0}
+{"phase": "committed", "completed": 6528, "total": 10530, "batch": 204, "batch_count": 330, "message": "Committed 6,528/10,530 vectors", "elapsed_seconds": 36.1}
+{"phase": "encoding", "completed": 6528, "total": 10530, "batch": 205, "batch_count": 330, "message": "Server encoding batch 205/330", "elapsed_seconds": 36.1}
+{"phase": "committed", "completed": 6560, "total": 10530, "batch": 205, "batch_count": 330, "message": "Committed 6,560/10,530 vectors", "elapsed_seconds": 36.4}
+{"phase": "encoding", "completed": 6560, "total": 10530, "batch": 206, "batch_count": 330, "message": "Server encoding batch 206/330", "elapsed_seconds": 36.4}
+{"phase": "committed", "completed": 6592, "total": 10530, "batch": 206, "batch_count": 330, "message": "Committed 6,592/10,530 vectors", "elapsed_seconds": 36.6}
+{"phase": "encoding", "completed": 6592, "total": 10530, "batch": 207, "batch_count": 330, "message": "Server encoding batch 207/330", "elapsed_seconds": 36.6}
+{"phase": "committed", "completed": 6624, "total": 10530, "batch": 207, "batch_count": 330, "message": "Committed 6,624/10,530 vectors", "elapsed_seconds": 36.8}
+{"phase": "encoding", "completed": 6624, "total": 10530, "batch": 208, "batch_count": 330, "message": "Server encoding batch 208/330", "elapsed_seconds": 36.8}
+{"phase": "committed", "completed": 6656, "total": 10530, "batch": 208, "batch_count": 330, "message": "Committed 6,656/10,530 vectors", "elapsed_seconds": 36.9}
+{"phase": "encoding", "completed": 6656, "total": 10530, "batch": 209, "batch_count": 330, "message": "Server encoding batch 209/330", "elapsed_seconds": 36.9}
+{"phase": "committed", "completed": 6688, "total": 10530, "batch": 209, "batch_count": 330, "message": "Committed 6,688/10,530 vectors", "elapsed_seconds": 37.1}
+{"phase": "encoding", "completed": 6688, "total": 10530, "batch": 210, "batch_count": 330, "message": "Server encoding batch 210/330", "elapsed_seconds": 37.1}
+{"phase": "committed", "completed": 6720, "total": 10530, "batch": 210, "batch_count": 330, "message": "Committed 6,720/10,530 vectors", "elapsed_seconds": 37.2}
+{"phase": "encoding", "completed": 6720, "total": 10530, "batch": 211, "batch_count": 330, "message": "Server encoding batch 211/330", "elapsed_seconds": 37.2}
+{"phase": "committed", "completed": 6752, "total": 10530, "batch": 211, "batch_count": 330, "message": "Committed 6,752/10,530 vectors", "elapsed_seconds": 37.5}
+{"phase": "encoding", "completed": 6752, "total": 10530, "batch": 212, "batch_count": 330, "message": "Server encoding batch 212/330", "elapsed_seconds": 37.5}
+{"phase": "committed", "completed": 6784, "total": 10530, "batch": 212, "batch_count": 330, "message": "Committed 6,784/10,530 vectors", "elapsed_seconds": 37.6}
+{"phase": "encoding", "completed": 6784, "total": 10530, "batch": 213, "batch_count": 330, "message": "Server encoding batch 213/330", "elapsed_seconds": 37.6}
+{"phase": "committed", "completed": 6816, "total": 10530, "batch": 213, "batch_count": 330, "message": "Committed 6,816/10,530 vectors", "elapsed_seconds": 37.9}
+{"phase": "encoding", "completed": 6816, "total": 10530, "batch": 214, "batch_count": 330, "message": "Server encoding batch 214/330", "elapsed_seconds": 37.9}
+{"phase": "committed", "completed": 6848, "total": 10530, "batch": 214, "batch_count": 330, "message": "Committed 6,848/10,530 vectors", "elapsed_seconds": 38.1}
+{"phase": "encoding", "completed": 6848, "total": 10530, "batch": 215, "batch_count": 330, "message": "Server encoding batch 215/330", "elapsed_seconds": 38.1}
+{"phase": "committed", "completed": 6880, "total": 10530, "batch": 215, "batch_count": 330, "message": "Committed 6,880/10,530 vectors", "elapsed_seconds": 38.2}
+{"phase": "encoding", "completed": 6880, "total": 10530, "batch": 216, "batch_count": 330, "message": "Server encoding batch 216/330", "elapsed_seconds": 38.2}
+{"phase": "committed", "completed": 6912, "total": 10530, "batch": 216, "batch_count": 330, "message": "Committed 6,912/10,530 vectors", "elapsed_seconds": 38.3}
+{"phase": "encoding", "completed": 6912, "total": 10530, "batch": 217, "batch_count": 330, "message": "Server encoding batch 217/330", "elapsed_seconds": 38.3}
+{"phase": "committed", "completed": 6944, "total": 10530, "batch": 217, "batch_count": 330, "message": "Committed 6,944/10,530 vectors", "elapsed_seconds": 38.4}
+{"phase": "encoding", "completed": 6944, "total": 10530, "batch": 218, "batch_count": 330, "message": "Server encoding batch 218/330", "elapsed_seconds": 38.4}
+{"phase": "committed", "completed": 6976, "total": 10530, "batch": 218, "batch_count": 330, "message": "Committed 6,976/10,530 vectors", "elapsed_seconds": 38.6}
+{"phase": "encoding", "completed": 6976, "total": 10530, "batch": 219, "batch_count": 330, "message": "Server encoding batch 219/330", "elapsed_seconds": 38.6}
+{"phase": "committed", "completed": 7008, "total": 10530, "batch": 219, "batch_count": 330, "message": "Committed 7,008/10,530 vectors", "elapsed_seconds": 38.9}
+{"phase": "encoding", "completed": 7008, "total": 10530, "batch": 220, "batch_count": 330, "message": "Server encoding batch 220/330", "elapsed_seconds": 38.9}
+{"phase": "committed", "completed": 7040, "total": 10530, "batch": 220, "batch_count": 330, "message": "Committed 7,040/10,530 vectors", "elapsed_seconds": 39.1}
+{"phase": "encoding", "completed": 7040, "total": 10530, "batch": 221, "batch_count": 330, "message": "Server encoding batch 221/330", "elapsed_seconds": 39.1}
+{"phase": "committed", "completed": 7072, "total": 10530, "batch": 221, "batch_count": 330, "message": "Committed 7,072/10,530 vectors", "elapsed_seconds": 39.2}
+{"phase": "encoding", "completed": 7072, "total": 10530, "batch": 222, "batch_count": 330, "message": "Server encoding batch 222/330", "elapsed_seconds": 39.2}
+{"phase": "committed", "completed": 7104, "total": 10530, "batch": 222, "batch_count": 330, "message": "Committed 7,104/10,530 vectors", "elapsed_seconds": 39.3}
+{"phase": "encoding", "completed": 7104, "total": 10530, "batch": 223, "batch_count": 330, "message": "Server encoding batch 223/330", "elapsed_seconds": 39.3}
+{"phase": "committed", "completed": 7136, "total": 10530, "batch": 223, "batch_count": 330, "message": "Committed 7,136/10,530 vectors", "elapsed_seconds": 39.8}
+{"phase": "encoding", "completed": 7136, "total": 10530, "batch": 224, "batch_count": 330, "message": "Server encoding batch 224/330", "elapsed_seconds": 39.8}
+{"phase": "committed", "completed": 7168, "total": 10530, "batch": 224, "batch_count": 330, "message": "Committed 7,168/10,530 vectors", "elapsed_seconds": 39.9}
+{"phase": "encoding", "completed": 7168, "total": 10530, "batch": 225, "batch_count": 330, "message": "Server encoding batch 225/330", "elapsed_seconds": 39.9}
+{"phase": "committed", "completed": 7200, "total": 10530, "batch": 225, "batch_count": 330, "message": "Committed 7,200/10,530 vectors", "elapsed_seconds": 40.0}
+{"phase": "encoding", "completed": 7200, "total": 10530, "batch": 226, "batch_count": 330, "message": "Server encoding batch 226/330", "elapsed_seconds": 40.0}
+{"phase": "committed", "completed": 7232, "total": 10530, "batch": 226, "batch_count": 330, "message": "Committed 7,232/10,530 vectors", "elapsed_seconds": 40.2}
+{"phase": "encoding", "completed": 7232, "total": 10530, "batch": 227, "batch_count": 330, "message": "Server encoding batch 227/330", "elapsed_seconds": 40.2}
+{"phase": "committed", "completed": 7264, "total": 10530, "batch": 227, "batch_count": 330, "message": "Committed 7,264/10,530 vectors", "elapsed_seconds": 40.4}
+{"phase": "encoding", "completed": 7264, "total": 10530, "batch": 228, "batch_count": 330, "message": "Server encoding batch 228/330", "elapsed_seconds": 40.4}
+{"phase": "committed", "completed": 7296, "total": 10530, "batch": 228, "batch_count": 330, "message": "Committed 7,296/10,530 vectors", "elapsed_seconds": 40.6}
+{"phase": "encoding", "completed": 7296, "total": 10530, "batch": 229, "batch_count": 330, "message": "Server encoding batch 229/330", "elapsed_seconds": 40.6}
+{"phase": "committed", "completed": 7328, "total": 10530, "batch": 229, "batch_count": 330, "message": "Committed 7,328/10,530 vectors", "elapsed_seconds": 40.8}
+{"phase": "encoding", "completed": 7328, "total": 10530, "batch": 230, "batch_count": 330, "message": "Server encoding batch 230/330", "elapsed_seconds": 40.8}
+{"phase": "committed", "completed": 7360, "total": 10530, "batch": 230, "batch_count": 330, "message": "Committed 7,360/10,530 vectors", "elapsed_seconds": 40.9}
+{"phase": "encoding", "completed": 7360, "total": 10530, "batch": 231, "batch_count": 330, "message": "Server encoding batch 231/330", "elapsed_seconds": 40.9}
+{"phase": "committed", "completed": 7392, "total": 10530, "batch": 231, "batch_count": 330, "message": "Committed 7,392/10,530 vectors", "elapsed_seconds": 41.1}
+{"phase": "encoding", "completed": 7392, "total": 10530, "batch": 232, "batch_count": 330, "message": "Server encoding batch 232/330", "elapsed_seconds": 41.1}
+{"phase": "committed", "completed": 7424, "total": 10530, "batch": 232, "batch_count": 330, "message": "Committed 7,424/10,530 vectors", "elapsed_seconds": 41.2}
+{"phase": "encoding", "completed": 7424, "total": 10530, "batch": 233, "batch_count": 330, "message": "Server encoding batch 233/330", "elapsed_seconds": 41.2}
+{"phase": "committed", "completed": 7456, "total": 10530, "batch": 233, "batch_count": 330, "message": "Committed 7,456/10,530 vectors", "elapsed_seconds": 41.5}
+{"phase": "encoding", "completed": 7456, "total": 10530, "batch": 234, "batch_count": 330, "message": "Server encoding batch 234/330", "elapsed_seconds": 41.5}
+{"phase": "committed", "completed": 7488, "total": 10530, "batch": 234, "batch_count": 330, "message": "Committed 7,488/10,530 vectors", "elapsed_seconds": 41.7}
+{"phase": "encoding", "completed": 7488, "total": 10530, "batch": 235, "batch_count": 330, "message": "Server encoding batch 235/330", "elapsed_seconds": 41.7}
+{"phase": "committed", "completed": 7520, "total": 10530, "batch": 235, "batch_count": 330, "message": "Committed 7,520/10,530 vectors", "elapsed_seconds": 41.8}
+{"phase": "encoding", "completed": 7520, "total": 10530, "batch": 236, "batch_count": 330, "message": "Server encoding batch 236/330", "elapsed_seconds": 41.8}
+{"phase": "committed", "completed": 7552, "total": 10530, "batch": 236, "batch_count": 330, "message": "Committed 7,552/10,530 vectors", "elapsed_seconds": 41.9}
+{"phase": "encoding", "completed": 7552, "total": 10530, "batch": 237, "batch_count": 330, "message": "Server encoding batch 237/330", "elapsed_seconds": 41.9}
+{"phase": "committed", "completed": 7584, "total": 10530, "batch": 237, "batch_count": 330, "message": "Committed 7,584/10,530 vectors", "elapsed_seconds": 42.1}
+{"phase": "encoding", "completed": 7584, "total": 10530, "batch": 238, "batch_count": 330, "message": "Server encoding batch 238/330", "elapsed_seconds": 42.1}
+{"phase": "committed", "completed": 7616, "total": 10530, "batch": 238, "batch_count": 330, "message": "Committed 7,616/10,530 vectors", "elapsed_seconds": 42.2}
+{"phase": "encoding", "completed": 7616, "total": 10530, "batch": 239, "batch_count": 330, "message": "Server encoding batch 239/330", "elapsed_seconds": 42.2}
+{"phase": "committed", "completed": 7648, "total": 10530, "batch": 239, "batch_count": 330, "message": "Committed 7,648/10,530 vectors", "elapsed_seconds": 42.4}
+{"phase": "encoding", "completed": 7648, "total": 10530, "batch": 240, "batch_count": 330, "message": "Server encoding batch 240/330", "elapsed_seconds": 42.4}
+{"phase": "committed", "completed": 7680, "total": 10530, "batch": 240, "batch_count": 330, "message": "Committed 7,680/10,530 vectors", "elapsed_seconds": 42.5}
+{"phase": "encoding", "completed": 7680, "total": 10530, "batch": 241, "batch_count": 330, "message": "Server encoding batch 241/330", "elapsed_seconds": 42.5}
+{"phase": "committed", "completed": 7712, "total": 10530, "batch": 241, "batch_count": 330, "message": "Committed 7,712/10,530 vectors", "elapsed_seconds": 42.6}
+{"phase": "encoding", "completed": 7712, "total": 10530, "batch": 242, "batch_count": 330, "message": "Server encoding batch 242/330", "elapsed_seconds": 42.6}
+{"phase": "committed", "completed": 7744, "total": 10530, "batch": 242, "batch_count": 330, "message": "Committed 7,744/10,530 vectors", "elapsed_seconds": 42.7}
+{"phase": "encoding", "completed": 7744, "total": 10530, "batch": 243, "batch_count": 330, "message": "Server encoding batch 243/330", "elapsed_seconds": 42.7}
+{"phase": "committed", "completed": 7776, "total": 10530, "batch": 243, "batch_count": 330, "message": "Committed 7,776/10,530 vectors", "elapsed_seconds": 42.8}
+{"phase": "encoding", "completed": 7776, "total": 10530, "batch": 244, "batch_count": 330, "message": "Server encoding batch 244/330", "elapsed_seconds": 42.8}
+{"phase": "committed", "completed": 7808, "total": 10530, "batch": 244, "batch_count": 330, "message": "Committed 7,808/10,530 vectors", "elapsed_seconds": 42.9}
+{"phase": "encoding", "completed": 7808, "total": 10530, "batch": 245, "batch_count": 330, "message": "Server encoding batch 245/330", "elapsed_seconds": 42.9}
+{"phase": "committed", "completed": 7840, "total": 10530, "batch": 245, "batch_count": 330, "message": "Committed 7,840/10,530 vectors", "elapsed_seconds": 43.0}
+{"phase": "encoding", "completed": 7840, "total": 10530, "batch": 246, "batch_count": 330, "message": "Server encoding batch 246/330", "elapsed_seconds": 43.0}
+{"phase": "committed", "completed": 7872, "total": 10530, "batch": 246, "batch_count": 330, "message": "Committed 7,872/10,530 vectors", "elapsed_seconds": 43.2}
+{"phase": "encoding", "completed": 7872, "total": 10530, "batch": 247, "batch_count": 330, "message": "Server encoding batch 247/330", "elapsed_seconds": 43.2}
+{"phase": "committed", "completed": 7904, "total": 10530, "batch": 247, "batch_count": 330, "message": "Committed 7,904/10,530 vectors", "elapsed_seconds": 43.4}
+{"phase": "encoding", "completed": 7904, "total": 10530, "batch": 248, "batch_count": 330, "message": "Server encoding batch 248/330", "elapsed_seconds": 43.4}
+{"phase": "committed", "completed": 7936, "total": 10530, "batch": 248, "batch_count": 330, "message": "Committed 7,936/10,530 vectors", "elapsed_seconds": 43.5}
+{"phase": "encoding", "completed": 7936, "total": 10530, "batch": 249, "batch_count": 330, "message": "Server encoding batch 249/330", "elapsed_seconds": 43.5}
+{"phase": "committed", "completed": 7968, "total": 10530, "batch": 249, "batch_count": 330, "message": "Committed 7,968/10,530 vectors", "elapsed_seconds": 43.7}
+{"phase": "encoding", "completed": 7968, "total": 10530, "batch": 250, "batch_count": 330, "message": "Server encoding batch 250/330", "elapsed_seconds": 43.7}
+{"phase": "committed", "completed": 8000, "total": 10530, "batch": 250, "batch_count": 330, "message": "Committed 8,000/10,530 vectors", "elapsed_seconds": 43.9}
+{"phase": "encoding", "completed": 8000, "total": 10530, "batch": 251, "batch_count": 330, "message": "Server encoding batch 251/330", "elapsed_seconds": 43.9}
+{"phase": "committed", "completed": 8032, "total": 10530, "batch": 251, "batch_count": 330, "message": "Committed 8,032/10,530 vectors", "elapsed_seconds": 44.1}
+{"phase": "encoding", "completed": 8032, "total": 10530, "batch": 252, "batch_count": 330, "message": "Server encoding batch 252/330", "elapsed_seconds": 44.1}
+{"phase": "committed", "completed": 8064, "total": 10530, "batch": 252, "batch_count": 330, "message": "Committed 8,064/10,530 vectors", "elapsed_seconds": 44.2}
+{"phase": "encoding", "completed": 8064, "total": 10530, "batch": 253, "batch_count": 330, "message": "Server encoding batch 253/330", "elapsed_seconds": 44.2}
+{"phase": "committed", "completed": 8096, "total": 10530, "batch": 253, "batch_count": 330, "message": "Committed 8,096/10,530 vectors", "elapsed_seconds": 44.3}
+{"phase": "encoding", "completed": 8096, "total": 10530, "batch": 254, "batch_count": 330, "message": "Server encoding batch 254/330", "elapsed_seconds": 44.3}
+{"phase": "committed", "completed": 8128, "total": 10530, "batch": 254, "batch_count": 330, "message": "Committed 8,128/10,530 vectors", "elapsed_seconds": 44.5}
+{"phase": "encoding", "completed": 8128, "total": 10530, "batch": 255, "batch_count": 330, "message": "Server encoding batch 255/330", "elapsed_seconds": 44.5}
+{"phase": "committed", "completed": 8160, "total": 10530, "batch": 255, "batch_count": 330, "message": "Committed 8,160/10,530 vectors", "elapsed_seconds": 44.7}
+{"phase": "encoding", "completed": 8160, "total": 10530, "batch": 256, "batch_count": 330, "message": "Server encoding batch 256/330", "elapsed_seconds": 44.7}
+{"phase": "committed", "completed": 8192, "total": 10530, "batch": 256, "batch_count": 330, "message": "Committed 8,192/10,530 vectors", "elapsed_seconds": 44.8}
+{"phase": "encoding", "completed": 8192, "total": 10530, "batch": 257, "batch_count": 330, "message": "Server encoding batch 257/330", "elapsed_seconds": 44.8}
+{"phase": "committed", "completed": 8224, "total": 10530, "batch": 257, "batch_count": 330, "message": "Committed 8,224/10,530 vectors", "elapsed_seconds": 44.9}
+{"phase": "encoding", "completed": 8224, "total": 10530, "batch": 258, "batch_count": 330, "message": "Server encoding batch 258/330", "elapsed_seconds": 44.9}
+{"phase": "committed", "completed": 8256, "total": 10530, "batch": 258, "batch_count": 330, "message": "Committed 8,256/10,530 vectors", "elapsed_seconds": 45.0}
+{"phase": "encoding", "completed": 8256, "total": 10530, "batch": 259, "batch_count": 330, "message": "Server encoding batch 259/330", "elapsed_seconds": 45.0}
+{"phase": "committed", "completed": 8288, "total": 10530, "batch": 259, "batch_count": 330, "message": "Committed 8,288/10,530 vectors", "elapsed_seconds": 45.1}
+{"phase": "encoding", "completed": 8288, "total": 10530, "batch": 260, "batch_count": 330, "message": "Server encoding batch 260/330", "elapsed_seconds": 45.1}
+{"phase": "committed", "completed": 8320, "total": 10530, "batch": 260, "batch_count": 330, "message": "Committed 8,320/10,530 vectors", "elapsed_seconds": 45.3}
+{"phase": "encoding", "completed": 8320, "total": 10530, "batch": 261, "batch_count": 330, "message": "Server encoding batch 261/330", "elapsed_seconds": 45.3}
+{"phase": "committed", "completed": 8352, "total": 10530, "batch": 261, "batch_count": 330, "message": "Committed 8,352/10,530 vectors", "elapsed_seconds": 45.6}
+{"phase": "encoding", "completed": 8352, "total": 10530, "batch": 262, "batch_count": 330, "message": "Server encoding batch 262/330", "elapsed_seconds": 45.6}
+{"phase": "committed", "completed": 8384, "total": 10530, "batch": 262, "batch_count": 330, "message": "Committed 8,384/10,530 vectors", "elapsed_seconds": 45.8}
+{"phase": "encoding", "completed": 8384, "total": 10530, "batch": 263, "batch_count": 330, "message": "Server encoding batch 263/330", "elapsed_seconds": 45.8}
+{"phase": "committed", "completed": 8416, "total": 10530, "batch": 263, "batch_count": 330, "message": "Committed 8,416/10,530 vectors", "elapsed_seconds": 45.9}
+{"phase": "encoding", "completed": 8416, "total": 10530, "batch": 264, "batch_count": 330, "message": "Server encoding batch 264/330", "elapsed_seconds": 45.9}
+{"phase": "committed", "completed": 8448, "total": 10530, "batch": 264, "batch_count": 330, "message": "Committed 8,448/10,530 vectors", "elapsed_seconds": 46.2}
+{"phase": "encoding", "completed": 8448, "total": 10530, "batch": 265, "batch_count": 330, "message": "Server encoding batch 265/330", "elapsed_seconds": 46.2}
+{"phase": "committed", "completed": 8480, "total": 10530, "batch": 265, "batch_count": 330, "message": "Committed 8,480/10,530 vectors", "elapsed_seconds": 46.4}
+{"phase": "encoding", "completed": 8480, "total": 10530, "batch": 266, "batch_count": 330, "message": "Server encoding batch 266/330", "elapsed_seconds": 46.4}
+{"phase": "committed", "completed": 8512, "total": 10530, "batch": 266, "batch_count": 330, "message": "Committed 8,512/10,530 vectors", "elapsed_seconds": 46.6}
+{"phase": "encoding", "completed": 8512, "total": 10530, "batch": 267, "batch_count": 330, "message": "Server encoding batch 267/330", "elapsed_seconds": 46.6}
+{"phase": "committed", "completed": 8544, "total": 10530, "batch": 267, "batch_count": 330, "message": "Committed 8,544/10,530 vectors", "elapsed_seconds": 46.8}
+{"phase": "encoding", "completed": 8544, "total": 10530, "batch": 268, "batch_count": 330, "message": "Server encoding batch 268/330", "elapsed_seconds": 46.8}
+{"phase": "committed", "completed": 8576, "total": 10530, "batch": 268, "batch_count": 330, "message": "Committed 8,576/10,530 vectors", "elapsed_seconds": 47.0}
+{"phase": "encoding", "completed": 8576, "total": 10530, "batch": 269, "batch_count": 330, "message": "Server encoding batch 269/330", "elapsed_seconds": 47.0}
+{"phase": "committed", "completed": 8608, "total": 10530, "batch": 269, "batch_count": 330, "message": "Committed 8,608/10,530 vectors", "elapsed_seconds": 47.1}
+{"phase": "encoding", "completed": 8608, "total": 10530, "batch": 270, "batch_count": 330, "message": "Server encoding batch 270/330", "elapsed_seconds": 47.1}
+{"phase": "committed", "completed": 8640, "total": 10530, "batch": 270, "batch_count": 330, "message": "Committed 8,640/10,530 vectors", "elapsed_seconds": 47.3}
+{"phase": "encoding", "completed": 8640, "total": 10530, "batch": 271, "batch_count": 330, "message": "Server encoding batch 271/330", "elapsed_seconds": 47.3}
+{"phase": "committed", "completed": 8672, "total": 10530, "batch": 271, "batch_count": 330, "message": "Committed 8,672/10,530 vectors", "elapsed_seconds": 47.5}
+{"phase": "encoding", "completed": 8672, "total": 10530, "batch": 272, "batch_count": 330, "message": "Server encoding batch 272/330", "elapsed_seconds": 47.5}
+{"phase": "committed", "completed": 8704, "total": 10530, "batch": 272, "batch_count": 330, "message": "Committed 8,704/10,530 vectors", "elapsed_seconds": 47.7}
+{"phase": "encoding", "completed": 8704, "total": 10530, "batch": 273, "batch_count": 330, "message": "Server encoding batch 273/330", "elapsed_seconds": 47.7}
+{"phase": "committed", "completed": 8736, "total": 10530, "batch": 273, "batch_count": 330, "message": "Committed 8,736/10,530 vectors", "elapsed_seconds": 48.0}
+{"phase": "encoding", "completed": 8736, "total": 10530, "batch": 274, "batch_count": 330, "message": "Server encoding batch 274/330", "elapsed_seconds": 48.0}
+{"phase": "committed", "completed": 8768, "total": 10530, "batch": 274, "batch_count": 330, "message": "Committed 8,768/10,530 vectors", "elapsed_seconds": 48.3}
+{"phase": "encoding", "completed": 8768, "total": 10530, "batch": 275, "batch_count": 330, "message": "Server encoding batch 275/330", "elapsed_seconds": 48.3}
+{"phase": "committed", "completed": 8800, "total": 10530, "batch": 275, "batch_count": 330, "message": "Committed 8,800/10,530 vectors", "elapsed_seconds": 48.4}
+{"phase": "encoding", "completed": 8800, "total": 10530, "batch": 276, "batch_count": 330, "message": "Server encoding batch 276/330", "elapsed_seconds": 48.4}
+{"phase": "committed", "completed": 8832, "total": 10530, "batch": 276, "batch_count": 330, "message": "Committed 8,832/10,530 vectors", "elapsed_seconds": 48.6}
+{"phase": "encoding", "completed": 8832, "total": 10530, "batch": 277, "batch_count": 330, "message": "Server encoding batch 277/330", "elapsed_seconds": 48.6}
+{"phase": "committed", "completed": 8864, "total": 10530, "batch": 277, "batch_count": 330, "message": "Committed 8,864/10,530 vectors", "elapsed_seconds": 48.7}
+{"phase": "encoding", "completed": 8864, "total": 10530, "batch": 278, "batch_count": 330, "message": "Server encoding batch 278/330", "elapsed_seconds": 48.7}
+{"phase": "committed", "completed": 8896, "total": 10530, "batch": 278, "batch_count": 330, "message": "Committed 8,896/10,530 vectors", "elapsed_seconds": 48.9}
+{"phase": "encoding", "completed": 8896, "total": 10530, "batch": 279, "batch_count": 330, "message": "Server encoding batch 279/330", "elapsed_seconds": 48.9}
+{"phase": "committed", "completed": 8928, "total": 10530, "batch": 279, "batch_count": 330, "message": "Committed 8,928/10,530 vectors", "elapsed_seconds": 49.0}
+{"phase": "encoding", "completed": 8928, "total": 10530, "batch": 280, "batch_count": 330, "message": "Server encoding batch 280/330", "elapsed_seconds": 49.0}
+{"phase": "committed", "completed": 8960, "total": 10530, "batch": 280, "batch_count": 330, "message": "Committed 8,960/10,530 vectors", "elapsed_seconds": 49.2}
+{"phase": "encoding", "completed": 8960, "total": 10530, "batch": 281, "batch_count": 330, "message": "Server encoding batch 281/330", "elapsed_seconds": 49.2}
+{"phase": "committed", "completed": 8992, "total": 10530, "batch": 281, "batch_count": 330, "message": "Committed 8,992/10,530 vectors", "elapsed_seconds": 49.4}
+{"phase": "encoding", "completed": 8992, "total": 10530, "batch": 282, "batch_count": 330, "message": "Server encoding batch 282/330", "elapsed_seconds": 49.4}
+{"phase": "committed", "completed": 9024, "total": 10530, "batch": 282, "batch_count": 330, "message": "Committed 9,024/10,530 vectors", "elapsed_seconds": 49.6}
+{"phase": "encoding", "completed": 9024, "total": 10530, "batch": 283, "batch_count": 330, "message": "Server encoding batch 283/330", "elapsed_seconds": 49.6}
+{"phase": "committed", "completed": 9056, "total": 10530, "batch": 283, "batch_count": 330, "message": "Committed 9,056/10,530 vectors", "elapsed_seconds": 50.1}
+{"phase": "encoding", "completed": 9056, "total": 10530, "batch": 284, "batch_count": 330, "message": "Server encoding batch 284/330", "elapsed_seconds": 50.1}
+{"phase": "committed", "completed": 9088, "total": 10530, "batch": 284, "batch_count": 330, "message": "Committed 9,088/10,530 vectors", "elapsed_seconds": 50.5}
+{"phase": "encoding", "completed": 9088, "total": 10530, "batch": 285, "batch_count": 330, "message": "Server encoding batch 285/330", "elapsed_seconds": 50.5}
+{"phase": "committed", "completed": 9120, "total": 10530, "batch": 285, "batch_count": 330, "message": "Committed 9,120/10,530 vectors", "elapsed_seconds": 50.7}
+{"phase": "encoding", "completed": 9120, "total": 10530, "batch": 286, "batch_count": 330, "message": "Server encoding batch 286/330", "elapsed_seconds": 50.7}
+{"phase": "committed", "completed": 9152, "total": 10530, "batch": 286, "batch_count": 330, "message": "Committed 9,152/10,530 vectors", "elapsed_seconds": 50.9}
+{"phase": "encoding", "completed": 9152, "total": 10530, "batch": 287, "batch_count": 330, "message": "Server encoding batch 287/330", "elapsed_seconds": 50.9}
+{"phase": "committed", "completed": 9184, "total": 10530, "batch": 287, "batch_count": 330, "message": "Committed 9,184/10,530 vectors", "elapsed_seconds": 51.0}
+{"phase": "encoding", "completed": 9184, "total": 10530, "batch": 288, "batch_count": 330, "message": "Server encoding batch 288/330", "elapsed_seconds": 51.0}
+{"phase": "committed", "completed": 9216, "total": 10530, "batch": 288, "batch_count": 330, "message": "Committed 9,216/10,530 vectors", "elapsed_seconds": 51.2}
+{"phase": "encoding", "completed": 9216, "total": 10530, "batch": 289, "batch_count": 330, "message": "Server encoding batch 289/330", "elapsed_seconds": 51.2}
+{"phase": "committed", "completed": 9248, "total": 10530, "batch": 289, "batch_count": 330, "message": "Committed 9,248/10,530 vectors", "elapsed_seconds": 51.3}
+{"phase": "encoding", "completed": 9248, "total": 10530, "batch": 290, "batch_count": 330, "message": "Server encoding batch 290/330", "elapsed_seconds": 51.3}
+{"phase": "committed", "completed": 9280, "total": 10530, "batch": 290, "batch_count": 330, "message": "Committed 9,280/10,530 vectors", "elapsed_seconds": 51.5}
+{"phase": "encoding", "completed": 9280, "total": 10530, "batch": 291, "batch_count": 330, "message": "Server encoding batch 291/330", "elapsed_seconds": 51.5}
+{"phase": "committed", "completed": 9312, "total": 10530, "batch": 291, "batch_count": 330, "message": "Committed 9,312/10,530 vectors", "elapsed_seconds": 51.7}
+{"phase": "encoding", "completed": 9312, "total": 10530, "batch": 292, "batch_count": 330, "message": "Server encoding batch 292/330", "elapsed_seconds": 51.7}
+{"phase": "committed", "completed": 9344, "total": 10530, "batch": 292, "batch_count": 330, "message": "Committed 9,344/10,530 vectors", "elapsed_seconds": 51.9}
+{"phase": "encoding", "completed": 9344, "total": 10530, "batch": 293, "batch_count": 330, "message": "Server encoding batch 293/330", "elapsed_seconds": 51.9}
+{"phase": "committed", "completed": 9376, "total": 10530, "batch": 293, "batch_count": 330, "message": "Committed 9,376/10,530 vectors", "elapsed_seconds": 52.1}
+{"phase": "encoding", "completed": 9376, "total": 10530, "batch": 294, "batch_count": 330, "message": "Server encoding batch 294/330", "elapsed_seconds": 52.1}
+{"phase": "committed", "completed": 9408, "total": 10530, "batch": 294, "batch_count": 330, "message": "Committed 9,408/10,530 vectors", "elapsed_seconds": 52.4}
+{"phase": "encoding", "completed": 9408, "total": 10530, "batch": 295, "batch_count": 330, "message": "Server encoding batch 295/330", "elapsed_seconds": 52.4}
+{"phase": "committed", "completed": 9440, "total": 10530, "batch": 295, "batch_count": 330, "message": "Committed 9,440/10,530 vectors", "elapsed_seconds": 52.7}
+{"phase": "encoding", "completed": 9440, "total": 10530, "batch": 296, "batch_count": 330, "message": "Server encoding batch 296/330", "elapsed_seconds": 52.7}
+{"phase": "committed", "completed": 9472, "total": 10530, "batch": 296, "batch_count": 330, "message": "Committed 9,472/10,530 vectors", "elapsed_seconds": 52.8}
+{"phase": "encoding", "completed": 9472, "total": 10530, "batch": 297, "batch_count": 330, "message": "Server encoding batch 297/330", "elapsed_seconds": 52.8}
+{"phase": "committed", "completed": 9504, "total": 10530, "batch": 297, "batch_count": 330, "message": "Committed 9,504/10,530 vectors", "elapsed_seconds": 53.0}
+{"phase": "encoding", "completed": 9504, "total": 10530, "batch": 298, "batch_count": 330, "message": "Server encoding batch 298/330", "elapsed_seconds": 53.0}
+{"phase": "committed", "completed": 9536, "total": 10530, "batch": 298, "batch_count": 330, "message": "Committed 9,536/10,530 vectors", "elapsed_seconds": 53.3}
+{"phase": "encoding", "completed": 9536, "total": 10530, "batch": 299, "batch_count": 330, "message": "Server encoding batch 299/330", "elapsed_seconds": 53.3}
+{"phase": "committed", "completed": 9568, "total": 10530, "batch": 299, "batch_count": 330, "message": "Committed 9,568/10,530 vectors", "elapsed_seconds": 53.7}
+{"phase": "encoding", "completed": 9568, "total": 10530, "batch": 300, "batch_count": 330, "message": "Server encoding batch 300/330", "elapsed_seconds": 53.7}
+{"phase": "committed", "completed": 9600, "total": 10530, "batch": 300, "batch_count": 330, "message": "Committed 9,600/10,530 vectors", "elapsed_seconds": 53.9}
+{"phase": "encoding", "completed": 9600, "total": 10530, "batch": 301, "batch_count": 330, "message": "Server encoding batch 301/330", "elapsed_seconds": 53.9}
+{"phase": "committed", "completed": 9632, "total": 10530, "batch": 301, "batch_count": 330, "message": "Committed 9,632/10,530 vectors", "elapsed_seconds": 54.0}
+{"phase": "encoding", "completed": 9632, "total": 10530, "batch": 302, "batch_count": 330, "message": "Server encoding batch 302/330", "elapsed_seconds": 54.0}
+{"phase": "committed", "completed": 9664, "total": 10530, "batch": 302, "batch_count": 330, "message": "Committed 9,664/10,530 vectors", "elapsed_seconds": 54.2}
+{"phase": "encoding", "completed": 9664, "total": 10530, "batch": 303, "batch_count": 330, "message": "Server encoding batch 303/330", "elapsed_seconds": 54.2}
+{"phase": "committed", "completed": 9696, "total": 10530, "batch": 303, "batch_count": 330, "message": "Committed 9,696/10,530 vectors", "elapsed_seconds": 54.3}
+{"phase": "encoding", "completed": 9696, "total": 10530, "batch": 304, "batch_count": 330, "message": "Server encoding batch 304/330", "elapsed_seconds": 54.3}
+{"phase": "committed", "completed": 9728, "total": 10530, "batch": 304, "batch_count": 330, "message": "Committed 9,728/10,530 vectors", "elapsed_seconds": 54.6}
+{"phase": "encoding", "completed": 9728, "total": 10530, "batch": 305, "batch_count": 330, "message": "Server encoding batch 305/330", "elapsed_seconds": 54.6}
+{"phase": "committed", "completed": 9760, "total": 10530, "batch": 305, "batch_count": 330, "message": "Committed 9,760/10,530 vectors", "elapsed_seconds": 54.8}
+{"phase": "encoding", "completed": 9760, "total": 10530, "batch": 306, "batch_count": 330, "message": "Server encoding batch 306/330", "elapsed_seconds": 54.8}
+{"phase": "committed", "completed": 9792, "total": 10530, "batch": 306, "batch_count": 330, "message": "Committed 9,792/10,530 vectors", "elapsed_seconds": 54.9}
+{"phase": "encoding", "completed": 9792, "total": 10530, "batch": 307, "batch_count": 330, "message": "Server encoding batch 307/330", "elapsed_seconds": 54.9}
+{"phase": "committed", "completed": 9824, "total": 10530, "batch": 307, "batch_count": 330, "message": "Committed 9,824/10,530 vectors", "elapsed_seconds": 55.1}
+{"phase": "encoding", "completed": 9824, "total": 10530, "batch": 308, "batch_count": 330, "message": "Server encoding batch 308/330", "elapsed_seconds": 55.1}
+{"phase": "committed", "completed": 9856, "total": 10530, "batch": 308, "batch_count": 330, "message": "Committed 9,856/10,530 vectors", "elapsed_seconds": 55.4}
+{"phase": "encoding", "completed": 9856, "total": 10530, "batch": 309, "batch_count": 330, "message": "Server encoding batch 309/330", "elapsed_seconds": 55.4}
+{"phase": "committed", "completed": 9888, "total": 10530, "batch": 309, "batch_count": 330, "message": "Committed 9,888/10,530 vectors", "elapsed_seconds": 55.5}
+{"phase": "encoding", "completed": 9888, "total": 10530, "batch": 310, "batch_count": 330, "message": "Server encoding batch 310/330", "elapsed_seconds": 55.5}
+{"phase": "committed", "completed": 9920, "total": 10530, "batch": 310, "batch_count": 330, "message": "Committed 9,920/10,530 vectors", "elapsed_seconds": 55.7}
+{"phase": "encoding", "completed": 9920, "total": 10530, "batch": 311, "batch_count": 330, "message": "Server encoding batch 311/330", "elapsed_seconds": 55.7}
+{"phase": "committed", "completed": 9952, "total": 10530, "batch": 311, "batch_count": 330, "message": "Committed 9,952/10,530 vectors", "elapsed_seconds": 56.0}
+{"phase": "encoding", "completed": 9952, "total": 10530, "batch": 312, "batch_count": 330, "message": "Server encoding batch 312/330", "elapsed_seconds": 56.0}
+{"phase": "committed", "completed": 9984, "total": 10530, "batch": 312, "batch_count": 330, "message": "Committed 9,984/10,530 vectors", "elapsed_seconds": 56.2}
+{"phase": "encoding", "completed": 9984, "total": 10530, "batch": 313, "batch_count": 330, "message": "Server encoding batch 313/330", "elapsed_seconds": 56.2}
+{"phase": "committed", "completed": 10016, "total": 10530, "batch": 313, "batch_count": 330, "message": "Committed 10,016/10,530 vectors", "elapsed_seconds": 56.4}
+{"phase": "encoding", "completed": 10016, "total": 10530, "batch": 314, "batch_count": 330, "message": "Server encoding batch 314/330", "elapsed_seconds": 56.4}
+{"phase": "committed", "completed": 10048, "total": 10530, "batch": 314, "batch_count": 330, "message": "Committed 10,048/10,530 vectors", "elapsed_seconds": 56.6}
+{"phase": "encoding", "completed": 10048, "total": 10530, "batch": 315, "batch_count": 330, "message": "Server encoding batch 315/330", "elapsed_seconds": 56.6}
+{"phase": "committed", "completed": 10080, "total": 10530, "batch": 315, "batch_count": 330, "message": "Committed 10,080/10,530 vectors", "elapsed_seconds": 56.9}
+{"phase": "encoding", "completed": 10080, "total": 10530, "batch": 316, "batch_count": 330, "message": "Server encoding batch 316/330", "elapsed_seconds": 56.9}
+{"phase": "committed", "completed": 10112, "total": 10530, "batch": 316, "batch_count": 330, "message": "Committed 10,112/10,530 vectors", "elapsed_seconds": 57.4}
+{"phase": "encoding", "completed": 10112, "total": 10530, "batch": 317, "batch_count": 330, "message": "Server encoding batch 317/330", "elapsed_seconds": 57.4}
+{"phase": "committed", "completed": 10144, "total": 10530, "batch": 317, "batch_count": 330, "message": "Committed 10,144/10,530 vectors", "elapsed_seconds": 57.9}
+{"phase": "encoding", "completed": 10144, "total": 10530, "batch": 318, "batch_count": 330, "message": "Server encoding batch 318/330", "elapsed_seconds": 57.9}
+{"phase": "committed", "completed": 10176, "total": 10530, "batch": 318, "batch_count": 330, "message": "Committed 10,176/10,530 vectors", "elapsed_seconds": 58.2}
+{"phase": "encoding", "completed": 10176, "total": 10530, "batch": 319, "batch_count": 330, "message": "Server encoding batch 319/330", "elapsed_seconds": 58.2}
+{"phase": "committed", "completed": 10208, "total": 10530, "batch": 319, "batch_count": 330, "message": "Committed 10,208/10,530 vectors", "elapsed_seconds": 58.6}
+{"phase": "encoding", "completed": 10208, "total": 10530, "batch": 320, "batch_count": 330, "message": "Server encoding batch 320/330", "elapsed_seconds": 58.6}
+{"phase": "committed", "completed": 10240, "total": 10530, "batch": 320, "batch_count": 330, "message": "Committed 10,240/10,530 vectors", "elapsed_seconds": 59.0}
+{"phase": "encoding", "completed": 10240, "total": 10530, "batch": 321, "batch_count": 330, "message": "Server encoding batch 321/330", "elapsed_seconds": 59.0}
+{"phase": "committed", "completed": 10272, "total": 10530, "batch": 321, "batch_count": 330, "message": "Committed 10,272/10,530 vectors", "elapsed_seconds": 59.5}
+{"phase": "encoding", "completed": 10272, "total": 10530, "batch": 322, "batch_count": 330, "message": "Server encoding batch 322/330", "elapsed_seconds": 59.5}
+{"phase": "committed", "completed": 10304, "total": 10530, "batch": 322, "batch_count": 330, "message": "Committed 10,304/10,530 vectors", "elapsed_seconds": 60.0}
+{"phase": "encoding", "completed": 10304, "total": 10530, "batch": 323, "batch_count": 330, "message": "Server encoding batch 323/330", "elapsed_seconds": 60.0}
+{"phase": "committed", "completed": 10336, "total": 10530, "batch": 323, "batch_count": 330, "message": "Committed 10,336/10,530 vectors", "elapsed_seconds": 60.2}
+{"phase": "encoding", "completed": 10336, "total": 10530, "batch": 324, "batch_count": 330, "message": "Server encoding batch 324/330", "elapsed_seconds": 60.2}
+{"phase": "committed", "completed": 10368, "total": 10530, "batch": 324, "batch_count": 330, "message": "Committed 10,368/10,530 vectors", "elapsed_seconds": 60.7}
+{"phase": "encoding", "completed": 10368, "total": 10530, "batch": 325, "batch_count": 330, "message": "Server encoding batch 325/330", "elapsed_seconds": 60.7}
+{"phase": "committed", "completed": 10400, "total": 10530, "batch": 325, "batch_count": 330, "message": "Committed 10,400/10,530 vectors", "elapsed_seconds": 60.9}
+{"phase": "encoding", "completed": 10400, "total": 10530, "batch": 326, "batch_count": 330, "message": "Server encoding batch 326/330", "elapsed_seconds": 60.9}
+{"phase": "committed", "completed": 10432, "total": 10530, "batch": 326, "batch_count": 330, "message": "Committed 10,432/10,530 vectors", "elapsed_seconds": 61.4}
+{"phase": "encoding", "completed": 10432, "total": 10530, "batch": 327, "batch_count": 330, "message": "Server encoding batch 327/330", "elapsed_seconds": 61.4}
+{"phase": "committed", "completed": 10464, "total": 10530, "batch": 327, "batch_count": 330, "message": "Committed 10,464/10,530 vectors", "elapsed_seconds": 61.9}
+{"phase": "encoding", "completed": 10464, "total": 10530, "batch": 328, "batch_count": 330, "message": "Server encoding batch 328/330", "elapsed_seconds": 61.9}
+{"phase": "committed", "completed": 10496, "total": 10530, "batch": 328, "batch_count": 330, "message": "Committed 10,496/10,530 vectors", "elapsed_seconds": 62.2}
+{"phase": "encoding", "completed": 10496, "total": 10530, "batch": 329, "batch_count": 330, "message": "Server encoding batch 329/330", "elapsed_seconds": 62.2}
+{"phase": "committed", "completed": 10528, "total": 10530, "batch": 329, "batch_count": 330, "message": "Committed 10,528/10,530 vectors", "elapsed_seconds": 62.7}
+{"phase": "encoding", "completed": 10528, "total": 10530, "batch": 330, "batch_count": 330, "message": "Server encoding batch 330/330", "elapsed_seconds": 62.7}
+{"phase": "committed", "completed": 10530, "total": 10530, "batch": 330, "batch_count": 330, "message": "Committed 10,530/10,530 vectors", "elapsed_seconds": 62.8}
+{"phase": "completed", "completed": 10530, "total": 10530, "batch": 330, "batch_count": 330, "message": "Complete: generated 10,530 and reused 0 vectors covering 12,402 messages", "elapsed_seconds": 62.8}
+{"phase": "build_result", "working_corpus_messages": 12402, "unique_vector_inputs": 10530, "reused_vectors": 0, "generated_vectors": 10530, "dimensions": 384, "normalization": "unit_l2", "elapsed_seconds": 62.8}
+{"phase": "search_result", "query": "school meeting schedule", "hit_count": 5, "hits": [{"message_id": "decipher_export_19:581", "distance": 0.9127870798110962}, {"message_id": "decipher_message_1:1302", "distance": 0.9247714877128601}, {"message_id": "decipher_message_1:1282", "distance": 0.9330933690071106}, {"message_id": "decipher_message_1:1202", "distance": 0.9379029273986816}, {"message_id": "decipher_message_1:4995", "distance": 0.937987208366394}], "elapsed_seconds": 63.1}

@@ -1,0 +1,40 @@
+{
+  "compatibility_fingerprint": "8ed93c86d94b71fdd4c6225078d9d9d2169aa8bab42ef13f348a861e60e1ad80",
+  "config_version": 31,
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "queries": [
+    {
+      "query_id": "q0001",
+      "text": "fight about school"
+    },
+    {
+      "query_id": "q0002",
+      "text": "school fight"
+    },
+    {
+      "query_id": "q0003",
+      "text": "argue about school"
+    }
+  ],
+  "request_id": "911bcedd-9079-489b-b666-e6e3ae98df50",
+  "retrieval_plan_id": "4872d9d8-77ab-4660-b82b-e6da470a4964",
+  "search_policy": {
+    "fusion_method": "reciprocal_rank_fusion",
+    "maximum_prompt_suggestion_messages": 40,
+    "rrf_constant": 60,
+    "top_k_per_query": 100
+  },
+  "usage": {
+    "cost_complete": false,
+    "currency": "USD",
+    "estimated_cost": null,
+    "input_tokens": 365,
+    "output_tokens": 18,
+    "source": "provider_reported"
+  }
+}

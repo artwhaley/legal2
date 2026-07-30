@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Message Evidence Server Administration</title>
+  <style>
+    :root{
+      --ink:#18212b;--muted:#5d6875;--line:#d9dee5;--soft:#f4f6f8;
+      --panel:#fff;--accent:#245b78;--accent-soft:#eaf3f8;--good:#17633b;
+      --good-soft:#eaf7ef;--warn:#8a4b08;--warn-soft:#fff5e6;--bad:#9d2433;
+      --bad-soft:#fff0f2;--shadow:0 1px 2px rgba(20,35,50,.06);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:#eef1f4;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:var(--accent)}
+    code{font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+    h1{font-size:26px;line-height:1.2;margin:3px 0}
+    h2{font-size:21px;line-height:1.25;margin:0 0 6px}
+    h3{font-size:17px;line-height:1.3;margin:0}
+    h4{font-size:15px;margin:0}
+    p{margin:6px 0 12px}
+    .topbar{background:#142d3c;color:#fff}
+    .topbar-inner,.page{max-width:1320px;margin:0 auto;padding-left:24px;padding-right:24px}
+    .topbar-inner{padding-top:18px}
+    .page{padding-top:18px;padding-bottom:64px}
+    .eyebrow{text-transform:uppercase;letter-spacing:.09em;font-size:11px;font-weight:750;color:#9fc4d8}
+    .lede{max-width:850px;color:#d6e3ea;margin:5px 0 14px}
+    .tabs{display:flex;gap:3px;overflow-x:auto}
+    .tabs a{color:#dceaf1;text-decoration:none;padding:10px 13px;border-radius:7px 7px 0 0;white-space:nowrap;font-weight:650}
+    .tabs a:hover{background:#25495d}
+    .tabs a.active{background:#eef1f4;color:var(--ink)}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin:0 0 16px;box-shadow:var(--shadow)}
+    .panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:16px}
+    .panel-heading p,.muted,.group-summary,.field-help{color:var(--muted)}
+    .notice,.error{border-radius:8px;padding:12px 14px;margin:0 0 14px;font-weight:650}
+    .notice{background:var(--good-soft);border:1px solid #8dc9a7;color:#124b2e}
+    .error{background:var(--bad-soft);border:1px solid #dda1aa;color:#7e1725}
+    .status-grid,.summary-grid,.settings-grid,.cards{display:grid;gap:12px}
+    .status-grid,.summary-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .settings-grid,.cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .status-card,.summary-card,.entity-card,.route-summary{border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px}
+    .status-card{background:var(--soft)}
+    .status-label,.summary-label{display:block;color:var(--muted);font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.04em}
+    .status-value,.summary-value{display:block;font-size:18px;font-weight:720;margin-top:3px;overflow-wrap:anywhere}
+    .status-note{color:var(--muted);font-size:12px;margin-top:2px}
+    .badge{display:inline-block;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:750;background:var(--accent-soft);color:var(--accent)}
+    .badge.good{background:var(--good-soft);color:var(--good)}
+    .badge.warn{background:var(--warn-soft);color:var(--warn)}
+    .lifecycle{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+    .steps{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .step{border:1px solid var(--line);background:var(--soft);border-radius:7px;padding:7px 10px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    button{font:inherit;font-weight:680;border:1px solid #aeb8c2;border-radius:6px;background:#fff;color:var(--ink);padding:8px 12px;cursor:pointer}
+    button:hover{background:#f1f4f6}
+    button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    button.danger{border-color:#cf8993;color:var(--bad)}
+    input,textarea,select{width:100%;border:1px solid #adb7c1;border-radius:5px;background:#fff;color:var(--ink);font:inherit;padding:8px 9px}
+    input:focus,textarea:focus,select:focus{outline:3px solid rgba(36,91,120,.16);border-color:var(--accent)}
+    input[readonly]{background:#eef1f4;color:#515c67}
+    textarea{min-height:110px;resize:vertical}
+    textarea.prompt{min-height:250px;font:13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+    .field{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .field-label{font-weight:700;display:flex;align-items:center;gap:6px}
+    .field-help{font-size:12px;line-height:1.35;margin:0}
+    .help-dot{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#dce9f0;color:#174a65;font-size:11px;font-weight:800;cursor:help}
+    .config-section{border:1px solid var(--line);border-radius:9px;margin:12px 0;background:#fff;overflow:hidden}
+    .config-section>summary{cursor:pointer;padding:13px 15px;background:var(--soft);font-weight:730}
+    .config-section-body{padding:15px}
+    .entity-card{display:flex;flex-direction:column;gap:14px}
+    .entity-card header{border-bottom:1px solid var(--line);padding-bottom:10px}
+    .entity-card footer{border-top:1px solid var(--line);padding-top:12px}
+    .secret-block,.warning-box,.when-box{border-radius:8px;padding:12px}
+    .secret-block{border:1px solid var(--line);background:var(--soft)}
+    .warning-box{background:var(--warn-soft);border:1px solid #e4bd83;color:#6e3b04;margin:10px 0}
+    .when-box{background:var(--accent-soft);border-left:4px solid var(--accent);margin:10px 0}
+    .checkbox-line{display:flex;align-items:center;gap:8px;font-weight:680}
+    .checkbox-line input{width:auto}
+    .operation{border:1px solid #cbd4dc;border-radius:10px;margin:16px 0;background:#fff;overflow:hidden}
+    .operation-header{padding:16px 18px;background:#f7fafb;border-bottom:1px solid var(--line)}
+    .operation-body{padding:16px 18px}
+    .operation-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+    .route-summary{background:#f8fbfc;margin:12px 0}
+    .route-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .route-grid span{font-size:12px;color:var(--muted)}
+    .route-grid strong{display:block;color:var(--ink);font-size:14px;overflow-wrap:anywhere}
+    .prompt-block{margin:14px 0;padding:14px;border:1px solid #b9cbd6;background:#f8fbfc;border-radius:8px}
+    details>summary{cursor:pointer;font-weight:680}
+    pre{background:#18232c;color:#e7edf1;border-radius:6px;padding:12px;overflow:auto;max-height:32rem;white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+    table{border-collapse:collapse;width:100%;font-size:13px}
+    th,td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}
+    th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+    .savebar{position:sticky;bottom:12px;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:16px;background:#142d3c;color:#fff;border-radius:9px;padding:12px 14px;margin-top:18px;box-shadow:0 5px 22px rgba(10,25,35,.24)}
+    .savebar p{margin:0;color:#d5e3ea}
+    @media(max-width:1000px){
+      .status-grid,.summary-grid,.route-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .settings-grid,.cards{grid-template-columns:1fr}
+    }
+    @media(max-width:700px){
+      .topbar-inner,.page{padding-left:14px;padding-right:14px}
+      .status-grid,.summary-grid,.route-grid{grid-template-columns:1fr}
+      .panel-heading,.lifecycle,.savebar{display:block}
+      .actions,.savebar button{margin-top:10px}
+      table{display:block;overflow-x:auto}
+    }
+  </style>
+</head>
+<body>
+{% macro hidden(page) -%}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="version_id" value="{{ draft_id }}">
+  <input type="hidden" name="return_page" value="{{ page }}">
+{%- endmacro %}
+
+{% macro render_field(input_name, guide_key, value, element_id='') -%}
+  {% set meta=field_guide[guide_key] %}
+  {% set control_id=element_id or input_name %}
+  <div class="field">
+    <label class="field-label" for="{{ control_id }}" title="{{ meta.help }}">
+      {{ meta.label }} <span class="help-dot" title="{{ meta.help }}" aria-label="{{ meta.help }}">?</span>
+    </label>
+    {% if meta.kind == 'bool' %}
+      <select id="{{ control_id }}" name="{{ input_name }}" title="{{ meta.help }}">
+        <option value="true"{% if value %} selected{% endif %}>Enabled</option>
+        <option value="false"{% if not value %} selected{% endif %}>Disabled</option>
+      </select>
+    {% elif meta.kind == 'choice' %}
+      <select id="{{ control_id }}" name="{{ input_name }}" title="{{ meta.help }}">
+        {% for option in meta.options %}<option value="{{ option }}"{% if value == option %} selected{% endif %}>{{ option }}</option>{% endfor %}
+      </select>
+    {% else %}
+      <input id="{{ control_id }}" name="{{ input_name }}"
+        value="{{ value|join(',') if value is sequence and value is not string else ('' if value is none else value) }}"
+        title="{{ meta.help }}"
+        {% if meta.kind in ('int','float','nullable_int','nullable_float') %}type="number"{% else %}type="text"{% endif %}
+        {% if meta.kind in ('float','nullable_float') %}step="any"{% endif %}
+        {% if meta.kind == 'readonly' %}readonly{% endif %}>
+    {% endif %}
+    <p class="field-help">{{ meta.help }}</p>
+  </div>
+{%- endmacro %}
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="eyebrow">Operator console · local access only</div>
+    <h1>Message Evidence Server</h1>
+    <p class="lede">The server owns providers, models, prompts, orchestration, embeddings, and operational policy. Product clients submit work; they do not configure it.</p>
+    <nav class="tabs" aria-label="Administration pages">
+      <a href="/admin/" class="{% if page_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="/admin/providers" class="{% if page_name == 'providers' %}active{% endif %}">Provider accounts</a>
+      <a href="/admin/models" class="{% if page_name == 'models' %}active{% endif %}">Model profiles</a>
+      <a href="/admin/operations" class="{% if page_name == 'operations' %}active{% endif %}">Operation routing</a>
+      <a href="/admin/server" class="{% if page_name == 'server' %}active{% endif %}">Server & embeddings</a>
+      <a href="/admin/activity" class="{% if page_name == 'activity' %}active{% endif %}">Tests & activity</a>
+      <a href="/admin/debug" class="{% if page_name == 'debug' %}active{% endif %}">Debug capture</a>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+  {% if message %}<div class="notice" id="notice">{{ message }}</div>{% endif %}
+  {% if error %}<div class="error" id="error">{{ error }}</div>{% endif %}
+
+  {% if page_name != 'debug' %}
+  <section class="panel">
+    <div class="lifecycle">
+      <div>
+        <div class="steps">
+          <span class="badge">Draft {{ draft_id }}</span>
+          <span class="step"><strong>Save page</strong> changes only the draft</span>
+          <span>→</span><span class="step"><strong>Validate</strong> makes no paid calls</span>
+          <span>→</span><span class="step"><strong>Activate</strong> swaps the runtime atomically</span>
+        </div>
+        <p class="muted">Product traffic is using active version {{ active_version or "none" }}. Unsaved and unactivated edits have no runtime effect.</p>
+      </div>
+      <form method="post" action="/admin/action" class="actions">
+        {{ hidden(page_name) }}
+        <button name="action" value="validate">Validate draft</button>
+        <button class="primary" name="action" value="activate">Activate saved draft</button>
+      </form>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if page_name == 'dashboard' %}
+  <section class="panel" id="dashboard">
+    <div class="panel-heading">
+      <div><h2>Running server</h2><p>These values describe the active runtime, not the editable draft.</p></div>
+      <div class="actions"><span id="poll-status" class="badge">Connecting live updates</span><span class="badge {% if runtime_status.configuration == 'active' %}good{% else %}warn{% endif %}">{{ runtime_status.configuration }}</span></div>
+    </div>
+    <div class="status-grid">
+      <div class="status-card"><span class="status-label">Active configuration</span><span class="status-value">{{ runtime_status.active_version or "None" }}</span><div class="status-note">Immutable version serving product requests</div></div>
+      <div class="status-card"><span class="status-label">Current listener</span><span class="status-value">{{ runtime_status.listener_current or "Not started" }}</span><div class="status-note">{% if runtime_status.listener_restart_required %}Restart required for configured listener{% else %}Matches active configuration{% endif %}</div></div>
+      <div class="status-card"><span class="status-label">Embedding model</span><span class="status-value">{% if runtime_status.embedding %}{{ runtime_status.embedding.model }}{% else %}Not loaded{% endif %}</span><div class="status-note">{% if runtime_status.embedding %}{{ runtime_status.embedding.dimensions or "?" }} dimensions · {{ runtime_status.embedding.device }}{% else %}No active embedding runtime{% endif %}</div></div>
+      <div class="status-card"><span class="status-label">Embedding work</span><span class="status-value" id="embedding-work-value">{% if runtime_status.embedding %}{{ runtime_status.embedding.in_flight }} active / {{ runtime_status.embedding.queued }} queued{% else %}Unavailable{% endif %}</span><div class="status-note" id="embedding-work-state">{% if runtime_status.embedding and runtime_status.embedding.accepting %}Accepting requests{% else %}Not accepting requests{% endif %}</div></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Active operation routing</h2><p>The reusable profile and exact provider model currently assigned to each server call.</p></div><a href="/admin/operations">Edit routing</a></div>
+    <table>
+      <thead><tr><th>Operation</th><th>Provider</th><th>Model profile</th><th>Provider model ID</th><th>Circuit</th><th>Work</th></tr></thead>
+      <tbody>{% for name in operations %}{% set state=runtime_status.operations.get(name, {}) %}
+        <tr>
+          <td><strong>{{ operation_guide[name].title }}</strong><br><span class="muted">{{ operation_guide[name].step }}</span></td>
+          <td>{{ state.get('provider', '—') }}</td>
+          <td id="operation-{{name}}-model">{{ state.get('model', '—') }}</td>
+          <td>{{ state.get('provider_model_id', '—') }}</td>
+          <td id="operation-{{name}}-circuit">{{ state.get('circuit', '—') }}</td>
+          <td><span id="operation-{{name}}-active">{{ state.get('in_flight', 0) }}</span> active · <span id="operation-{{name}}-queued">{{ state.get('queued', 0) }}</span> queued</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Recorded usage</h2><p>Content-free accounting records retained by the server.</p></div><a href="/admin/activity">Tests, events, and history</a></div>
+    <div class="summary-grid">
+      <div class="summary-card"><span class="summary-label">Input tokens</span><span class="summary-value" id="usage-input-tokens">{{ "{:,}".format(usage.input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Output tokens</span><span class="summary-value" id="usage-output-tokens">{{ "{:,}".format(usage.output_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Embedding items</span><span class="summary-value" id="usage-embedding-items">{{ "{:,}".format(usage.embedding_items) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Known estimated cost</span><span class="summary-value" id="usage-known-cost">${{ "%.4f"|format(usage.known_cost) }}</span><div class="status-note"><span id="usage-incomplete-cost">{{ usage.incomplete_cost_rows }}</span> rows lack pricing</div></div>
+    </div>
+    <pre id="metrics" style="display:none">{{ metrics|tojson(indent=2) }}</pre>
+    <pre id="events" style="display:none">{{ events|tojson(indent=2) }}</pre>
+    <pre id="usage-status" style="display:none">{{ usage|tojson(indent=2) }}</pre>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading"><div><h2>What the server does</h2><p>The EVW and local search stay on the client. The server receives the complete information needed for each request and retains no user corpus.</p></div></div>
+    <div class="cards">
+      <article class="entity-card"><h3>Conversational analysis</h3><p>The server first tests the exact whole-corpus payload against the selected whole-corpus model budget. If it fits, one call answers it. Otherwise the server deterministically packs windows, extracts evidence, reduces only when necessary, and synthesizes the answer.</p></article>
+      <article class="entity-card"><h3>Embeddings</h3><p>The client submits complete text workloads. The server batches and encodes them, streams visible progress and vectors back, and never opens the EVW. The client stores vectors and performs local similarity lookup.</p></article>
+    </div>
+  </section>
+
+  {% elif page_name == 'providers' %}
+  <section class="panel">
+    <div class="panel-heading">
+      <div><h2>Provider accounts</h2><p>An account is one API endpoint and encrypted credential. Models that share an endpoint and key should reference the same account.</p></div>
+      <form method="post" action="/admin/action">{{ hidden('providers') }}<button name="action" value="add_provider">Add provider account</button></form>
+    </div>
+    <div class="warning-box"><strong>Credentials live here, not on operations or model profiles.</strong> Replacing a credential changes the draft account once; every profile using it receives that credential after activation.</div>
+  </section>
+  <div class="cards">
+  {% for provider_id, provider in config.provider_accounts.items() %}
+    <article class="entity-card">
+      <header><h3>{{ provider.name }}</h3><p class="muted"><code>{{ provider_id }}</code></p></header>
+      <form method="post" action="/admin/action">
+        {{ hidden('providers') }}<input type="hidden" name="provider_account_id" value="{{ provider_id }}">
+        <div class="settings-grid">
+          {{ render_field('provider_accounts.name', 'provider_accounts.name', provider.name, provider_id ~ '-name') }}
+          {{ render_field('provider_accounts.provider_kind', 'provider_accounts.provider_kind', provider.provider_kind, provider_id ~ '-kind') }}
+          {{ render_field('provider_accounts.base_url', 'provider_accounts.base_url', provider.base_url, provider_id ~ '-url') }}
+        </div>
+        <div class="secret-block">
+          <h4>Encrypted API credential</h4>
+          <p>{% if provider_id in secret_projection %}<span class="badge good">Configured · suffix {{ secret_projection[provider_id].suffix }}</span>{% else %}<span class="badge warn">Not configured</span>{% endif %} The key is never rendered back to this page.</p>
+          <label class="field-label" for="secret-{{ provider_id }}">Replace credential <span class="help-dot" title="Leave blank to preserve the stored credential. A nonblank value replaces it atomically with this draft save.">?</span></label>
+          <input id="secret-{{ provider_id }}" type="password" name="secret" value="" autocomplete="new-password" placeholder="Leave blank to preserve existing credential">
+          <details style="margin-top:10px"><summary>Remove credential</summary>
+            <label class="checkbox-line"><input type="checkbox" name="remove_secret"> Remove the stored credential</label>
+            <label class="field-label">Type REMOVE to confirm<input name="confirm_remove" autocomplete="off"></label>
+          </details>
+        </div>
+        <footer class="actions"><button class="primary" name="action" value="save_provider">Save provider account</button></footer>
+      </form>
+      <form method="post" action="/admin/action" class="actions">
+        {{ hidden('providers') }}<input type="hidden" name="provider_account_id" value="{{ provider_id }}">
+        <button class="danger" name="action" value="delete_provider">Delete if unreferenced</button>
+      </form>
+    </article>
+  {% endfor %}
+  </div>
+
+  {% elif page_name == 'models' %}
+  <section class="panel">
+    <div class="panel-heading">
+      <div><h2>Reusable model profiles</h2><p>A profile describes model facts: provider model ID, native tokenizer, context capacity, structured-output support, and pricing. Prompts and retries do not belong here.</p></div>
+      <form method="post" action="/admin/action">{{ hidden('models') }}<button name="action" value="add_profile">Add model profile</button></form>
+    </div>
+  </section>
+  {% for profile_id, profile in config.model_profiles.items() %}
+    <section class="panel">
+      <div class="panel-heading"><div><h2>{{ profile.name }}</h2><p><code>{{ profile_id }}</code></p></div>
+        <form method="post" action="/admin/action" class="actions">{{ hidden('models') }}<input type="hidden" name="model_profile_id" value="{{ profile_id }}"><button name="action" value="clone_profile">Clone for experiment</button><button class="danger" name="action" value="delete_profile">Delete if unreferenced</button></form>
+      </div>
+      <form method="post" action="/admin/action">
+        {{ hidden('models') }}<input type="hidden" name="model_profile_id" value="{{ profile_id }}">
+        <div class="field">
+          <label class="field-label" for="provider-{{ profile_id }}">Provider account <span class="help-dot" title="The endpoint and encrypted credential used by this model profile.">?</span></label>
+          <select id="provider-{{ profile_id }}" name="provider_account_id">
+            {% for provider_id, provider in config.provider_accounts.items() %}<option value="{{ provider_id }}"{% if provider_id == profile.provider_account_id %} selected{% endif %}>{{ provider.name }} — {{ provider.base_url or "endpoint not configured" }}</option>{% endfor %}
+          </select>
+          <p class="field-help">The model profile reuses this account's endpoint and encrypted credential.</p>
+        </div>
+        {% for group in model_profile_field_groups %}
+          <details class="config-section"{% if loop.first %} open{% endif %}>
+            <summary>{{ group.title }}</summary>
+            <div class="config-section-body"><div class="settings-grid">
+              {% for key in group.fields %}{{ render_field('model_profiles.' ~ key, 'model_profiles.' ~ key, profile[key], profile_id ~ '-' ~ key) }}{% endfor %}
+            </div></div>
+          </details>
+        {% endfor %}
+        <button class="primary" name="action" value="save_profile">Save model profile</button>
+      </form>
+    </section>
+  {% endfor %}
+
+  {% elif page_name == 'operations' %}
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Operation routing and policy</h2><p>Each of the six real server calls selects one reusable model profile. Prompts, output reservations, timeouts, concurrency, retries, and circuits remain specific to the call.</p></div></div>
+    <div class="warning-box">Changing a profile updates every operation assigned to it. Changing fields on this page affects only that operation.</div>
+  </section>
+  <form method="post" action="/admin/action" id="operation-editor">
+    {{ hidden('operations') }}
+    {% for name in operations %}{% set assignment=config.operation_assignments[name] %}{% set guide=operation_guide[name] %}{% set resolved=resolved_summaries[name] %}
+      <article class="operation" id="operation-{{ name }}">
+        <header class="operation-header">
+          <div class="operation-title"><h3>{{ guide.title }}</h3><span class="badge">{{ guide.step }}</span></div>
+          <p>{{ guide.summary }}</p>
+          <div class="when-box"><strong>When it runs:</strong> {{ guide.when }}</div>
+        </header>
+        <div class="operation-body">
+          <div class="field">
+            <label class="field-label" for="profile-{{ name }}">Model profile <span class="help-dot" title="Reusable provider/model/tokenizer/context setup selected for this call.">?</span></label>
+            <select id="profile-{{ name }}" name="operation_assignments.{{ name }}.model_profile_id">
+              {% for profile_id, profile in config.model_profiles.items() %}{% set provider=config.provider_accounts[profile.provider_account_id] %}
+                <option value="{{ profile_id }}"{% if profile_id == assignment.model_profile_id %} selected{% endif %}>{{ profile.name }} — {{ provider.name }} — {{ profile.model_id or "model ID not configured" }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="route-summary">
+            <div class="route-grid">
+              <span>Resolved provider<strong>{{ resolved.provider_name }}</strong></span>
+              <span>Exact provider model<strong>{{ resolved.model_id or "Not configured" }}</strong></span>
+              <span>Token accounting<strong>{{ resolved.accounting_mode }}</strong></span>
+              <span>Effective input ceiling<strong>{{ "{:,}".format(resolved.effective_input_tokens) }} tokens</strong></span>
+              <span>Context window<strong>{{ "{:,}".format(resolved.context_window_tokens) }}</strong></span>
+              <span>Reserved output<strong>{{ "{:,}".format(resolved.max_output_tokens) }}</strong></span>
+              <span>Safety margin<strong>{{ "{:,}".format(resolved.safety_margin_tokens) }}</strong></span>
+              <span>Profile<strong>{{ resolved.profile_name }}</strong></span>
+            </div>
+            <p class="field-help">Resolved from the saved draft currently rendered. Save profile or routing edits before relying on this summary.</p>
+          </div>
+          {% for group in operation_assignment_field_groups %}
+            <details class="config-section"{% if loop.first %} open{% endif %}>
+              <summary>{{ group.title }}</summary>
+              <div class="config-section-body"><div class="settings-grid">
+                {% for key in group.fields %}{{ render_field('operation_assignments.' ~ name ~ '.' ~ key, 'operation_assignments.' ~ key, assignment[key]) }}{% endfor %}
+              </div></div>
+            </details>
+          {% endfor %}
+          <div class="prompt-block">
+            <label class="field-label" for="prompt-{{ name }}">Complete system prompt <span class="help-dot" title="The exact system message for this operation. There is no hidden fallback prompt.">?</span></label>
+            <p class="field-help">This exact text becomes the provider's system message. The generated user object is deterministic and inspectable below.</p>
+            <textarea id="prompt-{{ name }}" class="prompt" name="operation_assignments.{{ name }}.system_prompt">{{ assignment.system_prompt }}</textarea>
+          </div>
+          <details><summary>Exact model output schema</summary><p class="muted">Any response that does not satisfy this schema fails noisily.</p><pre>{{ schemas[name].model_output|tojson(indent=2) }}</pre></details>
+          <details><summary>Generated synthetic provider payload</summary><p class="muted">No authorization header or user data is included.</p><pre>{{ previews[name]|tojson(indent=2) }}</pre></details>
+        </div>
+      </article>
+    {% endfor %}
+    <div class="savebar"><p><strong>Unsaved routing and prompt edits affect nothing.</strong></p><button class="primary" name="action" value="save_operations">Save all operation assignments</button></div>
+  </form>
+
+  {% elif page_name == 'server' %}
+  <form method="post" action="/admin/action" id="server-editor">
+    {{ hidden('server') }}
+    <section class="panel" id="window-planning">
+      <div class="panel-heading">
+        <div>
+          <h2>Conversational window size</h2>
+          <p>This is the primary tuning control for large-corpus calls. Lower it for more, smaller provider requests; raise it for fewer, larger requests.</p>
+        </div>
+        <span class="badge">No restart required</span>
+      </div>
+      <div class="route-summary">
+        <div class="route-grid">
+          <span>Window model<strong>{{ window_planning.profile_name }}</strong></span>
+          <span>Provider model ID<strong>{{ window_planning.model_id }}</strong></span>
+          <span>Configured context<strong>{{ "{:,}".format(window_planning.context_window_tokens) }} tokens</strong></span>
+          <span>Hard input ceiling<strong>{{ "{:,}".format(window_planning.hard_input_tokens) }} tokens</strong></span>
+          <span>Reserved output<strong>{{ "{:,}".format(window_planning.max_output_tokens) }} tokens</strong></span>
+          <span>Safety margin<strong>{{ "{:,}".format(window_planning.safety_margin_tokens) }} tokens</strong></span>
+          <span>Operation input ceiling<strong>{% if window_planning.operation_input_ceiling is not none %}{{ "{:,}".format(window_planning.operation_input_ceiling) }} tokens{% else %}None{% endif %}</strong></span>
+          <span>Draft window target<strong id="window-target-preview" data-hard-input="{{ window_planning.hard_input_tokens }}">{{ "{:,}".format(window_planning.target_input_tokens) }} tokens</strong></span>
+        </div>
+      </div>
+      <div class="settings-grid">
+        {{ render_field(
+          'global_config.window_input_utilization_percent',
+          'global_config.window_input_utilization_percent',
+          config.global_config.window_input_utilization_percent
+        ) }}
+        <div class="field">
+          <span class="field-label">What this number means</span>
+          <p class="field-help">The displayed target is the maximum complete serialized input for one evidence-extraction call: hard input ceiling × utilization percentage. The deterministic planner chooses the fewest windows that fit, then balances the corpus between them, so actual windows are normally smaller than this maximum.</p>
+          <p class="field-help">Save, validate, and activate the draft; the next conversational request uses the new size immediately. Changing model context or the operation-specific input ceiling remains explicit under <a href="/admin/operations#operation-window_evidence_extraction">Window evidence extraction</a>.</p>
+        </div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Listener</h2><p>Where this process accepts the admin page and product API requests. Listener changes require a process restart after activation.</p></div></div>
+      <div class="settings-grid">{{ render_field('host','host',config.host) }}{{ render_field('port','port',config.port) }}</div>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Server-wide behavior</h2><p>Hard request ceilings, global admission, provider connections, and conversational orchestration.</p></div></div>
+      {% for group in global_field_groups %}
+        <details class="config-section"{% if loop.index <= 2 %} open{% endif %}>
+          <summary>{{ group.title }}</summary>
+          <div class="config-section-body"><p class="group-summary">{{ group.summary }}</p><div class="settings-grid">{% for key in group.fields %}{{ render_field('global_config.' ~ key,'global_config.' ~ key,config.global_config[key]) }}{% endfor %}</div></div>
+        </details>
+      {% endfor %}
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><div><h2>Embedding runtime</h2><p>One server-owned vector space for complete working-corpus builds and individual search queries. Clients never select the embedding backend or batch size.</p></div></div>
+      {% for group in embedding_field_groups %}
+        <details class="config-section"{% if loop.first %} open{% endif %}>
+          <summary>{{ group.title }}</summary>
+          <div class="config-section-body"><p class="group-summary">{{ group.summary }}</p><div class="settings-grid">{% for key in group.fields %}{{ render_field('embedding.' ~ key,'embedding.' ~ key,config.embedding[key]) }}{% endfor %}</div></div>
+        </details>
+      {% endfor %}
+      <div class="warning-box"><strong>The embedding test is explicit and local.</strong> It loads the draft model and encodes one synthetic sentence. It does not open an EVW or rebuild vectors.</div>
+      <button name="action" value="test_embedding">Test draft embedding model</button>
+    </section>
+    <div class="savebar"><p><strong>Save before validating or testing changed settings.</strong></p><button class="primary" name="action" value="save_server">Save server and embedding settings</button></div>
+  </form>
+
+  {% elif page_name == 'activity' %}
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Explicit paid operation test</h2><p>Runs one selected draft operation against a small synthetic payload and validates the exact response schema.</p></div></div>
+    <div class="warning-box"><strong>This makes one real provider call and may cost money.</strong> It uses the saved draft endpoint, credential, model profile, operation prompt, budget, and output mode. It never opens an EVW.</div>
+    <form method="post" action="/admin/action" class="actions">{{ hidden('activity') }}
+      <select name="operation" aria-label="Operation to test">{% for name in operations %}<option value="{{ name }}">{{ operation_guide[name].title }} — {{ resolved_summaries[name].profile_name }}</option>{% endfor %}</select>
+      <button class="primary" name="action" value="test">Run one paid test</button>
+    </form>
+    {% if test_output %}<h3 style="margin-top:18px">Current response only</h3><pre id="test-output">{{ test_output|tojson(indent=2) }}</pre>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Runtime and recovery</h2><p>Live operation state and explicit circuit recovery. Resetting a circuit does not prove provider health.</p></div></div>
+    <form method="post" action="/admin/action" class="actions">{{ hidden('activity') }}
+      <select name="operation" aria-label="Circuit to reset">{% for name in operations %}<option value="{{ name }}">{{ operation_guide[name].title }}</option>{% endfor %}</select>
+      <button name="action" value="reset_circuit">Reset selected active circuit</button>
+    </form>
+    <details style="margin-top:14px" open><summary>Recent redacted events</summary><p class="muted">Prompts, corpus text, API keys, response bodies, and vectors are not stored here.</p><pre id="events">{{ events|tojson(indent=2) }}</pre></details>
+    <details><summary>Runtime counters</summary><pre id="metrics">{{ metrics|tojson(indent=2) }}</pre><pre id="usage-status">{{ usage|tojson(indent=2) }}</pre></details>
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Usage accounting</h2><p>Append-only, content-free records across provider attempts and embedding workloads.</p></div></div>
+    <div class="summary-grid">
+      <div class="summary-card"><span class="summary-label">Input tokens</span><span class="summary-value" id="usage-input-tokens">{{ "{:,}".format(usage.input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Output tokens</span><span class="summary-value" id="usage-output-tokens">{{ "{:,}".format(usage.output_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Embedding items</span><span class="summary-value" id="usage-embedding-items">{{ "{:,}".format(usage.embedding_items) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Known estimated cost</span><span class="summary-value" id="usage-known-cost">${{ "%.4f"|format(usage.known_cost) }}</span><div class="status-note"><span id="usage-incomplete-cost">{{ usage.incomplete_cost_rows }}</span> rows lack pricing</div></div>
+      <div class="summary-card"><span class="summary-label">Records</span><span class="summary-value" id="usage-rows">{{ "{:,}".format(usage.rows) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Failed attempts</span><span class="summary-value" id="usage-failures">{{ "{:,}".format(usage.failed_attempts) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Embedding workloads</span><span class="summary-value" id="usage-embedding-workloads">{{ "{:,}".format(usage.embedding_workloads) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Control DB WAL</span><span class="summary-value">{{ checkpoint.wal_frames }} frames</span><div class="status-note">{{ checkpoint.checkpointed_frames }} checkpointed · busy {{ checkpoint.busy }}</div></div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Configuration history</h2><p>Activated versions are immutable. Roll forward copies an old version into a new draft and activates that new version.</p></div></div>
+    <table><thead><tr><th>Version</th><th>Status</th><th>Source</th><th>Hash</th><th>Action</th></tr></thead><tbody>
+      {% for version in versions %}<tr><td>{{ version.version_id }}</td><td>{{ version.status }}</td><td>{{ version.source }}</td><td><code>{{ version.config_hash[:12] }}</code></td><td><form method="post" action="/admin/action">{{ hidden('activity') }}<input type="hidden" name="source_version" value="{{ version.version_id }}"><button name="action" value="rollback">Roll forward and activate</button></form></td></tr>{% endfor %}
+    </tbody></table>
+    <details><summary>Configuration audit records</summary><pre>{{ audits|tojson(indent=2) }}</pre></details>
+  </section>
+  {% elif page_name == 'debug' %}
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Temporary exact debug capture</h2>
+        <p>Records complete server requests, internal model payloads, provider responses, streamed responses, timings, retries, and failures in a separate server-side JSONL file.</p>
+      </div>
+      {% if debug_status.active %}
+        <span class="badge warn">Capture active</span>
+      {% else %}
+        <span class="badge">Capture stopped</span>
+      {% endif %}
+    </div>
+    <div class="warning-box">
+      <strong>This deliberately persists sensitive user text.</strong>
+      Capture files are separate from EVWs, the control database, and normal redacted logs.
+      API keys, authorization headers, cookies, and encryption keys are never captured.
+      The current server has no real admin authentication and therefore permits this control
+      only on its loopback-only development listener.
+    </div>
+    <div class="status-grid">
+      <div class="status-card"><span class="status-label">State</span><span class="status-value" id="debug-capture-state">{{ "Active" if debug_status.active else "Stopped" }}</span><div class="status-note">Takes effect immediately; no activation or restart</div></div>
+      <div class="status-card"><span class="status-label">Session</span><span class="status-value" id="debug-capture-session">{{ debug_status.active_session_id or "None" }}</span><div class="status-note">{{ debug_status.active_started_at or "No active session" }}</div></div>
+      <div class="status-card"><span class="status-label">Bound requests</span><span class="status-value" id="debug-capture-bound">{{ debug_status.bound_requests }}</span><div class="status-note">Requests already captured continue after Stop</div></div>
+      <div class="status-card"><span class="status-label">Writer</span><span class="status-value" id="debug-capture-writer">{{ "Failed" if debug_status.writer_failure else "Ready" }}</span><div class="status-note">{{ debug_status.writer_failure or (debug_status.pending_records|string ~ " records waiting for disk") }}</div></div>
+    </div>
+    <div class="actions" style="margin-top:16px">
+      {% if debug_status.active %}
+      <form method="post" action="/admin/action">{{ hidden('debug') }}<button class="danger" name="action" value="stop_debug_capture">Stop logging new requests</button></form>
+      {% else %}
+      <form method="post" action="/admin/action">{{ hidden('debug') }}<button class="primary" name="action" value="start_debug_capture">Start logging</button></form>
+      {% endif %}
+      <form method="post" action="/admin/action">{{ hidden('debug') }}<button class="danger" name="action" value="clear_debug_captures">Delete all stopped capture files</button></form>
+    </div>
+    <p class="muted">Current scope: all traffic accepted by this local development server. Account-scoped capture will bind to the authenticated server principal when account authentication exists; no client-supplied account identifier will ever control it.</p>
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Capture sessions</h2><p>Complete files remain on the server until explicitly deleted. Capture always starts disabled after a server restart.</p></div></div>
+    {% if debug_status.sessions %}
+    <table>
+      <thead><tr><th>Session</th><th>Started</th><th>Size</th><th>Still bound</th><th>Complete log</th></tr></thead>
+      <tbody>
+      {% for session in debug_status.sessions %}
+        <tr>
+          <td><code>{{ session.session_id }}</code></td>
+          <td>{{ session.started_at }}</td>
+          <td>{{ "{:,}".format(session.bytes) }} bytes</td>
+          <td>{{ session.bound_requests }}</td>
+          <td><a href="/admin/debug/session/{{ session.session_id }}">Open complete JSONL</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No debug capture files exist.</p>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-heading"><div><h2>Readable log window</h2><p>Shows up to the final 1,000,000 bytes for quick inspection. The complete session link above is never display-truncated.</p></div></div>
+    <pre id="debug-tail">{{ debug_tail or "No captured records." }}</pre>
+  </section>
+  {% endif %}
+</main>
+
+<script>
+const number = value => new Intl.NumberFormat().format(value);
+const setText = (selector, value) => { const node=document.querySelector(selector); if(node)node.textContent=value; };
+const windowUtilization = document.getElementById('global_config.window_input_utilization_percent');
+const windowTargetPreview = document.getElementById('window-target-preview');
+if(windowUtilization && windowTargetPreview){
+  const updateWindowTarget = () => {
+    const percentage = Number(windowUtilization.value);
+    const hardInput = Number(windowTargetPreview.dataset.hardInput);
+    if(Number.isFinite(percentage) && Number.isFinite(hardInput)){
+      windowTargetPreview.textContent = number(Math.floor(hardInput * percentage / 100)) + ' tokens';
+    }
+  };
+  windowUtilization.addEventListener('input', updateWindowTarget);
+  updateWindowTarget();
+}
+setInterval(async()=>{
+  try{
+    const response=await fetch('/admin/events',{cache:'no-store'});
+    if(!response.ok)return;
+    const value=await response.json();
+    setText('#metrics',JSON.stringify(value.metrics,null,2));
+    setText('#events',JSON.stringify(value.events,null,2));
+    setText('#usage-status',JSON.stringify(value.usage,null,2));
+    setText('#usage-input-tokens',number(value.usage.input_tokens));
+    setText('#usage-output-tokens',number(value.usage.output_tokens));
+    setText('#usage-embedding-items',number(value.usage.embedding_items));
+    setText('#usage-known-cost','$'+Number(value.usage.known_cost).toFixed(4));
+    setText('#usage-incomplete-cost',value.usage.incomplete_cost_rows);
+    setText('#usage-rows',number(value.usage.rows));
+    setText('#usage-failures',number(value.usage.failed_attempts));
+    setText('#usage-embedding-workloads',number(value.usage.embedding_workloads));
+    if(value.embedding){
+      setText('#embedding-work-value',value.embedding.in_flight+' active / '+value.embedding.queued+' queued');
+      setText('#embedding-work-state',value.embedding.accepting?'Accepting requests':'Not accepting requests');
+    }
+    if(value.debug_capture){
+      setText('#debug-capture-state',value.debug_capture.active?'Active':'Stopped');
+      setText('#debug-capture-session',value.debug_capture.active_session_id||'None');
+      setText('#debug-capture-bound',value.debug_capture.bound_requests);
+      setText('#debug-capture-writer',value.debug_capture.writer_failure?'Failed':'Ready');
+    }
+    for(const [name,state] of Object.entries(value.operations||{})){
+      setText('#operation-'+name+'-model',state.model);
+      setText('#operation-'+name+'-circuit',state.circuit);
+      setText('#operation-'+name+'-active',state.in_flight);
+      setText('#operation-'+name+'-queued',state.queued);
+    }
+    const poll=document.querySelector('#poll-status');
+    if(poll){poll.textContent='Live updates connected';poll.className='badge good';}
+  }catch(_error){
+    const poll=document.querySelector('#poll-status');
+    if(poll){poll.textContent='Live updates paused — reload page';poll.className='badge warn';}
+  }
+},5000);
+</script>
+</body>
+</html>

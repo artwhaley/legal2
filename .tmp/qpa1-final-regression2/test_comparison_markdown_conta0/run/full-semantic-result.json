@@ -1,0 +1,98 @@
+{
+  "events": [
+    {
+      "data": {
+        "window_count": 1,
+        "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "event": "window_plan_created",
+      "sequence": 1,
+      "timestamp": "2026-01-01T00:00:00Z"
+    },
+    {
+      "event": "completed",
+      "result": {
+        "answer": "Answer",
+        "answer_summary": "Summary",
+        "completion_status": "complete",
+        "coverage": {
+          "evidence_range_count": 1,
+          "message_count": 1,
+          "window_count": 1
+        },
+        "evidence_ledger": [
+          {
+            "disposition": "direct_evidence",
+            "end_message_id": "m1",
+            "normalizations": [],
+            "range_id": "r000001",
+            "rationale": "direct",
+            "relevance": "direct",
+            "source_range_index": 0,
+            "start_message_id": "m1",
+            "summary": "school conflict",
+            "thread_id": "t1",
+            "window_id": "w0001"
+          }
+        ],
+        "evidence_validation": {
+          "accepted_range_count": 1,
+          "normalized_range_count": 0,
+          "rejected_range_count": 0,
+          "rejected_ranges": [],
+          "status": "complete"
+        },
+        "findings": [
+          {
+            "range_ids": [
+              "r000001"
+            ],
+            "statement": "Answer"
+          }
+        ],
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0
+        },
+        "retrieval_diagnostics": {
+          "answer_relevant_ranges_outside_suggestions": 0,
+          "answer_relevant_ranges_overlapping_suggestions": 1,
+          "final_ranges_outside_suggestions": 0,
+          "final_ranges_overlapping_suggestions": 1,
+          "mode": "semantic_ranges",
+          "query_count": 1,
+          "raw_hit_count": 1,
+          "selected_suggestion_message_count": 1,
+          "suggestion_range_count": 1,
+          "suggestions_without_final_evidence": 0,
+          "unique_candidate_message_count": 1
+        },
+        "strategy": "single_window_ledger",
+        "uncertainties": [],
+        "usage": {
+          "input_tokens": 1
+        }
+      },
+      "sequence": 2,
+      "timestamp": "2026-01-01T00:00:01Z"
+    }
+  ],
+  "metrics": {
+    "final_range_inventory": [
+      {
+        "disposition": "direct_evidence",
+        "end_message_id": "m1",
+        "normalizations": [],
+        "range_id": "r000001",
+        "rationale": "direct",
+        "relevance": "direct",
+        "source_range_index": 0,
+        "start_message_id": "m1",
+        "summary": "school conflict",
+        "thread_id": "t1",
+        "window_id": "w0001"
+      }
+    ]
+  }
+}

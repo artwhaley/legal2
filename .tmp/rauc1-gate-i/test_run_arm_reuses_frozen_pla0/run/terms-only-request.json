@@ -1,0 +1,23 @@
+{
+  "message_count": 1,
+  "question": "When did we fight about school?",
+  "retrieval_assistance": {
+    "compatibility_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "dimensions": 3,
+    "embedding_artifact_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "embedding_profile_id": "profile",
+    "hits": [],
+    "normalization": "unit_l2",
+    "plan_config_version": 1,
+    "queries": [
+      {
+        "query_id": "q0001",
+        "text": "school"
+      }
+    ],
+    "retrieval_plan_id": "00000000-0000-0000-0000-000000000002"
+  },
+  "scope_id": "retrieval-investigation-revision-4",
+  "working_corpus_messages_omitted_from_artifact": true,
+  "working_corpus_revision_id": 4
+}

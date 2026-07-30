@@ -1,0 +1,88 @@
+{
+  "window_id": "w000002",
+  "status_code": 200,
+  "elapsed_seconds": 66.31999379999979,
+  "response": {
+    "id": "chatcmpl-7fbbdda7-fe49-4214-b79e-9e5386e717ff",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000002\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:4900\",\"end_message_id\":\"decipher_message_1:4891\",\"summary\":\"On Oct 27, 2022, Julie shares school evaluation materials from Wildflower Montessori ahead of the next day's 'journey meeting' (parent-teacher conference). Art critiques the school's assessment: he wishes they pushed Olivia more on reading, says her math was already 'significant' before she started, and questions the teacher's characterization of Olivia as passive/quiet, saying 'Passive and quiet are not words I'd describe her with!' Julie agrees the comments were 'a little weird' and says Brooke said Olivia is 'absolutely thriving' but she felt the comments were odd. The exchange shows a shared disagreement with the school's evaluation of Olivia's academic progress and classroom behavior.\",\"relevance\":\"Directly relevant: Art and Julie express criticism of the school's academic assessment of Olivia—specifically reading, math, and behavioral characterization—constituting a disagreement about school/educational progress, though the disagreement is with the school rather than between the two parents.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3572\",\"end_message_id\":\"decipher_message_1:3514\",\"summary\":\"On Mar 28, 2023, Art and Julie have a tense, extended disagreement about parenting time during Olivia's two-week spring break, which escalates into a broader conflict about financial responsibility, school choice, and educational philosophy. Julie insists on keeping Olivia for the full week ('No school doesnt automatically mean farm time'), says school days leave her almost no time with Olivia, and raises that she bears 100% of financial responsibility including school tuition and medical bills. Art counters that many dads see their kids half time, that Julie's financial pressure isn't solely from parenting, and that Olivia expected two weeks at the farm. The argument then shifts to education: Julie says she signed the commitment letter for Wildflower next year but is 'willing to look at' other schools; Art says 'I wish there was more push on the core skills' and 'I wish there was more pressure on reading and math'; Julie agrees ('I wish there was more focus on core skills too'). They discuss Olivia's refusal to move from pre-reading to the actual reading curriculum, Miss Chris not forcing her, and Art's frustration with the 'she'll do it when she wants to' philosophy. Art also mentions public school options in small towns. The exchange is a sustained argument combining custody/scheduling, school choice, educational quality, and financial responsibility.\",\"relevance\":\"Directly relevant: This is a sustained fight between the participants that materially involves school/education—school choice (Wildflower vs. public vs. other private), educational philosophy and curriculum concerns (reading, math, core skills), school tuition as part of the financial-responsibility dispute, and the intersection of parenting time with school schedules. Education is a material part of the disagreement throughout.\"}],\"uncertainties\":[\"The Oct 27, 2022 exchange about the school evaluation shows both parents criticizing the school's assessment, but it is not a fight between the two parents themselves; it is a shared disagreement with the school. It is included because it bears on the question of conflict about school/academic progress, but the participants are aligned rather than in conflict with each other.\",\"The Mar 28, 2023 exchange is a clear fight between the participants, but it combines multiple issues—parenting time, financial responsibility, school choice, and educational philosophy. Education is material but not the sole subject; the fight is partly about custody scheduling and money. The school-related portions (school choice, curriculum, reading, tuition) are intertwined with the broader conflict.\",\"No other exchanges in the window rise to the level of a behavioral conflict about school. Numerous messages discuss school logistics, attendance, illness, and activities cooperatively, and are excluded as purely neutral or cooperative.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785381376,
+    "model": "z-ai/glm-5.2",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 158757,
+      "completion_tokens": 847,
+      "total_tokens": 159604
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000002",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:4900",
+          "end_message_id": "decipher_message_1:4891",
+          "summary": "On Oct 27, 2022, Julie shares school evaluation materials from Wildflower Montessori ahead of the next day's 'journey meeting' (parent-teacher conference). Art critiques the school's assessment: he wishes they pushed Olivia more on reading, says her math was already 'significant' before she started, and questions the teacher's characterization of Olivia as passive/quiet, saying 'Passive and quiet are not words I'd describe her with!' Julie agrees the comments were 'a little weird' and says Brooke said Olivia is 'absolutely thriving' but she felt the comments were odd. The exchange shows a shared disagreement with the school's evaluation of Olivia's academic progress and classroom behavior.",
+          "relevance": "Directly relevant: Art and Julie express criticism of the school's academic assessment of Olivia—specifically reading, math, and behavioral characterization—constituting a disagreement about school/educational progress, though the disagreement is with the school rather than between the two parents."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3572",
+          "end_message_id": "decipher_message_1:3514",
+          "summary": "On Mar 28, 2023, Art and Julie have a tense, extended disagreement about parenting time during Olivia's two-week spring break, which escalates into a broader conflict about financial responsibility, school choice, and educational philosophy. Julie insists on keeping Olivia for the full week ('No school doesnt automatically mean farm time'), says school days leave her almost no time with Olivia, and raises that she bears 100% of financial responsibility including school tuition and medical bills. Art counters that many dads see their kids half time, that Julie's financial pressure isn't solely from parenting, and that Olivia expected two weeks at the farm. The argument then shifts to education: Julie says she signed the commitment letter for Wildflower next year but is 'willing to look at' other schools; Art says 'I wish there was more push on the core skills' and 'I wish there was more pressure on reading and math'; Julie agrees ('I wish there was more focus on core skills too'). They discuss Olivia's refusal to move from pre-reading to the actual reading curriculum, Miss Chris not forcing her, and Art's frustration with the 'she'll do it when she wants to' philosophy. Art also mentions public school options in small towns. The exchange is a sustained argument combining custody/scheduling, school choice, educational quality, and financial responsibility.",
+          "relevance": "Directly relevant: This is a sustained fight between the participants that materially involves school/education—school choice (Wildflower vs. public vs. other private), educational philosophy and curriculum concerns (reading, math, core skills), school tuition as part of the financial-responsibility dispute, and the intersection of parenting time with school schedules. Education is a material part of the disagreement throughout."
+        }
+      ],
+      "uncertainties": [
+        "The Oct 27, 2022 exchange about the school evaluation shows both parents criticizing the school's assessment, but it is not a fight between the two parents themselves; it is a shared disagreement with the school. It is included because it bears on the question of conflict about school/academic progress, but the participants are aligned rather than in conflict with each other.",
+        "The Mar 28, 2023 exchange is a clear fight between the participants, but it combines multiple issues—parenting time, financial responsibility, school choice, and educational philosophy. Education is material but not the sole subject; the fight is partly about custody scheduling and money. The school-related portions (school choice, curriculum, reading, tuition) are intertwined with the broader conflict.",
+        "No other exchanges in the window rise to the level of a behavioral conflict about school. Numerous messages discuss school logistics, attendance, illness, and activities cooperatively, and are excluded as purely neutral or cooperative."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000002",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:4900",
+          "end_message_id": "decipher_message_1:4891",
+          "summary": "On Oct 27, 2022, Julie shares school evaluation materials from Wildflower Montessori ahead of the next day's 'journey meeting' (parent-teacher conference). Art critiques the school's assessment: he wishes they pushed Olivia more on reading, says her math was already 'significant' before she started, and questions the teacher's characterization of Olivia as passive/quiet, saying 'Passive and quiet are not words I'd describe her with!' Julie agrees the comments were 'a little weird' and says Brooke said Olivia is 'absolutely thriving' but she felt the comments were odd. The exchange shows a shared disagreement with the school's evaluation of Olivia's academic progress and classroom behavior.",
+          "relevance": "Directly relevant: Art and Julie express criticism of the school's academic assessment of Olivia—specifically reading, math, and behavioral characterization—constituting a disagreement about school/educational progress, though the disagreement is with the school rather than between the two parents."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3572",
+          "end_message_id": "decipher_message_1:3514",
+          "summary": "On Mar 28, 2023, Art and Julie have a tense, extended disagreement about parenting time during Olivia's two-week spring break, which escalates into a broader conflict about financial responsibility, school choice, and educational philosophy. Julie insists on keeping Olivia for the full week ('No school doesnt automatically mean farm time'), says school days leave her almost no time with Olivia, and raises that she bears 100% of financial responsibility including school tuition and medical bills. Art counters that many dads see their kids half time, that Julie's financial pressure isn't solely from parenting, and that Olivia expected two weeks at the farm. The argument then shifts to education: Julie says she signed the commitment letter for Wildflower next year but is 'willing to look at' other schools; Art says 'I wish there was more push on the core skills' and 'I wish there was more pressure on reading and math'; Julie agrees ('I wish there was more focus on core skills too'). They discuss Olivia's refusal to move from pre-reading to the actual reading curriculum, Miss Chris not forcing her, and Art's frustration with the 'she'll do it when she wants to' philosophy. Art also mentions public school options in small towns. The exchange is a sustained argument combining custody/scheduling, school choice, educational quality, and financial responsibility.",
+          "relevance": "Directly relevant: This is a sustained fight between the participants that materially involves school/education—school choice (Wildflower vs. public vs. other private), educational philosophy and curriculum concerns (reading, math, core skills), school tuition as part of the financial-responsibility dispute, and the intersection of parenting time with school schedules. Education is a material part of the disagreement throughout."
+        }
+      ],
+      "uncertainties": [
+        "The Oct 27, 2022 exchange about the school evaluation shows both parents criticizing the school's assessment, but it is not a fight between the two parents themselves; it is a shared disagreement with the school. It is included because it bears on the question of conflict about school/academic progress, but the participants are aligned rather than in conflict with each other.",
+        "The Mar 28, 2023 exchange is a clear fight between the participants, but it combines multiple issues—parenting time, financial responsibility, school choice, and educational philosophy. Education is material but not the sole subject; the fight is partly about custody scheduling and money. The school-related portions (school choice, curriculum, reading, tuition) are intertwined with the broader conflict.",
+        "No other exchanges in the window rise to the level of a behavioral conflict about school. Numerous messages discuss school logistics, attendance, illness, and activities cooperatively, and are excluded as purely neutral or cooperative."
+      ]
+    },
+    "evidence_range_count": 2
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "window_id": "w000004",
+  "status_code": 200,
+  "elapsed_seconds": 58.03405489999932,
+  "response": {
+    "id": "chatcmpl-dec89f4f-6282-4b20-8bdc-bcdf1059c22e",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000004\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:986\",\"end_message_id\":\"decipher_message_1:969\",\"summary\":\"On Nov 13, 2023, Art suggests he could 'take over home school' and says 'Don't kill yourself trying to make it make sense' about the micro-school, calling it a 'sunk cost fallacy.' Julie pushes back strongly: 'definitely not going to throw it all out and homeschool at home now,' citing solid schedule, teachers, lesson plans, academic progress tracking, WiFi, and cameras. Art persists ('It needs to get stable'), references prior homeschooling ('She loved her days of home school here'), and notes Olivia is 'too far ahead of Addy.' Julie counters that the hard/expensive setup is done and the daily schedule, teachers, curriculum, location, and school days won't change. Art ultimately agrees.\",\"relevance\":\"Direct disagreement about whether to continue the micro-school vs. switch to homeschooling at home. Education (school format, curriculum, academic progress, cost) is the core of the dispute. Art raises sunk-cost and stability concerns; Julie defends the school's infrastructure and progress. The exchange is tense but resolves toward Julie's position.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:148\",\"end_message_id\":\"decipher_message_1:110\",\"summary\":\"On Feb 23, 2024, a sustained argument erupts over pre-competition logistics. Julie insists Olivia come home Friday night or Saturday morning so Julie can do her competition hair and maintain their getting-ready ritual, citing illness and energy limits. Art proposes alternatives (Ruth curls hair, meet at Grace's house at 4pm, cousins ride together). Julie refuses. Art says 'we're perfectly capable of getting her ready for a competition, too' and 'things I've planned for her are equally important.' Julie itemizes $9,132+/year in gymnastics costs and notes 'You don't help pay for anything.' Art responds: 'you think her hairdo is more important than time with her father' and 'time with her family is what is most important,' invoking Julie's own gymnastics abuse history. Julie clarifies the issue is the agreed-upon plan and the bonding ritual, not hair vs. father time. Art says 'I'm not arguing with you about bringing her back' but remains upset about the attitude.\",\"relevance\":\"Direct, heated conflict combining school/educational activity (competitive gymnastics), parenting time, financial responsibility for the activity, and pre-competition routine. Education-adjacent activity is material to the disagreement. Both sides accuse the other of prioritizing wrongly. The fight spans competing proposals, accusations, defensiveness, and financial claims.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:583\",\"end_message_id\":\"decipher_export_19:603\",\"summary\":\"On Jun 26, 2024, Art questions the proposed September schedule that combines morning gymnastics with reduced school days: 'I wish it was more than 2 and a half days of school?' and 'are you and Weston really sure you can run a school with twins?' Julie explains it's the same gym hours, just shifted, and that 1st-4th grade homeschool recommendation is 12-15 hours. Art says '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education' and 'As long as it's the fluff getting cut out... Not the academics.' Julie says the second-grade curriculum 'looks kinda too easy for O' and plans to buy 3rd-grade materials too.\",\"relevance\":\"Direct disagreement about the academic schedule and educational quality of the homeschool/micro-school. Art challenges whether reduced school time and running a school with newborn twins will compromise academics. Julie defends the plan. The exchange involves competing positions on educational adequacy, curriculum, and school scheduling.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:770\",\"end_message_id\":\"decipher_export_19:793\",\"summary\":\"On Jul 10-11, 2024, Art and Julie discuss whether Olivia can attend Art's theater arts camp (9am-5pm, professional artists, culminating in an art show and theater performance). Julie raises concerns: Olivia would miss an entire week of morning gymnastics (expensive, new coach, new group, first month of training), her mom visits the 17th-22nd, there's a gym party on the 18th, and she's overwhelmed by large groups (120 kids). Art says 'she needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school,' and 'I really thought we had this cleared a long time ago.' Julie says Olivia doesn't want to miss morning gym, the gym party, or Momo's visit, and worries about germs before the birthday party. Art says going only 2-3 days is 'pointless' since she won't finish anything. Julie suggests finding another theater arts camp in August instead.\",\"relevance\":\"Direct disagreement about educational/activity scheduling and socialization. Art frames the theater camp as important for group participation skills and implicitly critiques 'not real school.' Julie prioritizes gymnastics continuity, the child's preference, and health concerns. Both present competing positions about what educational activity matters most. The exchange involves tension but is less heated than the Feb 23 fight.\"}],\"uncertainties\":[\"The Nov 13 exchange about homeschooling vs. micro-school is tense and involves competing positions, but both parties partially acknowledge each other's points and Art ultimately agrees; whether it rises to a 'fight' is borderline.\",\"The Jun 26 discussion about the school schedule involves Art's concerns and Julie's reassurances but remains relatively civil; it may be more of a discussion than a fight.\",\"The Jul 10-11 theater camp discussion involves competing priorities and Art's remark about 'not real school,' but both parties are relatively measured; whether this constitutes a 'fight' is uncertain.\",\"The Feb 23 gymnastics/competition exchange is clearly the most heated conflict in the window, but it is primarily about gymnastics logistics and parenting time rather than 'school' in the traditional sense; however, competitive gymnastics functions as Olivia's primary structured activity alongside homeschool, and the financial/responsibility dimension overlaps with educational-cost disputes.\",\"No messages in this window contain the literal word 'fight' in connection with school; all identified exchanges require behavioral interpretation of 'fight' as disagreement or tension.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785381532,
+    "model": "z-ai/glm-5.2",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 158459,
+      "completion_tokens": 1406,
+      "total_tokens": 159865
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000004",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:986",
+          "end_message_id": "decipher_message_1:969",
+          "summary": "On Nov 13, 2023, Art suggests he could 'take over home school' and says 'Don't kill yourself trying to make it make sense' about the micro-school, calling it a 'sunk cost fallacy.' Julie pushes back strongly: 'definitely not going to throw it all out and homeschool at home now,' citing solid schedule, teachers, lesson plans, academic progress tracking, WiFi, and cameras. Art persists ('It needs to get stable'), references prior homeschooling ('She loved her days of home school here'), and notes Olivia is 'too far ahead of Addy.' Julie counters that the hard/expensive setup is done and the daily schedule, teachers, curriculum, location, and school days won't change. Art ultimately agrees.",
+          "relevance": "Direct disagreement about whether to continue the micro-school vs. switch to homeschooling at home. Education (school format, curriculum, academic progress, cost) is the core of the dispute. Art raises sunk-cost and stability concerns; Julie defends the school's infrastructure and progress. The exchange is tense but resolves toward Julie's position."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:148",
+          "end_message_id": "decipher_message_1:110",
+          "summary": "On Feb 23, 2024, a sustained argument erupts over pre-competition logistics. Julie insists Olivia come home Friday night or Saturday morning so Julie can do her competition hair and maintain their getting-ready ritual, citing illness and energy limits. Art proposes alternatives (Ruth curls hair, meet at Grace's house at 4pm, cousins ride together). Julie refuses. Art says 'we're perfectly capable of getting her ready for a competition, too' and 'things I've planned for her are equally important.' Julie itemizes $9,132+/year in gymnastics costs and notes 'You don't help pay for anything.' Art responds: 'you think her hairdo is more important than time with her father' and 'time with her family is what is most important,' invoking Julie's own gymnastics abuse history. Julie clarifies the issue is the agreed-upon plan and the bonding ritual, not hair vs. father time. Art says 'I'm not arguing with you about bringing her back' but remains upset about the attitude.",
+          "relevance": "Direct, heated conflict combining school/educational activity (competitive gymnastics), parenting time, financial responsibility for the activity, and pre-competition routine. Education-adjacent activity is material to the disagreement. Both sides accuse the other of prioritizing wrongly. The fight spans competing proposals, accusations, defensiveness, and financial claims."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:583",
+          "end_message_id": "decipher_export_19:603",
+          "summary": "On Jun 26, 2024, Art questions the proposed September schedule that combines morning gymnastics with reduced school days: 'I wish it was more than 2 and a half days of school?' and 'are you and Weston really sure you can run a school with twins?' Julie explains it's the same gym hours, just shifted, and that 1st-4th grade homeschool recommendation is 12-15 hours. Art says '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education' and 'As long as it's the fluff getting cut out... Not the academics.' Julie says the second-grade curriculum 'looks kinda too easy for O' and plans to buy 3rd-grade materials too.",
+          "relevance": "Direct disagreement about the academic schedule and educational quality of the homeschool/micro-school. Art challenges whether reduced school time and running a school with newborn twins will compromise academics. Julie defends the plan. The exchange involves competing positions on educational adequacy, curriculum, and school scheduling."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:770",
+          "end_message_id": "decipher_export_19:793",
+          "summary": "On Jul 10-11, 2024, Art and Julie discuss whether Olivia can attend Art's theater arts camp (9am-5pm, professional artists, culminating in an art show and theater performance). Julie raises concerns: Olivia would miss an entire week of morning gymnastics (expensive, new coach, new group, first month of training), her mom visits the 17th-22nd, there's a gym party on the 18th, and she's overwhelmed by large groups (120 kids). Art says 'she needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school,' and 'I really thought we had this cleared a long time ago.' Julie says Olivia doesn't want to miss morning gym, the gym party, or Momo's visit, and worries about germs before the birthday party. Art says going only 2-3 days is 'pointless' since she won't finish anything. Julie suggests finding another theater arts camp in August instead.",
+          "relevance": "Direct disagreement about educational/activity scheduling and socialization. Art frames the theater camp as important for group participation skills and implicitly critiques 'not real school.' Julie prioritizes gymnastics continuity, the child's preference, and health concerns. Both present competing positions about what educational activity matters most. The exchange involves tension but is less heated than the Feb 23 fight."
+        }
+      ],
+      "uncertainties": [
+        "The Nov 13 exchange about homeschooling vs. micro-school is tense and involves competing positions, but both parties partially acknowledge each other's points and Art ultimately agrees; whether it rises to a 'fight' is borderline.",
+        "The Jun 26 discussion about the school schedule involves Art's concerns and Julie's reassurances but remains relatively civil; it may be more of a discussion than a fight.",
+        "The Jul 10-11 theater camp discussion involves competing priorities and Art's remark about 'not real school,' but both parties are relatively measured; whether this constitutes a 'fight' is uncertain.",
+        "The Feb 23 gymnastics/competition exchange is clearly the most heated conflict in the window, but it is primarily about gymnastics logistics and parenting time rather than 'school' in the traditional sense; however, competitive gymnastics functions as Olivia's primary structured activity alongside homeschool, and the financial/responsibility dimension overlaps with educational-cost disputes.",
+        "No messages in this window contain the literal word 'fight' in connection with school; all identified exchanges require behavioral interpretation of 'fight' as disagreement or tension."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000004",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:986",
+          "end_message_id": "decipher_message_1:969",
+          "summary": "On Nov 13, 2023, Art suggests he could 'take over home school' and says 'Don't kill yourself trying to make it make sense' about the micro-school, calling it a 'sunk cost fallacy.' Julie pushes back strongly: 'definitely not going to throw it all out and homeschool at home now,' citing solid schedule, teachers, lesson plans, academic progress tracking, WiFi, and cameras. Art persists ('It needs to get stable'), references prior homeschooling ('She loved her days of home school here'), and notes Olivia is 'too far ahead of Addy.' Julie counters that the hard/expensive setup is done and the daily schedule, teachers, curriculum, location, and school days won't change. Art ultimately agrees.",
+          "relevance": "Direct disagreement about whether to continue the micro-school vs. switch to homeschooling at home. Education (school format, curriculum, academic progress, cost) is the core of the dispute. Art raises sunk-cost and stability concerns; Julie defends the school's infrastructure and progress. The exchange is tense but resolves toward Julie's position."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:148",
+          "end_message_id": "decipher_message_1:110",
+          "summary": "On Feb 23, 2024, a sustained argument erupts over pre-competition logistics. Julie insists Olivia come home Friday night or Saturday morning so Julie can do her competition hair and maintain their getting-ready ritual, citing illness and energy limits. Art proposes alternatives (Ruth curls hair, meet at Grace's house at 4pm, cousins ride together). Julie refuses. Art says 'we're perfectly capable of getting her ready for a competition, too' and 'things I've planned for her are equally important.' Julie itemizes $9,132+/year in gymnastics costs and notes 'You don't help pay for anything.' Art responds: 'you think her hairdo is more important than time with her father' and 'time with her family is what is most important,' invoking Julie's own gymnastics abuse history. Julie clarifies the issue is the agreed-upon plan and the bonding ritual, not hair vs. father time. Art says 'I'm not arguing with you about bringing her back' but remains upset about the attitude.",
+          "relevance": "Direct, heated conflict combining school/educational activity (competitive gymnastics), parenting time, financial responsibility for the activity, and pre-competition routine. Education-adjacent activity is material to the disagreement. Both sides accuse the other of prioritizing wrongly. The fight spans competing proposals, accusations, defensiveness, and financial claims."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:583",
+          "end_message_id": "decipher_export_19:603",
+          "summary": "On Jun 26, 2024, Art questions the proposed September schedule that combines morning gymnastics with reduced school days: 'I wish it was more than 2 and a half days of school?' and 'are you and Weston really sure you can run a school with twins?' Julie explains it's the same gym hours, just shifted, and that 1st-4th grade homeschool recommendation is 12-15 hours. Art says '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education' and 'As long as it's the fluff getting cut out... Not the academics.' Julie says the second-grade curriculum 'looks kinda too easy for O' and plans to buy 3rd-grade materials too.",
+          "relevance": "Direct disagreement about the academic schedule and educational quality of the homeschool/micro-school. Art challenges whether reduced school time and running a school with newborn twins will compromise academics. Julie defends the plan. The exchange involves competing positions on educational adequacy, curriculum, and school scheduling."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:770",
+          "end_message_id": "decipher_export_19:793",
+          "summary": "On Jul 10-11, 2024, Art and Julie discuss whether Olivia can attend Art's theater arts camp (9am-5pm, professional artists, culminating in an art show and theater performance). Julie raises concerns: Olivia would miss an entire week of morning gymnastics (expensive, new coach, new group, first month of training), her mom visits the 17th-22nd, there's a gym party on the 18th, and she's overwhelmed by large groups (120 kids). Art says 'she needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school,' and 'I really thought we had this cleared a long time ago.' Julie says Olivia doesn't want to miss morning gym, the gym party, or Momo's visit, and worries about germs before the birthday party. Art says going only 2-3 days is 'pointless' since she won't finish anything. Julie suggests finding another theater arts camp in August instead.",
+          "relevance": "Direct disagreement about educational/activity scheduling and socialization. Art frames the theater camp as important for group participation skills and implicitly critiques 'not real school.' Julie prioritizes gymnastics continuity, the child's preference, and health concerns. Both present competing positions about what educational activity matters most. The exchange involves tension but is less heated than the Feb 23 fight."
+        }
+      ],
+      "uncertainties": [
+        "The Nov 13 exchange about homeschooling vs. micro-school is tense and involves competing positions, but both parties partially acknowledge each other's points and Art ultimately agrees; whether it rises to a 'fight' is borderline.",
+        "The Jun 26 discussion about the school schedule involves Art's concerns and Julie's reassurances but remains relatively civil; it may be more of a discussion than a fight.",
+        "The Jul 10-11 theater camp discussion involves competing priorities and Art's remark about 'not real school,' but both parties are relatively measured; whether this constitutes a 'fight' is uncertain.",
+        "The Feb 23 gymnastics/competition exchange is clearly the most heated conflict in the window, but it is primarily about gymnastics logistics and parenting time rather than 'school' in the traditional sense; however, competitive gymnastics functions as Olivia's primary structured activity alongside homeschool, and the financial/responsibility dimension overlaps with educational-cost disputes.",
+        "No messages in this window contain the literal word 'fight' in connection with school; all identified exchanges require behavioral interpretation of 'fight' as disagreement or tension."
+      ]
+    },
+    "evidence_range_count": 4
+  }
+}

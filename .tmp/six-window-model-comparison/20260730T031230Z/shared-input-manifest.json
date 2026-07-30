@@ -1,0 +1,103 @@
+{
+  "captured_request_id": "f3c8cf84-e2bb-4a64-8e23-5f8743daf02b",
+  "capture_path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T010423Z-b75d5baec026.jsonl",
+  "non_model_payload_hash": "b812bac5a4a42bab8ee98d85ce21ff0af68a18d5367bdf3d5fca3ffcd80fd14b",
+  "window_payload_hashes": [
+    "2befcbd975fa6096091a872d36a124cc4729bd3abd94722177de56436c575eda",
+    "14abfb59087feb63a59823f6b6bdbb989640b0364231ea5e6f093ecd6e2d2784",
+    "c5844e41c2f9fefbc7c4fe8feaeb5dc4eac41fef2fbf895177412d8cf39c5c1d",
+    "f9eb1b4837d7db4767c0dab5285234e3106a925cdf7d934abdd0a23022b850df",
+    "45bb7a0abf20ebd3a90820815e7b562d4c1f888922038f418b828c986883a3d0",
+    "04091eab4583e8688a29f3a034ec7c9a7260370337ee2dee993c244211de10ff"
+  ],
+  "window_message_counts": [
+    2200,
+    2136,
+    2056,
+    2145,
+    2128,
+    1737
+  ],
+  "message_count": 12402,
+  "temperature": 0.1,
+  "max_tokens": 16384,
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "window_evidence_extraction",
+      "strict": true,
+      "schema": {
+        "$defs": {
+          "WindowEvidenceRangeOutput": {
+            "additionalProperties": false,
+            "properties": {
+              "thread_id": {
+                "title": "Thread Id",
+                "type": "string"
+              },
+              "start_message_id": {
+                "title": "Start Message Id",
+                "type": "string"
+              },
+              "end_message_id": {
+                "title": "End Message Id",
+                "type": "string"
+              },
+              "summary": {
+                "title": "Summary",
+                "type": "string"
+              },
+              "relevance": {
+                "title": "Relevance",
+                "type": "string"
+              }
+            },
+            "required": [
+              "thread_id",
+              "start_message_id",
+              "end_message_id",
+              "summary",
+              "relevance"
+            ],
+            "title": "WindowEvidenceRangeOutput",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "window_id": {
+            "title": "Window Id",
+            "type": "string"
+          },
+          "no_relevant_evidence": {
+            "title": "No Relevant Evidence",
+            "type": "boolean"
+          },
+          "evidence_ranges": {
+            "items": {
+              "$ref": "#/$defs/WindowEvidenceRangeOutput"
+            },
+            "title": "Evidence Ranges",
+            "type": "array"
+          },
+          "uncertainties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Uncertainties",
+            "type": "array"
+          }
+        },
+        "required": [
+          "window_id",
+          "no_relevant_evidence",
+          "evidence_ranges",
+          "uncertainties"
+        ],
+        "title": "WindowEvidenceOutput",
+        "type": "object"
+      }
+    }
+  },
+  "analysis_plan": "REQUEST-SCOPED ANALYSIS PLAN\n\nOriginal question: \"When did we fight about school?\"\n\nAnalysis brief:\nIdentify and date every materially distinct exchange in which the conversation\nparticipants were in conflict about school, education, homeschooling, academic\nquality or progress, curriculum, school-related schedules, educational costs,\nor responsibility for educational decisions.\n\nRelevance criteria:\n- Treat \"fight\" behaviorally, not as a required literal word.\n- Include direct arguments, disagreements, challenges, accusations, criticism,\n  defensiveness, competing proposals, or sustained tense exchanges.\n- Include conflicts that combine education with parenting time, gymnastics or\n  activity schedules, money, tuition, workload, or responsibility when the\n  educational issue is a material part of the disagreement.\n- Include evidence that supports, contradicts, weakens, narrows, or qualifies\n  whether an exchange was a fight about school.\n- When a passage is plausibly relevant but borderline, return it and explain\n  the uncertainty instead of silently excluding it.\n\nExclusion criteria:\n- Exclude purely cooperative or neutral school logistics with no disagreement,\n  criticism, accusation, competing position, or tension.\n- Do not treat a dispute involving an unrelated third party as a fight between\n  the conversation participants unless their own disagreement is also shown.\n\nAmbiguities to preserve:\n- \"Fight\" may range from an explicit argument to a meaningful disagreement; do\n  not require insults, raised voices, or use of the word \"fight.\"\n- A conflict may be partly about school and partly about another issue. Include\n  it when education is material and describe the overlap.\n\nAnswer requirements:\n- Preserve each distinct responsive exchange rather than selecting only the\n  strongest example.\n- Capture enough surrounding messages to show both positions and context.\n- The eventual answer must identify when each exchange occurred and what the\n  school-related disagreement concerned.\n\nThis plan interprets the question but is not evidence and is not an exhaustive\nfilter. The original question remains authoritative. Inspect every supplied\nmessage and return relevant evidence even when it falls outside these examples.\n"
+}

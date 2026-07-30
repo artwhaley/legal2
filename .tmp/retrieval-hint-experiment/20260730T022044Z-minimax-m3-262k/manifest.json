@@ -1,0 +1,707 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "metrics": {
+        "coverage": {
+          "evidence_range_count": 0,
+          "message_count": 12402,
+          "window_count": 5
+        },
+        "final_range_inventory": [],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 0,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 1280,
+          "synthesis_usable_input_tokens": 244262
+        },
+        "mode_projection": {
+          "active_config_version": 58,
+          "configuration_fingerprint": "438f49afcb41952360211c394fff30baea81fb2952feaba5813a382d85fe99f4",
+          "mode_independent_configuration_fingerprint": "33338e2139ed5190eb03fa112970934683d309abd99a734339cd4787194b675f",
+          "retrieval_assistance_mode": "semantic_ranges"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 0,
+          "found": [],
+          "total": 7
+        },
+        "selected_suggestion_message_ids": [
+          "decipher_export_19:1847",
+          "decipher_message_1:19",
+          "decipher_message_1:7278",
+          "decipher_message_1:2148",
+          "decipher_message_1:1817",
+          "decipher_message_1:1194",
+          "decipher_message_1:1966",
+          "decipher_message_1:5352",
+          "decipher_message_1:5694",
+          "decipher_message_1:1956",
+          "decipher_message_1:375",
+          "decipher_message_1:5790",
+          "decipher_message_1:600",
+          "decipher_message_1:997",
+          "decipher_message_1:3034",
+          "decipher_message_1:7162",
+          "decipher_message_1:2024",
+          "decipher_message_1:6520",
+          "decipher_message_1:5700",
+          "decipher_message_1:3708",
+          "decipher_message_1:1473",
+          "decipher_message_1:5690",
+          "decipher_message_1:587",
+          "decipher_message_1:6573",
+          "decipher_message_1:5140",
+          "decipher_message_1:2096",
+          "decipher_message_1:5797",
+          "decipher_message_1:1420",
+          "decipher_message_1:1269",
+          "decipher_message_1:2136",
+          "decipher_message_1:6770",
+          "decipher_message_1:7170",
+          "decipher_message_1:2626",
+          "decipher_message_1:931",
+          "decipher_export_19:4635",
+          "decipher_message_1:1623",
+          "decipher_message_1:5063",
+          "decipher_message_1:1772",
+          "decipher_message_1:1002",
+          "decipher_message_1:1282"
+        ],
+        "strategy": "multi_window_ledger",
+        "suggestions_without_final_evidence": 40,
+        "terminal_event": "completed",
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 937538,
+          "output_tokens": 817,
+          "source": "provider_reported"
+        },
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 0,
+        "wall_time_ms": 375330.6914999994,
+        "window_count": 5,
+        "window_durations_ms": [
+          12353.638887405396,
+          17004.163026809692,
+          246738.72900009155,
+          22102.74887084961,
+          32166.615962982178
+        ],
+        "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+      },
+      "mode": "semantic_ranges",
+      "request_artifact": "censored-semantic-request.json",
+      "result_artifact": "censored-semantic-result.json"
+    },
+    "full-semantic": {
+      "metrics": {
+        "coverage": {
+          "evidence_range_count": 0,
+          "message_count": 12402,
+          "window_count": 5
+        },
+        "final_range_inventory": [],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 0,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 1217,
+          "synthesis_usable_input_tokens": 244262
+        },
+        "mode_projection": {
+          "active_config_version": 57,
+          "configuration_fingerprint": "43c99bf2639a10ea9cda6e5dabe43adcd6b09f2b39ae7634480857e0276d458d",
+          "mode_independent_configuration_fingerprint": "33338e2139ed5190eb03fa112970934683d309abd99a734339cd4787194b675f",
+          "retrieval_assistance_mode": "semantic_ranges"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 0,
+          "found": [],
+          "total": 7
+        },
+        "selected_suggestion_message_ids": [
+          "decipher_export_19:1847",
+          "decipher_message_1:19",
+          "decipher_message_1:7278",
+          "decipher_message_1:2148",
+          "decipher_message_1:1817",
+          "decipher_message_1:1194",
+          "decipher_message_1:5352",
+          "decipher_export_19:3382",
+          "decipher_message_1:1966",
+          "decipher_message_1:5694",
+          "decipher_message_1:3529",
+          "decipher_message_1:1956",
+          "decipher_export_19:3392",
+          "decipher_message_1:375",
+          "decipher_message_1:5790",
+          "decipher_message_1:600",
+          "decipher_message_1:997",
+          "decipher_message_1:3034",
+          "decipher_message_1:7162",
+          "decipher_message_1:2024",
+          "decipher_message_1:6520",
+          "decipher_message_1:5700",
+          "decipher_message_1:3708",
+          "decipher_export_19:3396",
+          "decipher_export_19:586",
+          "decipher_message_1:1473",
+          "decipher_message_1:587",
+          "decipher_message_1:5690",
+          "decipher_message_1:6573",
+          "decipher_message_1:5140",
+          "decipher_message_1:2096",
+          "decipher_message_1:1269",
+          "decipher_message_1:1420",
+          "decipher_message_1:2136",
+          "decipher_message_1:5797",
+          "decipher_message_1:7170",
+          "decipher_message_1:6770",
+          "decipher_message_1:2626",
+          "decipher_export_19:4635",
+          "decipher_message_1:931"
+        ],
+        "strategy": "multi_window_ledger",
+        "suggestions_without_final_evidence": 40,
+        "terminal_event": "completed",
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 937484,
+          "output_tokens": 770,
+          "source": "provider_reported"
+        },
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 0,
+        "wall_time_ms": 128817.70250000045,
+        "window_count": 5,
+        "window_durations_ms": [
+          23286.74006462097,
+          18189.861059188843,
+          16283.414840698242,
+          10680.516004562378,
+          12244.13800239563
+        ],
+        "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+      },
+      "mode": "semantic_ranges",
+      "request_artifact": "full-semantic-request.json",
+      "result_artifact": "full-semantic-result.json"
+    },
+    "terms-only": {
+      "metrics": {
+        "coverage": {
+          "evidence_range_count": 0,
+          "message_count": 12402,
+          "window_count": 5
+        },
+        "final_range_inventory": [],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 0,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 1256,
+          "synthesis_usable_input_tokens": 244262
+        },
+        "mode_projection": {
+          "active_config_version": 56,
+          "configuration_fingerprint": "d6ed7d212d3f1f89c177c4e35d7a0bade6ec51a35e39279451a821e7a29e5296",
+          "mode_independent_configuration_fingerprint": "33338e2139ed5190eb03fa112970934683d309abd99a734339cd4787194b675f",
+          "retrieval_assistance_mode": "terms_only"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 0,
+          "found": [],
+          "total": 7
+        },
+        "selected_suggestion_message_ids": [],
+        "strategy": "multi_window_ledger",
+        "suggestions_without_final_evidence": 0,
+        "terminal_event": "completed",
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 932542,
+          "output_tokens": 930,
+          "source": "provider_reported"
+        },
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 0,
+        "wall_time_ms": 136385.96719999987,
+        "window_count": 5,
+        "window_durations_ms": [
+          16322.991132736206,
+          12215.211153030396,
+          18003.644943237305,
+          21034.131050109863,
+          15298.639059066772
+        ],
+        "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+      },
+      "mode": "terms_only",
+      "request_artifact": "terms-only-request.json",
+      "result_artifact": "terms-only-result.json"
+    }
+  },
+  "artifact_hashes": {
+    "censored-candidates.json": "4338a20d58e6e45da77042a8cd4b30bb730dbe0027c9e3ab9de718735dffecd8",
+    "censored-selected-suggestions.json": "70124e005d215e60f827fa8c36f09fef1245db7fa829249d23c6ba5321b19ea8",
+    "censored-semantic-request.json": "feabdfb29f78e54d05ac2b38d3581109faa52929e8210db8786c09f842fbc830",
+    "censored-semantic-result.json": "971e0c2bc056a8a31ddbaf7d8a864c2516c06f763216099e951163540cded72b",
+    "comparison.json": "2f638efdc760a5dff9400c22573fc349e2db1d71dbd8e6ec81ad28c233f8b318",
+    "comparison.md": "2cb6566b663f00f299fa109fe77cb2858b196f60de8e795004ee7e7cd5986f9f",
+    "full-selected-suggestions.json": "43cf131aec90aad588200b532b1ded9d300553dda5daefa2d0af534bb8127902",
+    "full-semantic-request.json": "49f4dea8e325c9d7c22723eeb6381792daaa1c740db6bd7b70309aebc7631c82",
+    "full-semantic-result.json": "d6950afbea50bb80d47d9e44668652a6d9be2fcae109b7f2bc0be1360dc1d78e",
+    "provisional-gold.json": "230739c41061cd3a7371e5bc422e9262e82f471e817ccdea50a338276fa1b521",
+    "query-embedding-metadata.json": "523e5c9ad7186b090757b2cf458e322e2807d998d3215809b220971f25adc9ec",
+    "raw-candidates.json": "86f45f863cdcbd674c822cb02d3c66566d4116b0b04b5e03ae8ef134e9b2da4a",
+    "raw-gold-overlap.json": "ae3d762741acb32030634b336e18b614ef88cbb138326b8781a0611b28996ff6",
+    "retrieval-plan.json": "1be733f9f9391fa03173cb6828322d859fdcdc544ecd2cae83b13a8e7c8d2105",
+    "terms-only-request.json": "3b7172326773103059c55ae990298fd2aeecbc7c27e5a6f0c3260d7f1bf1115f",
+    "terms-only-result.json": "89f3704d2f696d65b3d25207640a6d15daad16ea1b3577d66244926d69a197a5"
+  },
+  "capture": {
+    "final_debug_status": {
+      "active": false,
+      "active_session_id": null,
+      "active_started_at": null,
+      "bound_requests": 0,
+      "pending_records": 0,
+      "sessions": [
+        {
+          "bound_requests": 0,
+          "bytes": 28716030,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T022045Z-bf99b0ac9134.jsonl",
+          "session_id": "20260730T022045Z-bf99b0ac9134",
+          "started_at": "2026-07-30T02:20:45.107682Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 6059398,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T021850Z-499e19ba07cc.jsonl",
+          "session_id": "20260730T021850Z-499e19ba07cc",
+          "started_at": "2026-07-30T02:19:59.253477Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 24613307,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T020559Z-795d639cba73.jsonl",
+          "session_id": "20260730T020559Z-795d639cba73",
+          "started_at": "2026-07-30T02:17:21.369563Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 27713413,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T014931Z-04339cced113.jsonl",
+          "session_id": "20260730T014931Z-04339cced113",
+          "started_at": "2026-07-30T01:58:08.950751Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 16092189,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013734Z-10c795bd94b9.jsonl",
+          "session_id": "20260730T013734Z-10c795bd94b9",
+          "started_at": "2026-07-30T01:45:31.192678Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 10039733,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013346Z-6250c608d501.jsonl",
+          "session_id": "20260730T013346Z-6250c608d501",
+          "started_at": "2026-07-30T01:36:57.402172Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29385968,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T010423Z-b75d5baec026.jsonl",
+          "session_id": "20260730T010423Z-b75d5baec026",
+          "started_at": "2026-07-30T01:24:46.195241Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29878385,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T002011Z-7cc97e5aa5ed.jsonl",
+          "session_id": "20260730T002011Z-7cc97e5aa5ed",
+          "started_at": "2026-07-30T00:46:41.906593Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 37537,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001924Z-3f336c06cb08.jsonl",
+          "session_id": "20260730T001924Z-3f336c06cb08",
+          "started_at": "2026-07-30T00:20:07.307229Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9110,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001900Z-37b9cbe8d1f4.jsonl",
+          "session_id": "20260730T001900Z-37b9cbe8d1f4",
+          "started_at": "2026-07-30T00:19:20.682056Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 6144,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T231844Z-dd491fdafa9f.jsonl",
+          "session_id": "20260729T231844Z-dd491fdafa9f",
+          "started_at": "2026-07-29T23:18:45.399319Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9589513,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T205715Z-33682bd12835.jsonl",
+          "session_id": "20260729T205715Z-33682bd12835",
+          "started_at": "2026-07-29T21:06:05.715369Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9879797,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T211045Z-b8a7a56de30c.jsonl",
+          "session_id": "20260728T211045Z-b8a7a56de30c",
+          "started_at": "2026-07-28T21:23:03.093374Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 5012195,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T210612Z-a46a0035349d.jsonl",
+          "session_id": "20260728T210612Z-a46a0035349d",
+          "started_at": "2026-07-28T21:09:55.491286Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 4984670,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T182240Z-2b36ad29f6e0.jsonl",
+          "session_id": "20260728T182240Z-2b36ad29f6e0",
+          "started_at": "2026-07-28T18:28:34.610249Z",
+          "subject_account_id": null
+        }
+      ],
+      "subject_account_id": null,
+      "writer_failure": null
+    },
+    "session_id": "20260730T022045Z-bf99b0ac9134",
+    "started_by_runner": true,
+    "stopped": true
+  },
+  "capture_session_id": "20260730T022045Z-bf99b0ac9134",
+  "capture_started_projection": {
+    "active_config_version": 55,
+    "configuration_fingerprint": "a73b0482b0a6b67e68ed8936a49b5d986d5fc2313a9975c41660602348b3f0d2",
+    "debug_status": {
+      "active": true,
+      "active_session_id": "20260730T022045Z-bf99b0ac9134",
+      "active_started_at": "2026-07-30T02:20:45.107682Z",
+      "bound_requests": 0,
+      "pending_records": 0,
+      "sessions": [
+        {
+          "bound_requests": 0,
+          "bytes": 167,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T022045Z-bf99b0ac9134.jsonl",
+          "session_id": "20260730T022045Z-bf99b0ac9134",
+          "started_at": "2026-07-30T02:20:45.107682Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 6059398,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T021850Z-499e19ba07cc.jsonl",
+          "session_id": "20260730T021850Z-499e19ba07cc",
+          "started_at": "2026-07-30T02:19:59.253477Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 24613307,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T020559Z-795d639cba73.jsonl",
+          "session_id": "20260730T020559Z-795d639cba73",
+          "started_at": "2026-07-30T02:17:21.369563Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 27713413,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T014931Z-04339cced113.jsonl",
+          "session_id": "20260730T014931Z-04339cced113",
+          "started_at": "2026-07-30T01:58:08.950751Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 16092189,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013734Z-10c795bd94b9.jsonl",
+          "session_id": "20260730T013734Z-10c795bd94b9",
+          "started_at": "2026-07-30T01:45:31.192678Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 10039733,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013346Z-6250c608d501.jsonl",
+          "session_id": "20260730T013346Z-6250c608d501",
+          "started_at": "2026-07-30T01:36:57.402172Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29385968,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T010423Z-b75d5baec026.jsonl",
+          "session_id": "20260730T010423Z-b75d5baec026",
+          "started_at": "2026-07-30T01:24:46.195241Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29878385,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T002011Z-7cc97e5aa5ed.jsonl",
+          "session_id": "20260730T002011Z-7cc97e5aa5ed",
+          "started_at": "2026-07-30T00:46:41.906593Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 37537,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001924Z-3f336c06cb08.jsonl",
+          "session_id": "20260730T001924Z-3f336c06cb08",
+          "started_at": "2026-07-30T00:20:07.307229Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9110,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001900Z-37b9cbe8d1f4.jsonl",
+          "session_id": "20260730T001900Z-37b9cbe8d1f4",
+          "started_at": "2026-07-30T00:19:20.682056Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 6144,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T231844Z-dd491fdafa9f.jsonl",
+          "session_id": "20260729T231844Z-dd491fdafa9f",
+          "started_at": "2026-07-29T23:18:45.399319Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9589513,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T205715Z-33682bd12835.jsonl",
+          "session_id": "20260729T205715Z-33682bd12835",
+          "started_at": "2026-07-29T21:06:05.715369Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9879797,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T211045Z-b8a7a56de30c.jsonl",
+          "session_id": "20260728T211045Z-b8a7a56de30c",
+          "started_at": "2026-07-28T21:23:03.093374Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 5012195,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T210612Z-a46a0035349d.jsonl",
+          "session_id": "20260728T210612Z-a46a0035349d",
+          "started_at": "2026-07-28T21:09:55.491286Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 4984670,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T182240Z-2b36ad29f6e0.jsonl",
+          "session_id": "20260728T182240Z-2b36ad29f6e0",
+          "started_at": "2026-07-28T18:28:34.610249Z",
+          "subject_account_id": null
+        }
+      ],
+      "subject_account_id": null,
+      "writer_failure": null
+    },
+    "events": [
+      {
+        "config_version": null,
+        "event": "debug_capture_started",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T02:20:45.109336Z"
+      },
+      {
+        "config_version": 55,
+        "event": "config_save",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T02:20:45.130627Z"
+      },
+      {
+        "config_version": 55,
+        "event": "config_validate",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T02:20:45.171102Z"
+      },
+      {
+        "config_version": 55,
+        "event": "config_activate",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T02:20:45.376282Z"
+      }
+    ],
+    "mode_independent_configuration_fingerprint": "33338e2139ed5190eb03fa112970934683d309abd99a734339cd4787194b675f",
+    "retrieval_assistance_mode": "semantic_ranges"
+  },
+  "comparison_artifacts": [
+    "comparison.json",
+    "comparison.md"
+  ],
+  "evw": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\sfv1-fixture-multicorpus-v15.evw",
+  "output_dir": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\retrieval-hint-experiment\\20260730T022044Z-minimax-m3-262k",
+  "plan_id": "b46ab5e2-73cf-4660-8f0b-db29ae945298",
+  "plan_identity": {
+    "compatibility_fingerprint": "0bcdfa95d3802e08f4db0db84ee2d9fd3b41b7880d2274fbf0dde93428d7ef4d",
+    "config_version": 55,
+    "embedding": {
+      "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+      "dimensions": 384,
+      "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+      "normalization": "unit_l2"
+    },
+    "queries": [
+      {
+        "query_id": "q0001",
+        "text": "when did we fight about school"
+      },
+      {
+        "query_id": "q0002",
+        "text": "fight about school"
+      },
+      {
+        "query_id": "q0003",
+        "text": "school fight"
+      },
+      {
+        "query_id": "q0004",
+        "text": "when did we fight"
+      },
+      {
+        "query_id": "q0005",
+        "text": "we fought about school"
+      },
+      {
+        "query_id": "q0006",
+        "text": "argument about school"
+      },
+      {
+        "query_id": "q0007",
+        "text": "disagreement about school"
+      },
+      {
+        "query_id": "q0008",
+        "text": "school argument"
+      },
+      {
+        "query_id": "q0009",
+        "text": "school disagreement"
+      },
+      {
+        "query_id": "q0010",
+        "text": "when was the fight about school"
+      },
+      {
+        "query_id": "q0011",
+        "text": "date of school fight"
+      },
+      {
+        "query_id": "q0012",
+        "text": "school conflict"
+      },
+      {
+        "query_id": "q0013",
+        "text": "conflict about school"
+      },
+      {
+        "query_id": "q0014",
+        "text": "when did the school fight happen"
+      },
+      {
+        "query_id": "q0015",
+        "text": "school fight date"
+      },
+      {
+        "query_id": "q0016",
+        "text": "fight over school"
+      },
+      {
+        "query_id": "q0017",
+        "text": "school dispute"
+      },
+      {
+        "query_id": "q0018",
+        "text": "dispute about school"
+      },
+      {
+        "query_id": "q0019",
+        "text": "when did we argue about school"
+      },
+      {
+        "query_id": "q0020",
+        "text": "argue about school"
+      }
+    ],
+    "retrieval_plan_id": "b46ab5e2-73cf-4660-8f0b-db29ae945298",
+    "search_policy": {
+      "fusion_method": "reciprocal_rank_fusion",
+      "maximum_prompt_suggestion_messages": 40,
+      "rrf_constant": 60,
+      "top_k_per_query": 100
+    }
+  },
+  "prepared_at": "2026-07-30T02:21:05.200216Z",
+  "question": "When did we fight about school?",
+  "runner": "RAUC1-800",
+  "server_url": "http://127.0.0.1:8710",
+  "small_revision_id": 3,
+  "small_revision_message_count": 1387,
+  "working_corpus_message_count": 12402,
+  "working_corpus_revision_id": 4
+}

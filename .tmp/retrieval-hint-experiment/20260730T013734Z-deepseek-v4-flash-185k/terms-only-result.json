@@ -1,0 +1,297 @@
+{
+  "events": [
+    {
+      "config_version": 36,
+      "data": {
+        "endpoint": "/v1/conversational-analysis",
+        "message_count": 12402,
+        "scope_id": "retrieval-investigation-revision-4"
+      },
+      "event": "accepted",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 1,
+      "timestamp": "2026-07-30T01:40:51.152507Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "analysis_input_tokens": 714997,
+        "context_window_tokens": 500000,
+        "corpus_tokens": 712277,
+        "reserved_output_tokens": 16384,
+        "safety_margin_tokens": 1498,
+        "strategy": "multi_window_ledger"
+      },
+      "event": "accounting_completed",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 2,
+      "timestamp": "2026-07-30T01:40:51.152637Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "compatibility_fingerprint": "8ed93c86d94b71fdd4c6225078d9d9d2169aa8bab42ef13f348a861e60e1ad80",
+        "mode": "terms_only",
+        "query_count": 3,
+        "raw_hit_count": 0
+      },
+      "event": "retrieval_assistance_accepted",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 3,
+      "timestamp": "2026-07-30T01:40:51.152691Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "selected_suggestion_message_count": 0,
+        "suggestion_range_count": 0,
+        "unique_candidate_message_count": 0,
+        "unselected_candidate_message_count": 0
+      },
+      "event": "retrieval_suggestions_built",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 4,
+      "timestamp": "2026-07-30T01:40:51.152737Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "hard_input_tokens": 185000,
+        "message_count": 12402,
+        "retrieval_reserve_tokens": 2720,
+        "strategy": "multi_window_ledger",
+        "target_input_tokens": 166500,
+        "utilization_percent": 90.0,
+        "window_count": 6,
+        "window_plan_hash": "33eb93b7f995ca0e1ca0c3fdd6d621683734370d211c41fec6a5e690bd67a1da"
+      },
+      "event": "window_plan_created",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 5,
+      "timestamp": "2026-07-30T01:40:51.152907Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "message_count": 2222,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_started",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 6,
+      "timestamp": "2026-07-30T01:40:51.153142Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "delay_ms": 30000,
+        "error_code": "PROVIDER_REJECTED",
+        "failed_attempt": 1,
+        "next_attempt": 2,
+        "operation": "window_evidence_extraction",
+        "window_count": 6,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "retry_wait",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 7,
+      "timestamp": "2026-07-30T01:40:52.257646Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 11123,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 8,
+      "timestamp": "2026-07-30T01:41:02.273537Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 21133,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 9,
+      "timestamp": "2026-07-30T01:41:12.282969Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 31141,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 10,
+      "timestamp": "2026-07-30T01:41:22.291585Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "delay_ms": 60000,
+        "error_code": "PROVIDER_REJECTED",
+        "failed_attempt": 2,
+        "next_attempt": 3,
+        "operation": "window_evidence_extraction",
+        "window_count": 6,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "retry_wait",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 11,
+      "timestamp": "2026-07-30T01:41:23.040156Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 41891,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 12,
+      "timestamp": "2026-07-30T01:41:33.041590Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 51906,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 13,
+      "timestamp": "2026-07-30T01:41:43.056640Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 61908,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 14,
+      "timestamp": "2026-07-30T01:41:53.058471Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 71914,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 15,
+      "timestamp": "2026-07-30T01:42:03.064342Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 81925,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 16,
+      "timestamp": "2026-07-30T01:42:13.075032Z"
+    },
+    {
+      "config_version": 36,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 91931,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 17,
+      "timestamp": "2026-07-30T01:42:23.081296Z"
+    },
+    {
+      "config_version": 36,
+      "error": {
+        "code": "PROVIDER_REJECTED",
+        "details": {
+          "completed_windows": 0,
+          "window_count": 6
+        },
+        "message": "provider returned HTTP 529",
+        "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+        "retryable": false,
+        "stage": "provider"
+      },
+      "event": "failed",
+      "request_id": "07d7f7c7-cc19-47e5-8e30-e1dd5200b010",
+      "sequence": 18,
+      "timestamp": "2026-07-30T01:42:24.458592Z"
+    }
+  ],
+  "metrics": {
+    "coverage": null,
+    "final_range_inventory": [],
+    "final_ranges_outside_suggestions": null,
+    "final_ranges_overlapping_suggestions": null,
+    "ledger_processing": {},
+    "mode_projection": {
+      "active_config_version": 36,
+      "configuration_fingerprint": "1b1a20e6ffb55d1e8e1a0a7cff25afc40849f5aaacba5ae37fb6c5255bf258b7",
+      "mode_independent_configuration_fingerprint": "3d2e6b9024f48a8e7e5b268be9958334803b727ac4bcdfd7a8ac144521716820",
+      "retrieval_assistance_mode": "terms_only"
+    },
+    "partial": true,
+    "provider_retry_or_queue_events": 2,
+    "provisional_gold_recall": {
+      "count": 0,
+      "found": [],
+      "total": 7
+    },
+    "selected_suggestion_message_ids": [],
+    "strategy": null,
+    "suggestions_without_final_evidence": null,
+    "terminal_event": "failed",
+    "usage": null,
+    "used_ranges_outside_suggestions": null,
+    "used_ranges_overlapping_suggestions": null,
+    "wall_time_ms": 99273.33579999868,
+    "window_count": 6,
+    "window_durations_ms": [],
+    "window_plan_hash": "33eb93b7f995ca0e1ca0c3fdd6d621683734370d211c41fec6a5e690bd67a1da"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "window_id": "w000003",
+  "elapsed_seconds": 900.6582644000009,
+  "transport_error": "ReadTimeout",
+  "message": "The read operation timed out"
+}

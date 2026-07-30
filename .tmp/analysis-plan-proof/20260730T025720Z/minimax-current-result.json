@@ -1,0 +1,80 @@
+{
+  "status_code": 200,
+  "elapsed_seconds": 72.84926640000049,
+  "response": {
+    "id": "chatcmpl-b7240c92-918a-461a-a0be-d0e7c6226846",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000002\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3708\",\"end_message_id\":\"decipher_message_1:3708\",\"summary\":\"Julie states her guess that Olivia will not attend school if she is still feeling bad, in the context of Olivia being sick at the farm and a discussion about whether to notify the school of her absence.\",\"relevance\":\"Shows a school-related disagreement/tension point: Julie and Art disagree on whether to give the school advance notice of Olivia's absence; Art initially says he doesn't think the school needs notice and that they just let her in, while Julie insists the school 'gets real cranky' and requires advance notice.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3529\",\"end_message_id\":\"decipher_message_1:3529\",\"summary\":\"Art argues that private school guarantees being around kids whose parents care about education, contrasts with public schools where uncaring parents lead to kids/teachers not caring, and suggests small-town public schools (Piedmont, Ada) could be an alternative if they had to do public schools.\",\"relevance\":\"Captures a substantive disagreement between Julie and Art about school choice/education philosophy during a broader argument about parenting time and finances; Art pushes back on Julie's framing of private vs public school quality.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3034\",\"end_message_id\":\"decipher_message_1:3034\",\"summary\":\"Art says 'Nyah. Still safer than public schools in America now,' responding to Julie's earlier comment about why Olivia is in private school, and Julie replies 'which is why she's in private.'\",\"relevance\":\"Direct exchange showing a brief disagreement/tension about whether private school is necessary versus public school being acceptable, in the context of a larger argument about parenting and finances.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:2626\",\"end_message_id\":\"decipher_message_1:2626\",\"summary\":\"Julie states that she, Miss Chris, and other parents don't want to send kids to a school that puts profits above learning, in a discussion about the new owners of Wildflower school and concerns about teacher pay and the former youth pastor owner.\",\"relevance\":\"Captures a school-related disagreement/tension: Julie and Art discuss dissatisfaction with the new Wildflower ownership and the possibility of starting a new school (Spark Academy) with Miss Chris; Art expresses agreement that the new owners' approach is not okay.\"}],\"uncertainties\":[\"The strongest school-related disagreement in this window is the broader March 28, 2023 argument between Julie and Art, which combines disputes over parenting time, finances, and school choice; the school-specific portions are embedded in that larger conflict rather than being a standalone 'fight about school.'\",\"The March 14, 2023 exchange about school drop-off notice is a minor disagreement about school procedures rather than a substantive fight about education itself, but it is included because it shows tension specifically tied to school logistics.\",\"Whether the July 25, 2023 discussion about Wildflower's new ownership and possible new school counts as a 'fight' is borderline; both parties largely agree on concerns about the new owners, so it is more of a shared concern than a conflict, but it is included because Julie expresses strong opposition to the school under new ownership.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785380376,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 187224,
+      "completion_tokens": 736,
+      "total_tokens": 187960,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 128
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000002",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3708",
+          "end_message_id": "decipher_message_1:3708",
+          "summary": "Julie states her guess that Olivia will not attend school if she is still feeling bad, in the context of Olivia being sick at the farm and a discussion about whether to notify the school of her absence.",
+          "relevance": "Shows a school-related disagreement/tension point: Julie and Art disagree on whether to give the school advance notice of Olivia's absence; Art initially says he doesn't think the school needs notice and that they just let her in, while Julie insists the school 'gets real cranky' and requires advance notice."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3529",
+          "end_message_id": "decipher_message_1:3529",
+          "summary": "Art argues that private school guarantees being around kids whose parents care about education, contrasts with public schools where uncaring parents lead to kids/teachers not caring, and suggests small-town public schools (Piedmont, Ada) could be an alternative if they had to do public schools.",
+          "relevance": "Captures a substantive disagreement between Julie and Art about school choice/education philosophy during a broader argument about parenting time and finances; Art pushes back on Julie's framing of private vs public school quality."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3034",
+          "end_message_id": "decipher_message_1:3034",
+          "summary": "Art says 'Nyah. Still safer than public schools in America now,' responding to Julie's earlier comment about why Olivia is in private school, and Julie replies 'which is why she's in private.'",
+          "relevance": "Direct exchange showing a brief disagreement/tension about whether private school is necessary versus public school being acceptable, in the context of a larger argument about parenting and finances."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:2626",
+          "end_message_id": "decipher_message_1:2626",
+          "summary": "Julie states that she, Miss Chris, and other parents don't want to send kids to a school that puts profits above learning, in a discussion about the new owners of Wildflower school and concerns about teacher pay and the former youth pastor owner.",
+          "relevance": "Captures a school-related disagreement/tension: Julie and Art discuss dissatisfaction with the new Wildflower ownership and the possibility of starting a new school (Spark Academy) with Miss Chris; Art expresses agreement that the new owners' approach is not okay."
+        }
+      ],
+      "uncertainties": [
+        "The strongest school-related disagreement in this window is the broader March 28, 2023 argument between Julie and Art, which combines disputes over parenting time, finances, and school choice; the school-specific portions are embedded in that larger conflict rather than being a standalone 'fight about school.'",
+        "The March 14, 2023 exchange about school drop-off notice is a minor disagreement about school procedures rather than a substantive fight about education itself, but it is included because it shows tension specifically tied to school logistics.",
+        "Whether the July 25, 2023 discussion about Wildflower's new ownership and possible new school counts as a 'fight' is borderline; both parties largely agree on concerns about the new owners, so it is more of a shared concern than a conflict, but it is included because Julie expresses strong opposition to the school under new ownership."
+      ]
+    },
+    "evidence_range_count": 4
+  }
+}

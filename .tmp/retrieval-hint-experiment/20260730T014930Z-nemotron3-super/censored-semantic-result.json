@@ -1,0 +1,325 @@
+{
+  "events": [
+    {
+      "config_version": 44,
+      "data": {
+        "endpoint": "/v1/conversational-analysis",
+        "message_count": 12402,
+        "scope_id": "retrieval-investigation-revision-4"
+      },
+      "event": "accepted",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 1,
+      "timestamp": "2026-07-30T01:56:09.183495Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "analysis_input_tokens": 910071,
+        "context_window_tokens": 1000000,
+        "corpus_tokens": 906151,
+        "reserved_output_tokens": 16384,
+        "safety_margin_tokens": 1498,
+        "strategy": "multi_window_ledger"
+      },
+      "event": "accounting_completed",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 2,
+      "timestamp": "2026-07-30T01:56:09.183684Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "compatibility_fingerprint": "681ac77bb1d34bf4ab0eb6a104867ed6434547e3f758a18c4ed7919a4cd597be",
+        "mode": "semantic_ranges",
+        "query_count": 6,
+        "raw_hit_count": 590
+      },
+      "event": "retrieval_assistance_accepted",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 3,
+      "timestamp": "2026-07-30T01:56:09.183746Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "selected_suggestion_message_count": 40,
+        "suggestion_range_count": 40,
+        "unique_candidate_message_count": 469,
+        "unselected_candidate_message_count": 429
+      },
+      "event": "retrieval_suggestions_built",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 4,
+      "timestamp": "2026-07-30T01:56:09.183806Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "hard_input_tokens": 982118,
+        "message_count": 12402,
+        "retrieval_reserve_tokens": 3920,
+        "strategy": "multi_window_ledger",
+        "target_input_tokens": 883906,
+        "utilization_percent": 90.0,
+        "window_count": 2,
+        "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+      },
+      "event": "window_plan_created",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 5,
+      "timestamp": "2026-07-30T01:56:09.183998Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "message_count": 6395,
+        "suggestion_range_count": 34,
+        "window_count": 2,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_started",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 6,
+      "timestamp": "2026-07-30T01:56:09.184294Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 10011,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 7,
+      "timestamp": "2026-07-30T01:56:19.192059Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 20017,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 8,
+      "timestamp": "2026-07-30T01:56:29.198329Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 30026,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 9,
+      "timestamp": "2026-07-30T01:56:39.207553Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 40041,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 10,
+      "timestamp": "2026-07-30T01:56:49.222411Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 50046,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 11,
+      "timestamp": "2026-07-30T01:56:59.227198Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 60056,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 12,
+      "timestamp": "2026-07-30T01:57:09.236943Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 70070,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 13,
+      "timestamp": "2026-07-30T01:57:19.250691Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 80083,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 14,
+      "timestamp": "2026-07-30T01:57:29.264244Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 90094,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 15,
+      "timestamp": "2026-07-30T01:57:39.274747Z"
+    },
+    {
+      "config_version": 44,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 100101,
+        "operation": "window_evidence_extraction",
+        "window_count": 2
+      },
+      "event": "heartbeat",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 16,
+      "timestamp": "2026-07-30T01:57:49.281678Z"
+    },
+    {
+      "config_version": 44,
+      "error": {
+        "code": "LEDGER_BIJECTION_FAILED",
+        "details": {
+          "completed_windows": 0,
+          "end_message_id": "decipher_message_1:1203",
+          "end_message_index": 6179,
+          "range_index": 0,
+          "reason": "reversed_in_supplied_message_order",
+          "start_message_id": "decipher_message_1:1198",
+          "start_message_index": 6184,
+          "window_count": 2,
+          "window_id": "w000001"
+        },
+        "message": "model evidence coverage is invalid",
+        "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+        "retryable": false,
+        "stage": "ledger"
+      },
+      "event": "failed",
+      "request_id": "86f25081-6d5c-43aa-b191-b017767a2946",
+      "sequence": 17,
+      "timestamp": "2026-07-30T01:57:49.732946Z"
+    }
+  ],
+  "metrics": {
+    "coverage": null,
+    "final_range_inventory": [],
+    "final_ranges_outside_suggestions": null,
+    "final_ranges_overlapping_suggestions": null,
+    "ledger_processing": {},
+    "mode_projection": {
+      "active_config_version": 44,
+      "configuration_fingerprint": "528f5df615349dfa90fb90f99f813e72093376c401c7e18ebad4a19ebc01afd6",
+      "mode_independent_configuration_fingerprint": "e2cb1e84d57ca1f1849d7d1ebbf7f57fc9d627b5707d65c1d92ff9b02cd42877",
+      "retrieval_assistance_mode": "semantic_ranges"
+    },
+    "partial": true,
+    "provider_retry_or_queue_events": 0,
+    "provisional_gold_recall": {
+      "count": 0,
+      "found": [],
+      "total": 7
+    },
+    "selected_suggestion_message_ids": [
+      "decipher_export_19:4092",
+      "decipher_message_1:4287",
+      "decipher_message_1:636",
+      "decipher_message_1:5252",
+      "decipher_message_1:3204",
+      "decipher_message_1:5015",
+      "decipher_message_1:7052",
+      "decipher_message_1:6878",
+      "decipher_message_1:6073",
+      "decipher_message_1:6015",
+      "decipher_message_1:4959",
+      "decipher_message_1:5135",
+      "decipher_message_1:4504",
+      "decipher_message_1:4101",
+      "decipher_message_1:4088",
+      "decipher_message_1:1479",
+      "decipher_message_1:3973",
+      "decipher_message_1:3951",
+      "decipher_message_1:3942",
+      "decipher_message_1:3933",
+      "decipher_export_19:2955",
+      "decipher_message_1:3907",
+      "decipher_message_1:3796",
+      "decipher_message_1:3767",
+      "decipher_message_1:3706",
+      "decipher_message_1:6344",
+      "decipher_message_1:3482",
+      "decipher_message_1:3383",
+      "decipher_message_1:3249",
+      "decipher_message_1:3247",
+      "decipher_message_1:3106",
+      "decipher_message_1:57",
+      "decipher_message_1:2721",
+      "decipher_message_1:2465",
+      "decipher_message_1:2232",
+      "decipher_message_1:5392",
+      "decipher_message_1:1683",
+      "decipher_export_19:111",
+      "decipher_message_1:2411",
+      "decipher_export_19:205"
+    ],
+    "strategy": null,
+    "suggestions_without_final_evidence": null,
+    "terminal_event": "failed",
+    "usage": null,
+    "used_ranges_outside_suggestions": null,
+    "used_ranges_overlapping_suggestions": null,
+    "wall_time_ms": 107258.1640999997,
+    "window_count": 2,
+    "window_durations_ms": [],
+    "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+  }
+}

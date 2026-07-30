@@ -1,6 +1,6 @@
 """Shared domain constants."""
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 15
 
 NORMALIZED_FORMAT_VERSION = 1
 
@@ -46,3 +46,18 @@ HIGHLIGHT_NONE = "none"
 HIGHLIGHT_HIT = "hit"
 HIGHLIGHT_RELEVANT = "relevant"
 HIGHLIGHT_CONTEXT = "context"
+
+# Working corpus status lifecycle: draft → indexing → ready
+#                                       indexing → failed
+#                               ready → stale → indexing → ready
+WORKING_CORPUS_STATUS_DRAFT = "draft"
+WORKING_CORPUS_STATUS_BUILDING = "building"
+WORKING_CORPUS_STATUS_READY = "ready"
+WORKING_CORPUS_STATUS_STALE = "stale"
+WORKING_CORPUS_STATUS_FAILED = "failed"
+
+WORKING_CORPUS_SELECTION_ALL = "all"
+WORKING_CORPUS_SELECTION_SELECTED = "selected"
+
+WORKING_CORPUS_TOKEN_LIMIT = 768_000
+WORKING_CORPUS_DEFAULT_NAME = "Full Corpus"

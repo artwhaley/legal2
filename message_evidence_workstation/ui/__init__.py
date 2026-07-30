@@ -1,1 +1,1 @@
-
+"""Lean Python client UI."""

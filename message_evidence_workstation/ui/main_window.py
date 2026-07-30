@@ -1,430 +1,564 @@
-"""Main application window."""
+"""Small, explicit Python client for the v15 split architecture."""
 
 from __future__ import annotations
 
-from pathlib import Path
+import json
+import time
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QComboBox,
     QLabel,
+    QLineEdit,
     QMainWindow,
-    QStatusBar,
-    QTabWidget,
+    QMessageBox,
+    QPushButton,
+    QPlainTextEdit,
+    QProgressBar,
     QVBoxLayout,
     QWidget,
 )
 
-from message_evidence_workstation.app_bootstrap import AppContext, StartupLoadOptions
-from message_evidence_workstation.ui.background_tasks import request_shutdown
-from message_evidence_workstation.config.settings import load_settings
-from message_evidence_workstation.db import repositories
-from message_evidence_workstation.domain.embedding_state import EmbeddingState
-from message_evidence_workstation.ui.background_tasks import request_shutdown
-from message_evidence_workstation.ui.conversational_tab import ConversationalTab
-from message_evidence_workstation.ui.embedding_progress_controller import EmbeddingProgressController
-from message_evidence_workstation.ui.home_tab import HomeTab
-from message_evidence_workstation.ui.output_formatting_tab import OutputFormattingTab
-from message_evidence_workstation.ui.settings_tab import SettingsTab
-from message_evidence_workstation.ui.sidebar import Sidebar
-from message_evidence_workstation.ui.simple_search_tab import SimpleSearchTab
-from message_evidence_workstation.ui.transcript_widget_tab import TranscriptWidgetTab
-from message_evidence_workstation.ui.new_transcript_widget_tab import NewTranscriptWidgetTab
-from message_evidence_workstation.ui.virtual_transcript_widget_tab import VirtualTranscriptWidgetTab
+from message_evidence_workstation.app_bootstrap import AppContext
+from message_evidence_workstation.client_api.gateway import (
+    RemoteGatewayCancelled,
+    RequestCancellation,
+)
+from message_evidence_workstation.db.corpus_repository import WorkingCorpusRepository
+from message_evidence_workstation.domain.search_scope import NarrowedSearchScope, WorkingCorpusScope
+from message_evidence_workstation.services.client_workflows import (
+    ClientWorkflowService,
+    ConversationalWorkflow,
+    ConversationalExecutionResult,
+    ConversationalSearchProgress,
+    EmbeddingBuildCoordinator,
+    EmbeddingBuildProgress,
+    EmbeddingBuildResult,
+    EmbeddingSearchWorkflow,
+    KeywordSearchWorkflow,
+    clear_local_embeddings,
+)
 
 
-class MainWindow(QMainWindow):
+class EmbeddingBuildWorker(QThread):
+    progress = Signal(object)
+    succeeded = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, context: AppContext, scope: WorkingCorpusScope) -> None:
+        super().__init__()
+        self.context = context
+        self.scope = scope
+
+    def run(self) -> None:
+        try:
+            result = EmbeddingBuildCoordinator(
+                self.context.store,
+                self.context.logger,
+                self.context.gateway,
+            ).build(self.scope, self.progress.emit)
+            self.succeeded.emit(result)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+
+
+class ConversationalSearchWorker(QThread):
+    progress = Signal(object)
+    succeeded = Signal(object)
+    failed = Signal(str)
+    cancelled = Signal()
+
     def __init__(
         self,
         context: AppContext,
-        *,
-        startup_load: StartupLoadOptions | None = None,
+        scope: WorkingCorpusScope,
+        query: str,
     ) -> None:
         super().__init__()
         self.context = context
-        self._startup_load = startup_load
-        self._home_tab_index: int | None = None
-        self._dataset_tabs_built = False
-        self.setWindowTitle("Message Evidence Workstation")
-        self.resize(1280, 800)
+        self.scope = scope
+        self.query = query
+        self.cancellation = RequestCancellation()
 
-        self._embedding_controller = EmbeddingProgressController(context.log_bus, self)
-        self._embedding_controller.state_changed.connect(self._on_embedding_state_changed)
-        self.context.embedding_state = self._embedding_controller.state
+    def cancel_request(self) -> None:
+        self.cancellation.cancel()
 
-        self._status_bar = QStatusBar(self)
-        self.setStatusBar(self._status_bar)
-
-        central = QWidget()
-        root_layout = QHBoxLayout(central)
-
-        self.sidebar = Sidebar(context.conn, context.logger)
-        self.sidebar.setFixedWidth(300)
-        root_layout.addWidget(self.sidebar)
-
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-
-        self.tabs = QTabWidget()
-        self.home_tab = HomeTab(
-            context.conn,
-            context.logger,
-            db_path=context.db_path,
-            initial_dataset_path=startup_load.dataset_path if startup_load else None,
-            reload_dataset=startup_load.reload if startup_load else False,
-            skip_embedding_on_load=(
-                startup_load.skip_embedding if startup_load is not None else False
-            ),
-            auto_run_on_show=startup_load is not None,
-        )
-        self._home_tab_index = self.tabs.addTab(self.home_tab, "Home")
-        self.settings_tab = SettingsTab(
-            context.conn,
-            context.logger,
-            context.log_bus,
-            dataset_id=None,
-            db_path=context.db_path,
-        )
-        self.settings_index = self.tabs.addTab(self.settings_tab, "Setup / Settings")
-
-        self.simple_search_tab: SimpleSearchTab | None = None
-        self.conversational_tab: ConversationalTab | None = None
-        self.output_formatting_tab: OutputFormattingTab | None = None
-        self.transcript_widget_tab: TranscriptWidgetTab | None = None
-        self.new_transcript_widget_tab: NewTranscriptWidgetTab | None = None
-        self.virtual_transcript_widget_tab: VirtualTranscriptWidgetTab | None = None
-        self.simple_search_index = -1
-        self.conversational_index = -1
-        self.output_formatting_index = -1
-        self.transcript_index = -1
-        self.new_transcript_index = -1
-        self.virtual_transcript_index = -1
-
-        self._add_locked_dataset_tabs()
-
-        self.home_tab.dataset_imported.connect(self._on_dataset_imported)
-        self.home_tab.load_completed.connect(self._on_dataset_load_completed)
-        self.home_tab.load_failed.connect(self._on_dataset_load_failed)
-        self.home_tab.embeddings_ready.connect(self._on_embeddings_ready)
-
-        right_layout.addWidget(self.tabs)
-        root_layout.addWidget(right, stretch=1)
-
-        self.setCentralWidget(central)
-
-        self.sidebar.source_thread_selected.connect(self._on_source_thread_selected)
-        self.sidebar.evidence_block_activated.connect(self._on_sidebar_evidence_block_activated)
-        self.sidebar.evidence_block_virtual_transcript_visibility_requested.connect(
-            self._on_sidebar_virtual_transcript_visibility_requested
-        )
-        self.sidebar.set_virtual_transcript_hidden_state_provider(
-            self._is_evidence_block_hidden_in_virtual_transcript
-        )
-
-        self.tabs.currentChanged.connect(self._on_tab_changed)
-
-        self._set_dataset_tabs_enabled(False)
-        self.tabs.setCurrentWidget(self.home_tab)
-
-        self.settings_tab.start_embedding_model_preload()
-
-        context.logger.info(
-            component="ui.main_window",
-            operation="window_ready",
-            message="Main window initialized",
-            details={"dataset_id": context.dataset_id},
-            dataset_id=context.dataset_id,
-        )
-
-    def _add_locked_dataset_tabs(self) -> None:
-        if self._dataset_tabs_built:
-            return
-        self.simple_search_tab = SimpleSearchTab(
-            self.context.conn, self.context.logger, db_path=self.context.db_path
-        )
-        self.conversational_tab = ConversationalTab(
-            self.context.conn, self.context.logger, db_path=self.context.db_path
-        )
-        self.output_formatting_tab = OutputFormattingTab(
-            self.context.conn, self.context.logger, db_path=self.context.db_path
-        )
-        self.transcript_widget_tab = TranscriptWidgetTab(self.context.conn, self.context.logger)
-        self.new_transcript_widget_tab = NewTranscriptWidgetTab(
-            self.context.conn, self.context.logger
-        )
-        self.virtual_transcript_widget_tab = VirtualTranscriptWidgetTab(
-            self.context.conn, self.context.logger
-        )
-
-        self.simple_search_index = self.tabs.addTab(self.simple_search_tab, "Simple Search")
-        self.conversational_index = self.tabs.addTab(
-            self.conversational_tab, "Conversational Interface"
-        )
-        self.output_formatting_index = self.tabs.addTab(
-            self.output_formatting_tab, "Output Formatting"
-        )
-        self.transcript_index = self.tabs.addTab(
-            self.transcript_widget_tab, "Transcript Widget"
-        )
-        self.new_transcript_index = self.tabs.addTab(
-            self.new_transcript_widget_tab,
-            "New Transcript Widget",
-        )
-        self.virtual_transcript_index = self.tabs.addTab(
-            self.virtual_transcript_widget_tab,
-            "Virtual Transcript Widget",
-        )
-
-        self.simple_search_tab.evidence_block_created.connect(
-            self._on_simple_search_evidence_block_created
-        )
-        self.transcript_widget_tab.evidence_block_created.connect(
-            self._on_transcript_evidence_block_created
-        )
-        self.new_transcript_widget_tab.evidence_block_created.connect(
-            self._on_transcript_evidence_block_created
-        )
-        self.virtual_transcript_widget_tab.evidence_block_created.connect(
-            self._on_transcript_evidence_block_created
-        )
-        self.virtual_transcript_widget_tab.evidence_block_deleted.connect(
-            self._refresh_workspaces
-        )
-        self.conversational_tab.set_category_refresh_handler(self._refresh_workspaces)
-        self.conversational_tab.message_citation_selected.connect(
-            self._on_conversational_citation_selected
-        )
-        self.output_formatting_tab.set_refresh_handler(self._refresh_workspaces)
-        self.sidebar.search_drop_evidence_block_created.connect(
-            self._on_search_drop_evidence_block_created
-        )
-        self._dataset_tabs_built = True
-        self._set_dataset_tabs_enabled(False)
-
-    def _on_embedding_state_changed(self, state: EmbeddingState) -> None:
-        self.context.embedding_state = state
-        text = self._embedding_controller.status_text()
-        self._status_bar.showMessage(text)
-        if self.simple_search_tab is not None:
-            self.simple_search_tab.update_embedding_gating(state)
-        if self.conversational_tab is not None:
-            self.conversational_tab.update_embedding_gating(state)
-
-    def _on_tab_changed(self, index: int) -> None:
-        if index < 0:
-            return
-        widget = self.tabs.widget(index)
-        if widget is self.new_transcript_widget_tab and self.new_transcript_widget_tab is not None:
-            self.new_transcript_widget_tab.ensure_document_loaded()
-        if widget is self.transcript_widget_tab and self.transcript_widget_tab is not None:
-            self.transcript_widget_tab.ensure_thread_loaded()
-        if widget is self.virtual_transcript_widget_tab and self.virtual_transcript_widget_tab is not None:
-            self.virtual_transcript_widget_tab.ensure_thread_loaded()
-
-    def _set_dataset_tabs_enabled(self, enabled: bool) -> None:
-        for index in (
-            self.simple_search_index,
-            self.conversational_index,
-            self.output_formatting_index,
-            self.transcript_index,
-            self.new_transcript_index,
-            self.virtual_transcript_index,
-        ):
-            if index >= 0:
-                self.tabs.setTabEnabled(index, enabled)
-
-    def _activate_dataset(self, dataset_id: int, *, embedding_available: bool = False) -> None:
-        self.context.dataset_id = dataset_id
-        self.context.embedding_available = embedding_available
-        self.context.logger.dataset_id = dataset_id
-        self._add_locked_dataset_tabs()
-
-        def bind_lightweight() -> None:
-            if self.simple_search_tab is not None:
-                self.simple_search_tab.set_dataset(dataset_id)
-            if self.conversational_tab is not None:
-                self.conversational_tab.set_dataset(dataset_id)
-            if self.output_formatting_tab is not None:
-                self.output_formatting_tab.set_dataset(dataset_id)
-            if self.settings_tab is not None:
-                self.settings_tab.set_dataset(dataset_id)
-            self._set_dataset_tabs_enabled(True)
-            model_id = load_settings().embedding_model
-            self._embedding_controller.refresh_from_db(
-                self.context.conn,
-                dataset_id=dataset_id,
-                model_name=model_id,
+    def run(self) -> None:
+        try:
+            coordinator = ConversationalWorkflow(
+                self.context.store, self.context.logger, self.context.gateway
             )
+            result = coordinator.execute(
+                NarrowedSearchScope(self.scope),
+                self.query,
+                self.progress.emit,
+                cancellation=self.cancellation,
+            )
+            self.succeeded.emit(result)
+        except RemoteGatewayCancelled:
+            self.cancelled.emit()
+        except Exception as exc:
+            self.failed.emit(str(exc))
 
-        def bind_sidebar() -> None:
-            self.sidebar.set_dataset(dataset_id)
 
-        def bind_transcripts() -> None:
-            if self.transcript_widget_tab is not None:
-                self.transcript_widget_tab.set_dataset(dataset_id)
-            if self.new_transcript_widget_tab is not None:
-                self.new_transcript_widget_tab.set_dataset(dataset_id)
-            if self.virtual_transcript_widget_tab is not None:
-                self.virtual_transcript_widget_tab.set_dataset(dataset_id)
+class MainWindow(QMainWindow):
+    def __init__(self, context: AppContext, *, startup_load: object | None = None) -> None:
+        super().__init__()
+        self.context = context
+        self.embedding_worker: EmbeddingBuildWorker | None = None
+        self.embedding_started_at = 0.0
+        self.embedding_progress_state: EmbeddingBuildProgress | None = None
+        self.embedding_timer = QTimer(self)
+        self.embedding_timer.setInterval(1000)
+        self.embedding_timer.timeout.connect(self._refresh_embedding_progress_text)
+        self.conversation_worker: ConversationalSearchWorker | None = None
+        self.conversation_progress_state: ConversationalSearchProgress | None = None
+        self.conversation_started_at = 0.0
+        self.conversation_timer = QTimer(self)
+        self.conversation_timer.setInterval(1000)
+        self.conversation_timer.timeout.connect(self._refresh_conversation_progress_text)
+        self.setWindowTitle("Message Evidence Workstation — EVW v15")
+        self.resize(1100, 720)
+        root = QWidget()
+        layout = QVBoxLayout(root)
+        self.scope_label = QLabel("Select a ready corpus revision")
+        layout.addWidget(self.scope_label)
+        selector_row = QHBoxLayout()
+        selector_row.addWidget(QLabel("Corpus revision:"))
+        self.scope_combo = QComboBox()
+        self.scope_combo.currentIndexChanged.connect(self._on_scope_changed)
+        selector_row.addWidget(self.scope_combo, 1)
+        refresh_button = QPushButton("Refresh")
+        refresh_button.clicked.connect(self._refresh_revisions)
+        selector_row.addWidget(refresh_button)
+        self.clear_embeddings_button = QPushButton("Clear local embeddings")
+        self.clear_embeddings_button.clicked.connect(self._clear_embeddings)
+        selector_row.addWidget(self.clear_embeddings_button)
+        layout.addLayout(selector_row)
+        query_row = QHBoxLayout()
+        self.query = QLineEdit()
+        self.query.setPlaceholderText("Search or ask about the selected corpus revision")
+        query_row.addWidget(self.query)
+        self.search_buttons: list[QPushButton] = []
+        for label, handler in (("FTS5", self._fts), ("Keyword", self._keyword), ("Embedding", self._embedding), ("Conversational", self._conversation)):
+            button = QPushButton(label)
+            button.clicked.connect(handler)
+            query_row.addWidget(button)
+            self.search_buttons.append(button)
+            if label == "Embedding":
+                self.embedding_search_button = button
+            elif label == "Conversational":
+                self.conversation_button = button
+        layout.addLayout(query_row)
+        self.conversation_progress_label = QLabel("Conversational search has not started")
+        self.conversation_progress_label.setVisible(False)
+        layout.addWidget(self.conversation_progress_label)
+        self.conversation_progress_bar = QProgressBar()
+        self.conversation_progress_bar.setVisible(False)
+        layout.addWidget(self.conversation_progress_bar)
+        self.cancel_conversation_button = QPushButton("Cancel conversational search")
+        self.cancel_conversation_button.clicked.connect(self._cancel_conversation)
+        self.cancel_conversation_button.setVisible(False)
+        layout.addWidget(self.cancel_conversation_button)
+        self.rebuild_button = QPushButton("Build / refresh local embeddings")
+        self.rebuild_button.clicked.connect(self._build_embeddings)
+        layout.addWidget(self.rebuild_button)
+        self.embedding_progress_label = QLabel("Embedding build has not started")
+        self.embedding_progress_label.setVisible(False)
+        layout.addWidget(self.embedding_progress_label)
+        self.embedding_progress_bar = QProgressBar()
+        self.embedding_progress_bar.setVisible(False)
+        layout.addWidget(self.embedding_progress_bar)
+        self.output = QPlainTextEdit()
+        self.output.setReadOnly(True)
+        layout.addWidget(self.output)
+        self.setCentralWidget(root)
+        self._refresh_revisions()
 
-        bind_lightweight()
-        QTimer.singleShot(0, self, bind_sidebar)
-        QTimer.singleShot(0, self, bind_transcripts)
+    def _scope(self):
+        if self.context.dataset_id is None:
+            raise RuntimeError("No imported dataset is available")
+        revision_id = self.scope_combo.currentData()
+        if revision_id is None:
+            raise RuntimeError("Select a ready working-corpus revision before searching")
+        return self.context.store.read(lambda conn: WorkingCorpusRepository(conn, self.context.logger).require_ready_scope(working_corpus_revision_id=int(revision_id), dataset_id=int(self.context.dataset_id)))
 
-        self.context.logger.info(
-            component="ui.main_window",
-            operation="dataset_activated",
-            message="Dataset activated in main window",
-            details={
-                "dataset_id": dataset_id,
-                "embedding_available": embedding_available,
-            },
-            dataset_id=dataset_id,
-        )
+    def _service_read(self, callback):
+        scope = self._scope()
+        return self.context.store.read(lambda conn: callback(ClientWorkflowService(conn, self.context.logger, self.context.gateway), scope))
 
-    def _on_dataset_imported(self, result: object) -> None:
-        from message_evidence_workstation.dataset_load_pipeline import DatasetLoadResult
+    def _run(self, operation, *, persist: bool = False) -> None:
+        try:
+            value = operation()
+            self.output.setPlainText(json.dumps(value, ensure_ascii=False, indent=2, default=str))
+        except Exception as exc:
+            self.output.setPlainText(f"FAILED\n{exc}")
+            QMessageBox.critical(self, "Operation failed", str(exc))
 
-        if not isinstance(result, DatasetLoadResult) or result.dataset_id is None:
-            return
-        self._activate_dataset(result.dataset_id, embedding_available=False)
-        self._embedding_controller.mark_build_started()
+    def _refresh_revisions(self) -> None:
+        selected = self.scope_combo.currentData()
+        self.scope_combo.blockSignals(True)
+        self.scope_combo.clear()
+        self.scope_combo.addItem("Select a ready corpus revision…", None)
+        try:
+            if self.context.dataset_id is None:
+                self.scope_label.setText("No imported dataset is available")
+                return
+            corpora = self.context.store.read(lambda conn: WorkingCorpusRepository(conn, self.context.logger).list_working_corpora(int(self.context.dataset_id)))
+            for corpus in corpora:
+                revisions = self.context.store.read(lambda conn, corpus_id=corpus.working_corpus_id: WorkingCorpusRepository(conn, self.context.logger).list_revisions(corpus_id))
+                for revision in revisions:
+                    label = f"{corpus.name} · revision {revision.revision_number} · {revision.status} · {revision.message_count:,} messages · {revision.estimated_tokens:,} tokens"
+                    self.scope_combo.addItem(label, revision.working_corpus_revision_id if revision.status == "ready" else None)
+            self.scope_label.setText("Select a ready corpus revision")
+        except Exception as exc:
+            self.scope_label.setText(f"Workspace unavailable: {exc}")
+        finally:
+            if selected is not None:
+                for index in range(self.scope_combo.count()):
+                    if self.scope_combo.itemData(index) == selected:
+                        self.scope_combo.setCurrentIndex(index)
+                        break
+            self.scope_combo.blockSignals(False)
+            self._on_scope_changed()
 
-    def _on_embeddings_ready(self, result: object) -> None:
-        from message_evidence_workstation.dataset_load_pipeline import DatasetLoadResult
-
-        if not isinstance(result, DatasetLoadResult) or result.dataset_id is None:
-            return
-        self.context.embedding_available = bool(result.embedding_available)
-        model_id = load_settings().embedding_model
-        self._embedding_controller.refresh_from_db(
-            self.context.conn,
-            dataset_id=result.dataset_id,
-            model_name=model_id,
-        )
-
-    def _on_dataset_load_completed(self, result: object) -> None:
-        from message_evidence_workstation.dataset_load_pipeline import DatasetLoadResult
-
-        if not isinstance(result, DatasetLoadResult):
-            return
-        if result.dataset_id is None:
+    def _on_scope_changed(self) -> None:
+        if self.scope_combo.currentData() is None:
+            self.scope_label.setText("Select a ready corpus revision")
             return
         try:
-            if self.context.dataset_id != result.dataset_id:
-                self._activate_dataset(
-                    result.dataset_id,
-                    embedding_available=result.embedding_available,
-                )
-            else:
-                self.context.embedding_available = result.embedding_available
-                model_id = load_settings().embedding_model
-                self._embedding_controller.refresh_from_db(
-                    self.context.conn,
-                    dataset_id=result.dataset_id,
-                    model_name=model_id,
-                )
+            scope = self._scope()
+            self.scope_label.setText(f"Corpus {scope.working_corpus_id} · revision {scope.revision_number} · generation {scope.index_generation} · {scope.message_count:,} messages · {scope.estimated_tokens:,} tokens · scope {scope.scope_hash[:12]}")
         except Exception as exc:
-            self.context.logger.error(
-                component="ui.main_window",
-                operation="dataset_activation_failed",
-                message=str(exc),
-                exc=exc,
-                dataset_id=result.dataset_id,
-            )
-            self._set_dataset_tabs_enabled(False)
-            self.tabs.setCurrentWidget(self.home_tab)
-            self.home_tab._append_status(f"Dataset activation failed: {exc}")
+            self.scope_label.setText(f"Selected revision unavailable: {exc}")
 
-    def _on_dataset_load_failed(self, result: object) -> None:
-        self._set_dataset_tabs_enabled(False)
-        self.tabs.setCurrentWidget(self.home_tab)
-
-    def _refresh_workspaces(self) -> None:
-        self.sidebar.refresh_evidence_blocks()
-        if self.output_formatting_tab is not None:
-            self.output_formatting_tab.refresh()
-
-    def _on_transcript_evidence_block_created(self, evidence_block_id: int) -> None:
-        self.sidebar.reveal_evidence_block(evidence_block_id)
-
-    def _on_simple_search_evidence_block_created(self, evidence_block_id: int) -> None:
-        self.sidebar.reveal_evidence_block(evidence_block_id)
-
-    def _on_search_drop_evidence_block_created(self, block: object) -> None:
-        from message_evidence_workstation.domain.models import EvidenceBlock
-        from message_evidence_workstation.domain.constants import CREATED_BY_CONVERSATIONAL_ANSWER
-
-        if not isinstance(block, EvidenceBlock):
+    def _clear_embeddings(self) -> None:
+        if any(worker is not None and worker.isRunning() for worker in (self.embedding_worker, self.conversation_worker)):
+            QMessageBox.warning(self, "Work is running", "Wait for the current operation before clearing embeddings.")
             return
-        if self.conversational_tab is None or self.simple_search_tab is None:
+        if QMessageBox.question(self, "Clear local embeddings", "Delete every local embedding artifact? Canonical data, revisions, lexical indexes, evidence, and conversations are preserved.") != QMessageBox.StandardButton.Yes:
             return
-        if block.created_by == CREATED_BY_CONVERSATIONAL_ANSWER:
-            self.tabs.setCurrentWidget(self.conversational_tab)
-            self.conversational_tab.transcript_widget.reveal_created_evidence_block(
-                block,
-                source_action="answer_hit_drop",
-            )
+        try:
+            result = clear_local_embeddings(self.context.store)
+            self.output.setPlainText(json.dumps({"status": "cleared", "artifacts_deleted": result.artifacts_deleted, "revision_indexes_marked_missing": result.revision_indexes_marked_missing}, indent=2))
+            self._on_scope_changed()
+        except Exception as exc:
+            self.output.setPlainText(f"FAILED\n{exc}")
+            QMessageBox.critical(self, "Clear embeddings failed", str(exc))
+
+    def _fts(self) -> None:
+        self._run(lambda: self._service_read(lambda service, scope: service.fts5_search(NarrowedSearchScope(scope), self.query.text().strip())))
+
+    def _keyword(self) -> None:
+        def operation():
+            scope = self._scope()
+            return KeywordSearchWorkflow(self.context.store, self.context.logger, self.context.gateway).execute(NarrowedSearchScope(scope), self.query.text().strip())
+        self._run(operation)
+
+    def _embedding(self) -> None:
+        def operation():
+            scope = self._scope()
+            return EmbeddingSearchWorkflow(self.context.store, self.context.logger, self.context.gateway).execute(NarrowedSearchScope(scope), self.query.text().strip())
+        self._run(operation)
+
+    def _conversation(self) -> None:
+        if self.conversation_worker is not None and self.conversation_worker.isRunning():
             return
-        self.tabs.setCurrentWidget(self.simple_search_tab)
-        self.simple_search_tab.transcript_widget.reveal_created_evidence_block(
-            block,
-            source_action="search_drop",
+        try:
+            scope = self._scope()
+            query = self.query.text().strip()
+            if not query:
+                raise ValueError("Conversational search requires a question")
+        except Exception as exc:
+            self.output.setPlainText(f"FAILED\n{exc}")
+            QMessageBox.critical(self, "Conversational search failed", str(exc))
+            return
+        self.conversation_started_at = time.monotonic()
+        completed = 0
+        total = 0
+        self.conversation_progress_state = ConversationalSearchProgress(
+            "analysis_plan", completed, total, "Requesting analysis plan"
         )
+        self.conversation_progress_label.setVisible(True)
+        self.conversation_progress_bar.setVisible(True)
+        self.cancel_conversation_button.setVisible(True)
+        self.cancel_conversation_button.setEnabled(True)
+        self.cancel_conversation_button.setText("Cancel conversational search")
+        for button in self.search_buttons:
+            button.setEnabled(False)
+        self.rebuild_button.setEnabled(False)
+        self.query.setEnabled(False)
+        worker = ConversationalSearchWorker(self.context, scope, query)
+        self.conversation_worker = worker
+        worker.progress.connect(self._on_conversation_progress)
+        worker.succeeded.connect(self._on_conversation_succeeded)
+        worker.failed.connect(self._on_conversation_failed)
+        worker.cancelled.connect(self._on_conversation_cancelled)
+        worker.finished.connect(self._on_conversation_finished)
+        self.conversation_timer.start()
+        self._refresh_conversation_progress_text()
+        worker.start()
 
-    def _on_sidebar_evidence_block_activated(self, evidence_block_id: int) -> None:
-        current = self.tabs.currentWidget()
-        if current is self.virtual_transcript_widget_tab and self.virtual_transcript_widget_tab is not None:
-            self.virtual_transcript_widget_tab.reveal_evidence_block(evidence_block_id)
+    def _cancel_conversation(self) -> None:
+        worker = self.conversation_worker
+        if worker is None or not worker.isRunning():
             return
-        if current is self.transcript_widget_tab and self.transcript_widget_tab is not None:
-            self.transcript_widget_tab.select_evidence_block(evidence_block_id)
-            return
-        if current is self.new_transcript_widget_tab and self.new_transcript_widget_tab is not None:
-            self.new_transcript_widget_tab.transcript_widget.select_evidence_block(evidence_block_id)
-            return
-        if current is self.simple_search_tab and self.simple_search_tab is not None:
-            self.simple_search_tab.transcript_widget.select_evidence_block(evidence_block_id)
-            return
-        if current is self.conversational_tab and self.conversational_tab is not None:
-            self.conversational_tab.transcript_widget.select_evidence_block(evidence_block_id)
+        self.cancel_conversation_button.setEnabled(False)
+        self.cancel_conversation_button.setText("Cancelling...")
+        worker.cancel_request()
+        previous = self.conversation_progress_state
+        completed = previous.completed if previous is not None else 0
+        total = previous.total if previous is not None else 0
+        self.conversation_progress_state = ConversationalSearchProgress(
+            "cancelling",
+            completed,
+            total,
+            "Cancelling conversational search",
+        )
+        self._refresh_conversation_progress_text()
 
-    def _is_evidence_block_hidden_in_virtual_transcript(self, evidence_block_id: int) -> bool:
-        if self.virtual_transcript_widget_tab is None:
-            return False
-        return self.virtual_transcript_widget_tab.is_evidence_block_hidden(evidence_block_id)
-
-    def _on_sidebar_virtual_transcript_visibility_requested(
-        self,
-        evidence_block_id: int,
-        hidden: bool,
-    ) -> None:
-        if self.virtual_transcript_widget_tab is None:
+    def _on_conversation_progress(self, progress: object) -> None:
+        if not isinstance(progress, ConversationalSearchProgress):
             return
-        if hidden:
-            self.virtual_transcript_widget_tab.hide_evidence_block(evidence_block_id)
+        self.conversation_progress_state = progress
+        if progress.total > 0:
+            self.conversation_progress_bar.setRange(0, progress.total)
+            self.conversation_progress_bar.setValue(progress.completed)
         else:
-            self.virtual_transcript_widget_tab.show_evidence_block(evidence_block_id)
-        self.sidebar.refresh_evidence_blocks()
+            self.conversation_progress_bar.setRange(0, 0)
+        self._refresh_conversation_progress_text()
 
-    def _on_source_thread_selected(self, source_thread_id: str, display_title: str) -> None:
-        if self.context.dataset_id is None:
+    def _refresh_conversation_progress_text(self) -> None:
+        progress = self.conversation_progress_state
+        if progress is None:
             return
-        if self.transcript_widget_tab is not None:
-            self.tabs.setCurrentWidget(self.transcript_widget_tab)
-            self.transcript_widget_tab.select_source_thread(source_thread_id)
-        if self.new_transcript_widget_tab is not None:
-            self.new_transcript_widget_tab.select_source_thread(source_thread_id)
-        if self.virtual_transcript_widget_tab is not None:
-            self.virtual_transcript_widget_tab.select_source_thread(source_thread_id)
+        elapsed = max(0, int(time.monotonic() - self.conversation_started_at))
+        count = (
+            f" · {progress.completed:,}/{progress.total:,} windows"
+            if progress.total > 0
+            else ""
+        )
+        text = (
+            f"[{progress.phase}] {progress.message}{count} · elapsed "
+            f"{elapsed // 60:02d}:{elapsed % 60:02d}"
+        )
+        self.conversation_progress_label.setText(text)
+        self.output.setPlainText(f"CONVERSATIONAL SEARCH\n{text}")
 
-    def closeEvent(self, event: object) -> None:
-        request_shutdown()
-        super().closeEvent(event)
-
-    def _on_conversational_citation_selected(self, message_id: str, source_thread_id: str) -> None:
-        if self.context.dataset_id is None or self.transcript_widget_tab is None:
+    def _on_conversation_succeeded(self, result: object) -> None:
+        if not isinstance(result, ConversationalExecutionResult) or self.conversation_worker is None:
+            self._on_conversation_failed("Conversational worker returned an invalid result")
             return
-        self.tabs.setCurrentWidget(self.transcript_widget_tab)
-        self.transcript_widget_tab.select_source_thread(source_thread_id)
-        self.transcript_widget_tab.transcript_widget.focus_message(message_id)
+        display = dict(result.result)
+        if result.persistence_warning:
+            display["local_persistence_warning"] = result.persistence_warning
+            QMessageBox.warning(self, "Answer not saved", result.persistence_warning)
+        completion_status = str(display.get("completion_status", "complete"))
+        status_line = {
+            "complete": "COMPLETE: all planned evidence and synthesis validated.",
+            "complete_with_warnings": "COMPLETE WITH WARNINGS: readable results returned with validation annotations.",
+            "partial": "PARTIAL: some evidence or synthesis output was unavailable; retained results remain visible.",
+        }.get(completion_status, f"UNKNOWN COMPLETION STATUS: {completion_status}")
+        self.output.setPlainText(status_line + "\n" + json.dumps(display, ensure_ascii=False, indent=2, default=str))
+
+    def _on_conversation_failed(self, message: str) -> None:
+        previous = self.conversation_progress_state
+        completed = previous.completed if previous is not None else 0
+        total = previous.total if previous is not None else 0
+        elapsed = max(0, int(time.monotonic() - self.conversation_started_at))
+        self.conversation_progress_state = ConversationalSearchProgress(
+            "failed",
+            completed,
+            total,
+            f"Failed: {message}",
+        )
+        if total > 0:
+            self.conversation_progress_bar.setRange(0, total)
+            self.conversation_progress_bar.setValue(completed)
+        else:
+            self.conversation_progress_bar.setRange(0, 1)
+            self.conversation_progress_bar.setValue(0)
+        self.conversation_progress_label.setText(
+            f"FAILED after {completed:,}/{total:,} windows · elapsed "
+            f"{elapsed // 60:02d}:{elapsed % 60:02d} · {message}"
+        )
+        self.output.setPlainText(f"FAILED\n{message}")
+        QMessageBox.critical(self, "Conversational search failed", message)
+
+    def _on_conversation_cancelled(self) -> None:
+        previous = self.conversation_progress_state
+        completed = previous.completed if previous is not None else 0
+        total = previous.total if previous is not None else 0
+        elapsed = max(0, int(time.monotonic() - self.conversation_started_at))
+        self.conversation_progress_state = ConversationalSearchProgress(
+            "cancelled",
+            completed,
+            total,
+            "Conversational search cancelled",
+        )
+        self.conversation_progress_label.setText(
+            f"CANCELLED after {completed:,}/{total:,} windows · elapsed "
+            f"{elapsed // 60:02d}:{elapsed % 60:02d}"
+        )
+        self.output.setPlainText("CANCELLED\nConversational search cancelled by user.")
+
+    def _on_conversation_finished(self) -> None:
+        self.conversation_timer.stop()
+        self.conversation_button.setEnabled(True)
+        self.conversation_button.setText("Conversational")
+        for button in self.search_buttons:
+            button.setEnabled(True)
+        self.conversation_button.setEnabled(True)
+        self.rebuild_button.setEnabled(True)
+        self.query.setEnabled(True)
+        self.cancel_conversation_button.setVisible(False)
+        self.cancel_conversation_button.setEnabled(False)
+        if self.conversation_worker is not None:
+            self.conversation_worker.deleteLater()
+            self.conversation_worker = None
+
+    def _build_embeddings(self) -> None:
+        if self.embedding_worker is not None and self.embedding_worker.isRunning():
+            return
+        try:
+            scope = self._scope()
+        except Exception as exc:
+            self.output.setPlainText(f"FAILED\n{exc}")
+            QMessageBox.critical(self, "Embedding build failed", str(exc))
+            return
+        self.embedding_started_at = time.monotonic()
+        self.embedding_progress_state = EmbeddingBuildProgress(
+            "starting",
+            0,
+            scope.message_count,
+            0,
+            0,
+            f"Starting: reading {scope.message_count:,} messages from the selected revision",
+        )
+        self.embedding_progress_label.setVisible(True)
+        self.embedding_progress_bar.setVisible(True)
+        self.embedding_progress_bar.setRange(0, 0)
+        self.rebuild_button.setEnabled(False)
+        self.rebuild_button.setText("Embedding build running...")
+        for button in self.search_buttons:
+            button.setEnabled(False)
+        self.output.setPlainText("EMBEDDING BUILD\nStarting...")
+        worker = EmbeddingBuildWorker(self.context, scope)
+        self.embedding_worker = worker
+        worker.progress.connect(self._on_embedding_progress)
+        worker.succeeded.connect(self._on_embedding_succeeded)
+        worker.failed.connect(self._on_embedding_failed)
+        worker.finished.connect(self._on_embedding_finished)
+        self.embedding_timer.start()
+        self._refresh_embedding_progress_text()
+        worker.start()
+
+    def _on_embedding_progress(self, progress: object) -> None:
+        if not isinstance(progress, EmbeddingBuildProgress):
+            return
+        self.embedding_progress_state = progress
+        if progress.total > 0:
+            self.embedding_progress_bar.setRange(0, progress.total)
+            self.embedding_progress_bar.setValue(progress.completed)
+        else:
+            self.embedding_progress_bar.setRange(0, 0)
+        self._refresh_embedding_progress_text()
+
+    def _refresh_embedding_progress_text(self) -> None:
+        progress = self.embedding_progress_state
+        if progress is None:
+            return
+        elapsed = max(0, int(time.monotonic() - self.embedding_started_at))
+        count = (
+            f"{progress.completed:,}/{progress.total:,}"
+            if progress.total > 0
+            else "counting"
+        )
+        batch = (
+            f" · batch {progress.batch_number:,}/{progress.batch_count:,}"
+            if progress.batch_count > 0
+            else ""
+        )
+        text = f"{progress.message} · {count}{batch} · elapsed {elapsed // 60:02d}:{elapsed % 60:02d}"
+        self.embedding_progress_label.setText(text)
+        self.output.setPlainText(f"EMBEDDING BUILD\n{text}")
+
+    def _on_embedding_succeeded(self, result: object) -> None:
+        if not isinstance(result, EmbeddingBuildResult):
+            self._on_embedding_failed("Embedding worker returned an invalid result")
+            return
+        self.embedding_progress_state = EmbeddingBuildProgress(
+            "completed",
+            result.required_inputs,
+            result.required_inputs,
+            0,
+            0,
+            (
+                f"Complete: {result.message_count:,} corpus messages covered by "
+                f"{result.required_inputs:,} unique vectors "
+                f"({result.reused_artifacts:,} reused, "
+                f"{result.generated_artifacts:,} generated)"
+            ),
+        )
+        self.embedding_progress_bar.setRange(0, max(1, result.required_inputs))
+        self.embedding_progress_bar.setValue(result.required_inputs)
+        self._refresh_embedding_progress_text()
+        payload = {
+            "status": "complete",
+            "working_corpus_messages": result.message_count,
+            "unique_vector_inputs": result.required_inputs,
+            "reused_vectors": result.reused_artifacts,
+            "generated_vectors": result.generated_artifacts,
+            "dimensions": result.dimensions,
+            "normalization": result.normalization,
+        }
+        self.output.setPlainText(json.dumps(payload, ensure_ascii=False, indent=2))
+
+    def _on_embedding_failed(self, message: str) -> None:
+        elapsed = max(0, int(time.monotonic() - self.embedding_started_at))
+        self.embedding_progress_state = EmbeddingBuildProgress(
+            "failed", 0, 1, 0, 0, f"Failed: {message}"
+        )
+        self.embedding_progress_bar.setRange(0, 1)
+        self.embedding_progress_bar.setValue(0)
+        self.embedding_progress_label.setText(
+            f"Failed · elapsed {elapsed // 60:02d}:{elapsed % 60:02d} · {message}"
+        )
+        self.output.setPlainText(f"FAILED\n{message}")
+        QMessageBox.critical(self, "Embedding build failed", message)
+
+    def _on_embedding_finished(self) -> None:
+        self.embedding_timer.stop()
+        self.rebuild_button.setEnabled(True)
+        self.rebuild_button.setText("Build / refresh local embeddings")
+        for button in self.search_buttons:
+            button.setEnabled(True)
+        if self.embedding_worker is not None:
+            self.embedding_worker.deleteLater()
+            self.embedding_worker = None
+
+    def closeEvent(self, event) -> None:  # type: ignore[no-untyped-def]
+        if self.embedding_worker is not None and self.embedding_worker.isRunning():
+            QMessageBox.warning(
+                self,
+                "Embedding build is running",
+                "Wait for the current embedding batch and build to finish before closing the client.",
+            )
+            event.ignore()
+            return
+        if self.conversation_worker is not None and self.conversation_worker.isRunning():
+            QMessageBox.warning(
+                self,
+                "Conversational search is running",
+                "Wait for the current model request to finish before closing the client.",
+            )
+            event.ignore()
+            return
+        try:
+            self.context.store.close()
+        except Exception as exc:
+            QMessageBox.critical(self, "Workspace close failed", str(exc))
+            event.ignore()
+            return
+        event.accept()

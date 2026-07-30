@@ -1,102 +1,55 @@
-"""Application bootstrap: database, dataset, logging."""
+"""Lean Python client bootstrap: one EVW store and one remote gateway."""
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
+from message_evidence_workstation.client_api.gateway import RemoteGateway
 from message_evidence_workstation.config.paths import default_workspace_path
-from message_evidence_workstation.db.connection import connect
-from message_evidence_workstation.db.repositories import get_latest_dataset
-from message_evidence_workstation.db.workspace import open_or_create_workspace
-from message_evidence_workstation.domain.constants import IMPORT_VALIDITY_READY
-from message_evidence_workstation.importers.normalized_loader import get_dataset_import_validity
-from message_evidence_workstation.domain.embedding_state import EmbeddingState
+from message_evidence_workstation.config.settings import load_settings
+from message_evidence_workstation.db.workspace_store import WorkspaceStore
 from message_evidence_workstation.logging_ui.log_bus import LogBus, get_log_bus
-from message_evidence_workstation.logging_ui.process_log import ProcessLogger
+from message_evidence_workstation.logging_ui.diagnostic_logger import DiagnosticLogger
 
 
 @dataclass(slots=True)
 class AppContext:
-    conn: sqlite3.Connection
-    logger: ProcessLogger
+    store: WorkspaceStore
+    logger: DiagnosticLogger
     log_bus: LogBus
     dataset_id: int | None
     db_path: Path
-    embedding_available: bool = False
-    embedding_state: EmbeddingState | None = None
+    gateway: RemoteGateway
 
 
 @dataclass(slots=True)
 class StartupLoadOptions:
     dataset_path: Path
-    reload: bool = False
     skip_embedding: bool = False
 
 
-def _ready_dataset_id(conn: sqlite3.Connection) -> int | None:
-    dataset = get_latest_dataset(conn)
-    if dataset is None:
-        return None
-    if get_dataset_import_validity(conn, dataset.dataset_id) != IMPORT_VALIDITY_READY:
-        return None
-    return dataset.dataset_id
+def _latest_ready_dataset(store: WorkspaceStore) -> int | None:
+    def read(conn):
+        row = conn.execute("SELECT dataset_id FROM dataset WHERE import_validity='ready' ORDER BY dataset_id DESC LIMIT 1").fetchone()
+        return int(row[0]) if row else None
+    return store.read(read)
 
 
-def bootstrap_app(
-    *,
-    db_path: Path | None = None,
-    startup_load: StartupLoadOptions | None = None,
-) -> AppContext:
-    path = db_path or default_workspace_path()
+def bootstrap_app(*, db_path: Path | None = None, startup_load: StartupLoadOptions | None = None) -> AppContext:
+    path = (db_path or default_workspace_path()).with_suffix(".evw")
     log_bus = get_log_bus()
-    bootstrap_logger = ProcessLogger(connect(path), log_bus=log_bus)
-    conn = open_or_create_workspace(path, bootstrap_logger)
-    logger = ProcessLogger(conn, log_bus=log_bus)
-
-    dataset_id = None
-    embedding_available = False
-    stored_dataset_id = _ready_dataset_id(conn)
-
+    logger = DiagnosticLogger(log_bus=log_bus)
+    store = WorkspaceStore(path, logger).open(create=True, display_name=path.stem)
+    settings = load_settings()
+    gateway = RemoteGateway(settings.server_url)
     if startup_load is not None:
-        logger.info(
-            component="app.bootstrap",
-            operation="startup_load_deferred",
-            message="Dataset load deferred to UI background pipeline",
-            details={
-                "dataset_path": str(startup_load.dataset_path),
-                "reload": startup_load.reload,
-                "skip_embedding": startup_load.skip_embedding,
-            },
-        )
+        from message_evidence_workstation.services.import_dataset import import_normalized_dataset
+        from message_evidence_workstation.services.corpus_builder import build_working_corpus
 
-    if dataset_id is None:
-        logger.warning(
-            component="app.bootstrap",
-            operation="dataset_missing",
-            message="No dataset loaded in UI; use Home to load a dataset",
-            details={"stored_dataset_id": stored_dataset_id},
-        )
-
-    logger.info(
-        component="app.bootstrap",
-        operation="startup_complete",
-        message="Application bootstrap completed",
-        details={
-            "db_path": str(path),
-            "dataset_id": dataset_id,
-            "stored_dataset_id": stored_dataset_id,
-            "embedding_available": embedding_available,
-        },
-        dataset_id=dataset_id,
-    )
-    return AppContext(
-        conn=conn,
-        logger=logger,
-        log_bus=log_bus,
-        dataset_id=dataset_id,
-        db_path=path,
-        embedding_available=embedding_available,
-        embedding_state=EmbeddingState(),
-    )
+        dataset_id = store.write(import_normalized_dataset, logger, startup_load.dataset_path)
+        store.write(build_working_corpus, logger, dataset_id=dataset_id, name="Full Corpus", selection_mode="all")
+    else:
+        dataset_id = _latest_ready_dataset(store)
+    logger.info(component="app.bootstrap", operation="startup_complete", message="Python EVW client ready", details={"db_path": str(path), "dataset_id": dataset_id, "server_url": settings.server_url}, dataset_id=dataset_id)
+    return AppContext(store=store, logger=logger, log_bus=log_bus, dataset_id=dataset_id, db_path=path, gateway=gateway)

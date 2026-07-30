@@ -1,0 +1,84 @@
+{
+  "arms": {
+    "terms-only": {
+      "metrics": {
+        "coverage": {
+          "evidence_range_count": 1,
+          "message_count": 1,
+          "window_count": 1
+        },
+        "final_range_inventory": [
+          {
+            "disposition": "used",
+            "end_message_id": "m1",
+            "range_id": "r000001",
+            "start_message_id": "m1",
+            "thread_id": "t1"
+          }
+        ],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 1,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0
+        },
+        "mode_projection": {
+          "active_config_version": 1,
+          "configuration_fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "mode_independent_configuration_fingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "retrieval_assistance_mode": "semantic_ranges"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 1,
+          "found": [
+            0
+          ],
+          "total": 1
+        },
+        "selected_suggestion_message_ids": [],
+        "strategy": "single_window_ledger",
+        "suggestions_without_final_evidence": 0,
+        "terminal_event": "completed",
+        "usage": {
+          "input_tokens": 1
+        },
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 1,
+        "wall_time_ms": 0.003500026650726795,
+        "window_count": 1,
+        "window_durations_ms": [],
+        "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "mode": "terms_only",
+      "request_artifact": "terms-only-request.json",
+      "result_artifact": "terms-only-result.json"
+    }
+  },
+  "artifact_hashes": {
+    "provisional-gold.json": "d44fc60f029519fe3ec7e3fc808734dfaaf0327773e8907ce814a63e5b792747",
+    "raw-candidates.json": "99200f85f740641378156206f995f824cdfeaa834af71dd76e492bbbca651d36",
+    "raw-gold-overlap.json": "fdaf036084efbf5bcabb9fef5c6f16d352c7ea31cf49a7846c15b4a76f7ee305",
+    "retrieval-plan.json": "957e76db293d186320976a6fd3e44bc78c6e7fb72f8aa3df18a098f73785f7de",
+    "terms-only-request.json": "e4fcd557dcaf6ee4f2b29a1d6e23243301811d90728217608cb4fa130d557e2e",
+    "terms-only-result.json": "ea8400512f9e5d4f15a4b043b84e68b267e1471ca37f1dea98b0f5202afdf0e4"
+  },
+  "capture": {},
+  "evw": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\rauc1-800-runner\\test_run_arm_reuses_frozen_pla0\\fixture.evw",
+  "plan_identity": {
+    "compatibility_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "embedding": {
+      "artifact_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dimensions": 3,
+      "embedding_profile_id": "profile",
+      "normalization": "unit_l2"
+    },
+    "retrieval_plan_id": "00000000-0000-0000-0000-000000000002"
+  },
+  "question": "When did we fight about school?",
+  "runner": "RAUC1-800",
+  "server_url": "http://fake",
+  "working_corpus_revision_id": 4
+}

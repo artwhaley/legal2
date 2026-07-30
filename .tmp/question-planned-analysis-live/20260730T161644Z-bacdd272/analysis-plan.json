@@ -1,0 +1,125 @@
+{
+  "analysis_plan": {
+    "analysis_question": "Show me fights about school.",
+    "answer_objective": "Identify and present all instances of disputes, arguments, conflicts, or fights that relate to schools, schooling, education, or school-related matters.",
+    "answer_requirements": [
+      "Present each identified fight or dispute with its supporting evidence and source ID",
+      "Describe the nature of the conflict and how it relates to school or education",
+      "Identify the parties involved where evidence permits",
+      "Note the form of the fight (e.g., verbal, physical, written exchange) where discernible",
+      "Flag any uncertainty about whether the dispute is truly school-related or whether the exchange constitutes a fight"
+    ],
+    "concepts": [
+      {
+        "definition": "Disagreements, arguments, conflicts, disputes, or confrontations between people, which may be verbal, physical, or indirect in nature.",
+        "label": "fights",
+        "manifestations": [
+          "arguments or heated disagreements",
+          "physical altercations or scuffles",
+          "verbal disputes or shouting matches",
+          "conflicts expressed through hostile or confrontational messaging",
+          "clashes over opposing positions or decisions",
+          "tensions or friction between parties that escalate into open dispute"
+        ]
+      },
+      {
+        "definition": "Educational institutions, schooling activities, education-related matters, or the social and administrative context surrounding them.",
+        "label": "school",
+        "manifestations": [
+          "schools as institutions or organizations",
+          "school events, activities, or functions",
+          "school policies, rules, or decisions",
+          "school personnel, students, or parents in school-related roles",
+          "education-related topics such as curriculum, grades, admissions, discipline, or funding",
+          "school governance, administration, or operations"
+        ]
+      }
+    ],
+    "exclusion_criteria": [
+      "Mentions of school or education that do not involve any dispute, conflict, or fight",
+      "Disputes or arguments that have no connection to school, schooling, or education",
+      "Neutral or cooperative discussions about school matters with no conflict element",
+      "Passing references to school in the context of an unrelated dispute"
+    ],
+    "inclusion_criteria": [
+      "Evidence showing a dispute, argument, conflict, or fight where the subject matter involves a school, schooling, or education",
+      "Evidence where parties argue or clash over school-related policies, decisions, events, personnel, students, or administration",
+      "Evidence where conflict arises in the context of school activities, functions, or environments",
+      "Evidence where disagreements about education, curriculum, grades, admissions, discipline, or school governance are expressed",
+      "Evidence where school-related tensions manifest as confrontational or hostile exchanges"
+    ],
+    "interpretive_assumptions": [
+      "A 'fight' includes both physical altercations and verbal or written disputes, not only literal physical fights",
+      "'School' encompasses any educational institution, schooling activity, or education-related matter, not limited to a specific type or level of school",
+      "Indirect or contextual manifestations of conflict may be relevant if they materially concern school-related matters",
+      "A single exchange may qualify as a fight even if brief, provided it shows clear disagreement or hostility"
+    ]
+  },
+  "analysis_plan_id": "e07508a5-c3f3-4469-bcb7-2cc448b63fb2",
+  "compatibility_fingerprint": "f4d3a7ed9bae3b6df03bd47d0c6cd00efc92ec82dce9e4b06778693fb80084b8",
+  "config_version": 63,
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "request_id": "31238f3b-a732-43ca-b0fa-3497b02c0d20",
+  "retrieval_queries": [
+    {
+      "query_id": "q0001",
+      "text": "school argument conflict dispute fight"
+    },
+    {
+      "query_id": "q0002",
+      "text": "education disagreement clash confrontation"
+    },
+    {
+      "query_id": "q0003",
+      "text": "school policy debate controversy"
+    },
+    {
+      "query_id": "q0004",
+      "text": "argument about school administration decision"
+    },
+    {
+      "query_id": "q0005",
+      "text": "conflict over school rules discipline"
+    },
+    {
+      "query_id": "q0006",
+      "text": "dispute about students teachers parents school"
+    },
+    {
+      "query_id": "q0007",
+      "text": "fight regarding school event activity"
+    },
+    {
+      "query_id": "q0008",
+      "text": "school-related tension friction disagreement"
+    },
+    {
+      "query_id": "q0009",
+      "text": "education-related altercation dispute"
+    },
+    {
+      "query_id": "q0010",
+      "text": "clash over schooling education matters"
+    }
+  ],
+  "search_policy": {
+    "fusion_method": "reciprocal_rank_fusion",
+    "maximum_prompt_suggestion_messages": 40,
+    "mode": "semantic_ranges",
+    "rrf_constant": 60,
+    "top_k_per_query": 100
+  },
+  "usage": {
+    "cost_complete": false,
+    "currency": "USD",
+    "estimated_cost": null,
+    "input_tokens": 341,
+    "output_tokens": 627,
+    "source": "provider_reported"
+  }
+}

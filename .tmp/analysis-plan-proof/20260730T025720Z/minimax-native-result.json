@@ -1,0 +1,78 @@
+{
+  "status_code": 200,
+  "elapsed_seconds": 67.57805159999953,
+  "response": {
+    "id": "chatcmpl-5a913773-5e9d-4b79-ae58-9a4b9cfc3bdc",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000002\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3708\",\"end_message_id\":\"decipher_message_1:3708\",\"summary\":\"Julie asks Art to notify Olivia's school that she won't be there tomorrow because she's still feeling sick.\",\"relevance\":\"This is a direct communication between the parents about Olivia's school attendance and notification requirements, but does not itself show a fight about school.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3529\",\"end_message_id\":\"decipher_message_1:3529\",\"summary\":\"Art discusses Olivia's school environment, expressing concern about being around kids whose parents don't care about education, and saying private school guarantees caring parents.\",\"relevance\":\"This is part of a longer discussion about school choice, private vs public education, and Olivia's academic experience — a substantive disagreement about education.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:3034\",\"end_message_id\":\"decipher_message_1:3034\",\"summary\":\"Julie asks Art to confirm he got Olivia to school on time and lets him know she still has her lunch box, wanting to ensure he has a spare.\",\"relevance\":\"This is school-related logistics communication but does not itself show conflict.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:2626\",\"end_message_id\":\"decipher_message_1:2626\",\"summary\":\"Julie states she and other parents don't want to send kids to a school that puts profits above learning, referencing Wildflower school issues.\",\"relevance\":\"This is part of a substantive disagreement about school quality, teachers being properly paid, and the direction of Olivia's school.\"}],\"uncertainties\":[\"The window contains extensive discussion of school logistics (attendance, homework, school supplies, lunch boxes, gymnastics-as-school-activity), school choice debates (private vs public, Wildflower takeover concerns, possibly starting a new school), and parenting-time disputes that overlap with school breaks — but the most clearly 'fight'-like exchanges are scattered. The retrieval suggestions point to message 3708, 3529, 3034, and 2626, which I've included, though 3708 and 3034 are logistical rather than argumentative. The exchange between 3556–3554 (March 28) contains Julie and Art directly arguing about parenting time during school breaks, with both making accusatory statements ('no one way to do that,' 'you're not going to do that because I won't have FWB sex with you'). This is a significant conflict that overlaps with school scheduling. It was not in the suggestion ranges but is clearly relevant. I have NOT included it as a separate range, but should consider whether to expand. Given the instruction to expand beyond suggestions when surrounding messages form the relevant exchange, I should include the broader conflict from around 3556 back through 3518.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785380463,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 187234,
+      "completion_tokens": 634,
+      "total_tokens": 187868,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 0
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000002",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3708",
+          "end_message_id": "decipher_message_1:3708",
+          "summary": "Julie asks Art to notify Olivia's school that she won't be there tomorrow because she's still feeling sick.",
+          "relevance": "This is a direct communication between the parents about Olivia's school attendance and notification requirements, but does not itself show a fight about school."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3529",
+          "end_message_id": "decipher_message_1:3529",
+          "summary": "Art discusses Olivia's school environment, expressing concern about being around kids whose parents don't care about education, and saying private school guarantees caring parents.",
+          "relevance": "This is part of a longer discussion about school choice, private vs public education, and Olivia's academic experience — a substantive disagreement about education."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:3034",
+          "end_message_id": "decipher_message_1:3034",
+          "summary": "Julie asks Art to confirm he got Olivia to school on time and lets him know she still has her lunch box, wanting to ensure he has a spare.",
+          "relevance": "This is school-related logistics communication but does not itself show conflict."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:2626",
+          "end_message_id": "decipher_message_1:2626",
+          "summary": "Julie states she and other parents don't want to send kids to a school that puts profits above learning, referencing Wildflower school issues.",
+          "relevance": "This is part of a substantive disagreement about school quality, teachers being properly paid, and the direction of Olivia's school."
+        }
+      ],
+      "uncertainties": [
+        "The window contains extensive discussion of school logistics (attendance, homework, school supplies, lunch boxes, gymnastics-as-school-activity), school choice debates (private vs public, Wildflower takeover concerns, possibly starting a new school), and parenting-time disputes that overlap with school breaks — but the most clearly 'fight'-like exchanges are scattered. The retrieval suggestions point to message 3708, 3529, 3034, and 2626, which I've included, though 3708 and 3034 are logistical rather than argumentative. The exchange between 3556–3554 (March 28) contains Julie and Art directly arguing about parenting time during school breaks, with both making accusatory statements ('no one way to do that,' 'you're not going to do that because I won't have FWB sex with you'). This is a significant conflict that overlaps with school scheduling. It was not in the suggestion ranges but is clearly relevant. I have NOT included it as a separate range, but should consider whether to expand. Given the instruction to expand beyond suggestions when surrounding messages form the relevant exchange, I should include the broader conflict from around 3556 back through 3518."
+      ]
+    },
+    "evidence_range_count": 4
+  }
+}

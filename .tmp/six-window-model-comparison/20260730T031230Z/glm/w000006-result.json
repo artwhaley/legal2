@@ -1,0 +1,118 @@
+{
+  "window_id": "w000006",
+  "status_code": 200,
+  "elapsed_seconds": 55.339804500001264,
+  "response": {
+    "id": "chatcmpl-d6a4ec06-2e5e-4ea0-a6be-0d310059e6e2",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000006\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:3370\",\"end_message_id\":\"decipher_export_19:3397\",\"summary\":\"On July 16, 2025, Art and Julie have a sustained disagreement about Olivia's education and gymnastics. Art states Olivia should be 'OUT of gymnastics until her education is on track,' says she came back from two-week gymnastics stretches having done 'zero school,' and that she'd be on 'academic probation from activities' in a real school. Julie counters that Olivia 'is on track with her education,' that Julie has paid tuition 35 of 36 months, and that Olivia told Julie the farm schoolwork was 'way too easy, like pre-school stuff' and she hated it. Art acknowledges the curriculum was too easy and proposes adjusting grade levels. Julie defends homeschooling over public school, says school never stopped being a priority, and argues gymnastics teaches life skills. Art says he doesn't think she needs private school but 'needs to do her lessons with as much regularity as she does gymnastics.' Julie provides links and arguments against the public school system. Art says 'I'm not trying to pick a fight about it' but wants education prioritized. The exchange also covers financial contributions to gymnastics and Art's limited income.\",\"relevance\":\"This is a direct disagreement between the conversation participants about whether Olivia's education is on track, whether homeschooling is adequate, whether gymnastics should be deprioritized until academics improve, and who is responsible for educational progress. Education is a material part of the conflict throughout.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:3451\",\"end_message_id\":\"decipher_export_19:3456\",\"summary\":\"On August 4, 2025, Julie raises concerns about voice lessons being scheduled in Ada every Friday, noting Olivia is with Julie some weekends and with Art others. Art responds, 'If she's only doing school work here she needs to get here as often as possible anyway this year,' implying Julie's home is not where school happens. Julie pushes back: 'She's not only doing school work there? She does lots of school work here.' Julie acknowledges a gap in September/October and December but says Olivia 'does school almost at least 3-4 days a week.' Art suggests letting Olivia try the first class or two before committing. The exchange is tense but relatively brief.\",\"relevance\":\"This exchange involves a competing-position disagreement about where Olivia does school, how much school happens at each parent's home, and whether Art's claim that school only happens at his house is accurate. Education is a material part of the tension, though the primary topic is voice lesson scheduling.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_19:4631\",\"end_message_id\":\"decipher_export_19:4640\",\"summary\":\"On December 23, 2025, during a broader custody dispute, Art and Julie argue about Olivia's education. Art says, 'I've taken over paying for her education when you started neglecting it,' and 'You neglected school entirely for almost the full semester. Gymnastics is all that's important to you.' Julie responds that she does school work with Olivia, that Art 'didn't know she had skipped half of the lessons until I told you,' and that they were doing 'about 8 lessons per DAY the month prior.' Art says he told Julie 'when you got pregnant that you couldn't home school her if you were due in September.' Julie says the only time she didn't monitor school was during the twins' birth/NICU and her hospitalization. Art says Olivia has been doing over an hour every day lately.\",\"relevance\":\"This is a direct argument about educational responsibility and neglect accusations, with both parties accusing the other of failing to properly oversee Olivia's schooling. Education is a material and explicit part of this fight.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_export_5:131\",\"end_message_id\":\"decipher_export_5:142\",\"summary\":\"On July 1, 2026, Art states he will not agree to any settlement where he doesn't have 'final say about activities and education,' accusing Julie of 'neglecting her education again' and saying he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputes being neglectful, detailing her extensive involvement in Olivia's education: paying for private school, doing curriculum books in 2nd grade, spending hours on repetitive schoolwork, and benchmark testing where Olivia scored above grade level. Julie criticizes Art's choice of an online curriculum (Time for Learning) that he didn't properly set up, saying Olivia was skipping chapters with no continuity. Julie says Art paid ~$350/year for a subscription while she has paid over $30,000 for education and spent hundreds of hours planning. Art says he only knows what Olivia tells him. Julie challenges Art to produce end-of-year benchmark tests to prove he has been educating her properly.\",\"relevance\":\"This is a direct, sustained argument about educational responsibility, curriculum quality, who has been properly educating Olivia, and who should have decision-making authority over education. Education is the central material issue in this portion of the exchange.\"}],\"uncertainties\":[\"The July 16, 2025 exchange blends education, gymnastics, and finances throughout; the education disagreement is material but not the only issue in the conversation.\",\"The August 4, 2025 exchange is primarily about voice lesson scheduling, with education being a secondary point of tension; it is borderline but included because Art's claim about school only happening at his house is directly challenged.\",\"The December 23, 2025 and July 1, 2026 exchanges occur within much larger custody disputes; the education-related portions are distinct passages but are embedded in broader conflicts about custody, kidnapping allegations, and financial support.\",\"It is unclear from the messages alone whether Olivia's education was genuinely neglected or whether the accusations reflect the parties' competing narratives; the evidence preserves both positions without resolving which is accurate.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785381729,
+    "model": "z-ai/glm-5.2",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 158851,
+      "completion_tokens": 1290,
+      "total_tokens": 160141
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000006",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:3370",
+          "end_message_id": "decipher_export_19:3397",
+          "summary": "On July 16, 2025, Art and Julie have a sustained disagreement about Olivia's education and gymnastics. Art states Olivia should be 'OUT of gymnastics until her education is on track,' says she came back from two-week gymnastics stretches having done 'zero school,' and that she'd be on 'academic probation from activities' in a real school. Julie counters that Olivia 'is on track with her education,' that Julie has paid tuition 35 of 36 months, and that Olivia told Julie the farm schoolwork was 'way too easy, like pre-school stuff' and she hated it. Art acknowledges the curriculum was too easy and proposes adjusting grade levels. Julie defends homeschooling over public school, says school never stopped being a priority, and argues gymnastics teaches life skills. Art says he doesn't think she needs private school but 'needs to do her lessons with as much regularity as she does gymnastics.' Julie provides links and arguments against the public school system. Art says 'I'm not trying to pick a fight about it' but wants education prioritized. The exchange also covers financial contributions to gymnastics and Art's limited income.",
+          "relevance": "This is a direct disagreement between the conversation participants about whether Olivia's education is on track, whether homeschooling is adequate, whether gymnastics should be deprioritized until academics improve, and who is responsible for educational progress. Education is a material part of the conflict throughout."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:3451",
+          "end_message_id": "decipher_export_19:3456",
+          "summary": "On August 4, 2025, Julie raises concerns about voice lessons being scheduled in Ada every Friday, noting Olivia is with Julie some weekends and with Art others. Art responds, 'If she's only doing school work here she needs to get here as often as possible anyway this year,' implying Julie's home is not where school happens. Julie pushes back: 'She's not only doing school work there? She does lots of school work here.' Julie acknowledges a gap in September/October and December but says Olivia 'does school almost at least 3-4 days a week.' Art suggests letting Olivia try the first class or two before committing. The exchange is tense but relatively brief.",
+          "relevance": "This exchange involves a competing-position disagreement about where Olivia does school, how much school happens at each parent's home, and whether Art's claim that school only happens at his house is accurate. Education is a material part of the tension, though the primary topic is voice lesson scheduling."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:4631",
+          "end_message_id": "decipher_export_19:4640",
+          "summary": "On December 23, 2025, during a broader custody dispute, Art and Julie argue about Olivia's education. Art says, 'I've taken over paying for her education when you started neglecting it,' and 'You neglected school entirely for almost the full semester. Gymnastics is all that's important to you.' Julie responds that she does school work with Olivia, that Art 'didn't know she had skipped half of the lessons until I told you,' and that they were doing 'about 8 lessons per DAY the month prior.' Art says he told Julie 'when you got pregnant that you couldn't home school her if you were due in September.' Julie says the only time she didn't monitor school was during the twins' birth/NICU and her hospitalization. Art says Olivia has been doing over an hour every day lately.",
+          "relevance": "This is a direct argument about educational responsibility and neglect accusations, with both parties accusing the other of failing to properly oversee Olivia's schooling. Education is a material and explicit part of this fight."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_5:131",
+          "end_message_id": "decipher_export_5:142",
+          "summary": "On July 1, 2026, Art states he will not agree to any settlement where he doesn't have 'final say about activities and education,' accusing Julie of 'neglecting her education again' and saying he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputes being neglectful, detailing her extensive involvement in Olivia's education: paying for private school, doing curriculum books in 2nd grade, spending hours on repetitive schoolwork, and benchmark testing where Olivia scored above grade level. Julie criticizes Art's choice of an online curriculum (Time for Learning) that he didn't properly set up, saying Olivia was skipping chapters with no continuity. Julie says Art paid ~$350/year for a subscription while she has paid over $30,000 for education and spent hundreds of hours planning. Art says he only knows what Olivia tells him. Julie challenges Art to produce end-of-year benchmark tests to prove he has been educating her properly.",
+          "relevance": "This is a direct, sustained argument about educational responsibility, curriculum quality, who has been properly educating Olivia, and who should have decision-making authority over education. Education is the central material issue in this portion of the exchange."
+        }
+      ],
+      "uncertainties": [
+        "The July 16, 2025 exchange blends education, gymnastics, and finances throughout; the education disagreement is material but not the only issue in the conversation.",
+        "The August 4, 2025 exchange is primarily about voice lesson scheduling, with education being a secondary point of tension; it is borderline but included because Art's claim about school only happening at his house is directly challenged.",
+        "The December 23, 2025 and July 1, 2026 exchanges occur within much larger custody disputes; the education-related portions are distinct passages but are embedded in broader conflicts about custody, kidnapping allegations, and financial support.",
+        "It is unclear from the messages alone whether Olivia's education was genuinely neglected or whether the accusations reflect the parties' competing narratives; the evidence preserves both positions without resolving which is accurate."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000006",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:3370",
+          "end_message_id": "decipher_export_19:3397",
+          "summary": "On July 16, 2025, Art and Julie have a sustained disagreement about Olivia's education and gymnastics. Art states Olivia should be 'OUT of gymnastics until her education is on track,' says she came back from two-week gymnastics stretches having done 'zero school,' and that she'd be on 'academic probation from activities' in a real school. Julie counters that Olivia 'is on track with her education,' that Julie has paid tuition 35 of 36 months, and that Olivia told Julie the farm schoolwork was 'way too easy, like pre-school stuff' and she hated it. Art acknowledges the curriculum was too easy and proposes adjusting grade levels. Julie defends homeschooling over public school, says school never stopped being a priority, and argues gymnastics teaches life skills. Art says he doesn't think she needs private school but 'needs to do her lessons with as much regularity as she does gymnastics.' Julie provides links and arguments against the public school system. Art says 'I'm not trying to pick a fight about it' but wants education prioritized. The exchange also covers financial contributions to gymnastics and Art's limited income.",
+          "relevance": "This is a direct disagreement between the conversation participants about whether Olivia's education is on track, whether homeschooling is adequate, whether gymnastics should be deprioritized until academics improve, and who is responsible for educational progress. Education is a material part of the conflict throughout."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:3451",
+          "end_message_id": "decipher_export_19:3456",
+          "summary": "On August 4, 2025, Julie raises concerns about voice lessons being scheduled in Ada every Friday, noting Olivia is with Julie some weekends and with Art others. Art responds, 'If she's only doing school work here she needs to get here as often as possible anyway this year,' implying Julie's home is not where school happens. Julie pushes back: 'She's not only doing school work there? She does lots of school work here.' Julie acknowledges a gap in September/October and December but says Olivia 'does school almost at least 3-4 days a week.' Art suggests letting Olivia try the first class or two before committing. The exchange is tense but relatively brief.",
+          "relevance": "This exchange involves a competing-position disagreement about where Olivia does school, how much school happens at each parent's home, and whether Art's claim that school only happens at his house is accurate. Education is a material part of the tension, though the primary topic is voice lesson scheduling."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_19:4631",
+          "end_message_id": "decipher_export_19:4640",
+          "summary": "On December 23, 2025, during a broader custody dispute, Art and Julie argue about Olivia's education. Art says, 'I've taken over paying for her education when you started neglecting it,' and 'You neglected school entirely for almost the full semester. Gymnastics is all that's important to you.' Julie responds that she does school work with Olivia, that Art 'didn't know she had skipped half of the lessons until I told you,' and that they were doing 'about 8 lessons per DAY the month prior.' Art says he told Julie 'when you got pregnant that you couldn't home school her if you were due in September.' Julie says the only time she didn't monitor school was during the twins' birth/NICU and her hospitalization. Art says Olivia has been doing over an hour every day lately.",
+          "relevance": "This is a direct argument about educational responsibility and neglect accusations, with both parties accusing the other of failing to properly oversee Olivia's schooling. Education is a material and explicit part of this fight."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_export_5:131",
+          "end_message_id": "decipher_export_5:142",
+          "summary": "On July 1, 2026, Art states he will not agree to any settlement where he doesn't have 'final say about activities and education,' accusing Julie of 'neglecting her education again' and saying he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputes being neglectful, detailing her extensive involvement in Olivia's education: paying for private school, doing curriculum books in 2nd grade, spending hours on repetitive schoolwork, and benchmark testing where Olivia scored above grade level. Julie criticizes Art's choice of an online curriculum (Time for Learning) that he didn't properly set up, saying Olivia was skipping chapters with no continuity. Julie says Art paid ~$350/year for a subscription while she has paid over $30,000 for education and spent hundreds of hours planning. Art says he only knows what Olivia tells him. Julie challenges Art to produce end-of-year benchmark tests to prove he has been educating her properly.",
+          "relevance": "This is a direct, sustained argument about educational responsibility, curriculum quality, who has been properly educating Olivia, and who should have decision-making authority over education. Education is the central material issue in this portion of the exchange."
+        }
+      ],
+      "uncertainties": [
+        "The July 16, 2025 exchange blends education, gymnastics, and finances throughout; the education disagreement is material but not the only issue in the conversation.",
+        "The August 4, 2025 exchange is primarily about voice lesson scheduling, with education being a secondary point of tension; it is borderline but included because Art's claim about school only happening at his house is directly challenged.",
+        "The December 23, 2025 and July 1, 2026 exchanges occur within much larger custody disputes; the education-related portions are distinct passages but are embedded in broader conflicts about custody, kidnapping allegations, and financial support.",
+        "It is unclear from the messages alone whether Olivia's education was genuinely neglected or whether the accusations reflect the parties' competing narratives; the evidence preserves both positions without resolving which is accurate."
+      ]
+    },
+    "evidence_range_count": 4
+  }
+}

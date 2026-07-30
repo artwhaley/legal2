@@ -1,0 +1,64 @@
+{
+  "analysis_context": {
+    "analysis_plan": {
+      "analysis_question": "Show me fights about school.",
+      "answer_objective": "Identify responsive conflict evidence.",
+      "answer_requirements": [
+        "cite direct evidence"
+      ],
+      "concepts": [
+        {
+          "definition": "school-related discussion",
+          "label": "school",
+          "manifestations": [
+            "school"
+          ]
+        }
+      ],
+      "exclusion_criteria": [
+        "cooperative logistics without conflict"
+      ],
+      "inclusion_criteria": [
+        "directly responsive conflict"
+      ],
+      "interpretive_assumptions": [],
+      "retrieval_queries": [
+        "school"
+      ]
+    },
+    "analysis_plan_id": "00000000-0000-0000-0000-000000000002",
+    "compatibility_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "embedding": {
+      "artifact_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dimensions": 3,
+      "embedding_profile_id": "profile",
+      "normalization": "unit_l2"
+    },
+    "hits": [
+      {
+        "distance": 0.0,
+        "message_id": "m1",
+        "query_id": "q0001",
+        "rank": 1
+      }
+    ],
+    "plan_config_version": 1,
+    "retrieval_queries": [
+      {
+        "query_id": "q0001",
+        "text": "school"
+      }
+    ],
+    "search_policy": {
+      "fusion_method": "reciprocal_rank_fusion",
+      "maximum_prompt_suggestion_messages": 1,
+      "rrf_constant": 60,
+      "top_k_per_query": 1
+    }
+  },
+  "message_count": 1,
+  "question": "Show me fights about school.",
+  "scope_id": "retrieval-investigation-revision-4",
+  "working_corpus_messages_omitted_from_artifact": true,
+  "working_corpus_revision_id": 4
+}

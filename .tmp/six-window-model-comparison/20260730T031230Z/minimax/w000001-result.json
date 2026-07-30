@@ -1,0 +1,58 @@
+{
+  "window_id": "w000001",
+  "status_code": 200,
+  "elapsed_seconds": 19.337326999999277,
+  "response": {
+    "id": "chatcmpl-cd96ac24-3130-4578-b081-20d35b6b11cf",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000001\",\"no_relevant_evidence\":true,\"evidence_ranges\":[],\"uncertainties\":[\"The supplied window contains extensive discussion of school-related logistics (school selection, application, interviews, enrollment, drop-off/pick-up routines, school-day health issues, costume planning for a school back-to-school night, and post-school activities), but no passage shows the two conversation participants in conflict, disagreement, criticism, defensiveness, or competing positions about school. The exchanges are cooperative planning and shared decision-making rather than a 'fight' about school.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785382526,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 155182,
+      "completion_tokens": 116,
+      "total_tokens": 155298,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 128
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000001",
+      "no_relevant_evidence": true,
+      "evidence_ranges": [],
+      "uncertainties": [
+        "The supplied window contains extensive discussion of school-related logistics (school selection, application, interviews, enrollment, drop-off/pick-up routines, school-day health issues, costume planning for a school back-to-school night, and post-school activities), but no passage shows the two conversation participants in conflict, disagreement, criticism, defensiveness, or competing positions about school. The exchanges are cooperative planning and shared decision-making rather than a 'fight' about school."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000001",
+      "no_relevant_evidence": true,
+      "evidence_ranges": [],
+      "uncertainties": [
+        "The supplied window contains extensive discussion of school-related logistics (school selection, application, interviews, enrollment, drop-off/pick-up routines, school-day health issues, costume planning for a school back-to-school night, and post-school activities), but no passage shows the two conversation participants in conflict, disagreement, criticism, defensiveness, or competing positions about school. The exchanges are cooperative planning and shared decision-making rather than a 'fight' about school."
+      ]
+    },
+    "evidence_range_count": 0
+  }
+}

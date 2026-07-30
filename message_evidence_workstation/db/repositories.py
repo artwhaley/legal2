@@ -1,4 +1,4 @@
-﻿"""Database repository helpers."""
+"""Database repository helpers."""
 
 from __future__ import annotations
 
@@ -10,10 +10,9 @@ from message_evidence_workstation.domain.models import (
     Category,
     Dataset,
     Message,
-    ModelRunSummary,
     SourceThread,
 )
-from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
+from message_evidence_workstation.logging_ui.diagnostic_logger import DiagnosticLogger, utc_now_iso
 
 
 def _json_loads(value: str | None) -> dict[str, Any]:
@@ -83,7 +82,7 @@ def fetch_messages_by_ids(
 def get_latest_dataset(conn: sqlite3.Connection) -> Dataset | None:
     row = conn.execute(
         """
-        SELECT dataset_id, name, created_at, schema_version, notes
+        SELECT dataset_id, name, created_at, schema_version, notes, content_revision
         FROM dataset
         ORDER BY dataset_id DESC
         LIMIT 1
@@ -97,6 +96,7 @@ def get_latest_dataset(conn: sqlite3.Connection) -> Dataset | None:
         created_at=row["created_at"],
         schema_version=row["schema_version"],
         notes=row["notes"],
+        content_revision=int(row["content_revision"]),
     )
 
 
@@ -342,7 +342,7 @@ def list_categories(conn: sqlite3.Connection, dataset_id: int) -> list[Category]
 
 def create_category(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     dataset_id: int,
     name: str,
     description: str = "",
@@ -380,7 +380,7 @@ def create_category(
 
 def rename_category(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     category_id: int,
     name: str,
 ) -> None:
@@ -398,7 +398,7 @@ def rename_category(
     )
 
 
-def delete_category(conn: sqlite3.Connection, logger: ProcessLogger, category_id: int) -> None:
+def delete_category(conn: sqlite3.Connection, logger: DiagnosticLogger, category_id: int) -> None:
     conn.execute(
         "DELETE FROM evidence_block_highlight WHERE evidence_block_id IN "
         "(SELECT evidence_block_id FROM evidence_block WHERE category_id = ?)",
@@ -417,7 +417,7 @@ def delete_category(conn: sqlite3.Connection, logger: ProcessLogger, category_id
 
 def set_category_collapsed(
     conn: sqlite3.Connection,
-    logger: ProcessLogger,
+    logger: DiagnosticLogger,
     category_id: int,
     is_collapsed: bool,
 ) -> None:

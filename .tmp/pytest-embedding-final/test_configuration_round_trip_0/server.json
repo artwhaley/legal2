@@ -1,0 +1,69 @@
+{
+  "config_version": 1,
+  "host": "127.0.0.1",
+  "port": 8710,
+  "operations": {
+    "keyword_expansion": {
+      "provider": "openai_compatible",
+      "base_url": "https://provider.example/v1",
+      "api_key": "secret",
+      "model_id": "model-keyword_expansion",
+      "context_window_tokens": 100000,
+      "max_request_tokens": 90000,
+      "max_output_tokens": 10000,
+      "timeout_seconds": 30,
+      "temperature": 0.1
+    },
+    "retrieval_terms": {
+      "provider": "openai_compatible",
+      "base_url": "https://provider.example/v1",
+      "api_key": "secret",
+      "model_id": "model-retrieval_terms",
+      "context_window_tokens": 100000,
+      "max_request_tokens": 90000,
+      "max_output_tokens": 10000,
+      "timeout_seconds": 30,
+      "temperature": 0.1
+    },
+    "whole_transcript": {
+      "provider": "openai_compatible",
+      "base_url": "https://provider.example/v1",
+      "api_key": "secret",
+      "model_id": "model-whole_transcript",
+      "context_window_tokens": 100000,
+      "max_request_tokens": 90000,
+      "max_output_tokens": 10000,
+      "timeout_seconds": 30,
+      "temperature": 0.1
+    },
+    "window_scan": {
+      "provider": "openai_compatible",
+      "base_url": "https://provider.example/v1",
+      "api_key": "secret",
+      "model_id": "model-window_scan",
+      "context_window_tokens": 100000,
+      "max_request_tokens": 90000,
+      "max_output_tokens": 10000,
+      "timeout_seconds": 30,
+      "temperature": 0.1
+    },
+    "evidence_ledger_synthesis": {
+      "provider": "openai_compatible",
+      "base_url": "https://provider.example/v1",
+      "api_key": "secret",
+      "model_id": "model-evidence_ledger_synthesis",
+      "context_window_tokens": 100000,
+      "max_request_tokens": 90000,
+      "max_output_tokens": 10000,
+      "timeout_seconds": 30,
+      "temperature": 0.1
+    }
+  },
+  "embedding": {
+    "model_name": "fake-embedding",
+    "model_revision": "",
+    "normalization": "unit_l2",
+    "max_batch_size": 32,
+    "dimensions": 3
+  }
+}

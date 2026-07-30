@@ -1,0 +1,87 @@
+{
+  "analysis_plan_id": "00000000-0000-0000-0000-000000000002",
+  "arms": {},
+  "artifact_hashes": {
+    "analysis-plan.json": "9dcd98553e2c103acd1f94f8f88f8fa60e1326b80831329630ace85aecaf18b1",
+    "provisional-gold.json": "d44fc60f029519fe3ec7e3fc808734dfaaf0327773e8907ce814a63e5b792747",
+    "query-embedding-metadata.json": "d3e0ec2446ce158f71128f4688a948931cdd0522e564c8d380b640408e4ee5ef",
+    "raw-candidates.json": "476ef836ed561a19213c72387f3950034a98820e647fe6e3da35e02bf618d928",
+    "raw-gold-overlap.json": "4ca8863ae200f37b64ef33149fe78c45b5eedc627d80c7522f931f67ae0b28a4"
+  },
+  "capture": {
+    "session_id": "20260729T000000Z-aaaaaaaaaaaa",
+    "started_by_runner": true,
+    "stopped": false
+  },
+  "capture_session_id": "20260729T000000Z-aaaaaaaaaaaa",
+  "capture_started_projection": {
+    "active_config_version": 1,
+    "configuration_fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "debug_status": {
+      "active": true,
+      "active_session_id": "20260729T000000Z-aaaaaaaaaaaa",
+      "pending_records": 0,
+      "writer_failure": null
+    },
+    "mode_independent_configuration_fingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "retrieval_assistance_mode": "semantic_ranges"
+  },
+  "evw": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\rpv1-orchestration-basetemp\\test_prepare_freezes_one_plan_0\\fixture.evw",
+  "plan_identity": {
+    "analysis_plan": {
+      "analysis_question": "Show me fights about school.",
+      "answer_objective": "Identify responsive conflict evidence.",
+      "answer_requirements": [
+        "cite direct evidence"
+      ],
+      "concepts": [
+        {
+          "definition": "school-related discussion",
+          "label": "school",
+          "manifestations": [
+            "school"
+          ]
+        }
+      ],
+      "exclusion_criteria": [
+        "cooperative logistics without conflict"
+      ],
+      "inclusion_criteria": [
+        "directly responsive conflict"
+      ],
+      "interpretive_assumptions": [],
+      "retrieval_queries": [
+        "school"
+      ]
+    },
+    "analysis_plan_id": "00000000-0000-0000-0000-000000000002",
+    "compatibility_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "config_version": 1,
+    "embedding": {
+      "artifact_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dimensions": 3,
+      "embedding_profile_id": "profile",
+      "normalization": "unit_l2"
+    },
+    "retrieval_queries": [
+      {
+        "query_id": "q0001",
+        "text": "school"
+      }
+    ],
+    "search_policy": {
+      "fusion_method": "reciprocal_rank_fusion",
+      "maximum_prompt_suggestion_messages": 1,
+      "rrf_constant": 60,
+      "top_k_per_query": 1
+    }
+  },
+  "prepared_at": "2026-07-30T19:27:16.865185Z",
+  "question": "Show me fights about school.",
+  "runner": "QPA1-800",
+  "server_url": "http://fake",
+  "small_revision_id": 3,
+  "small_revision_message_count": 1,
+  "working_corpus_message_count": 1,
+  "working_corpus_revision_id": 4
+}

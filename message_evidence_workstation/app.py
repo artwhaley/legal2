@@ -7,7 +7,6 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication
 
 from message_evidence_workstation.app_bootstrap import StartupLoadOptions, bootstrap_app
-from message_evidence_workstation.diagnostics.trace_log import install_diagnostics, trace
 from message_evidence_workstation.ui.main_window import MainWindow
 
 
@@ -15,7 +14,6 @@ from message_evidence_workstation.ui.main_window import MainWindow
 class CliOptions:
     dataset_path: Path | None = None
     db_path: Path | None = None
-    reload_dataset: bool = False
     skip_embedding: bool = False
 
 
@@ -36,10 +34,6 @@ def parse_cli_options(args: list[str]) -> CliOptions:
             options.db_path = Path(args[index + 1])
             index += 2
             continue
-        if arg == "--reload-dataset":
-            options.reload_dataset = True
-            index += 1
-            continue
         if arg == "--skip-embedding":
             options.skip_embedding = True
             index += 1
@@ -53,9 +47,6 @@ def parse_cli_options(args: list[str]) -> CliOptions:
 
 
 def main() -> int:
-    trace_path = install_diagnostics()
-    trace("app", "main_enter", trace_path=str(trace_path))
-
     app = QApplication(sys.argv)
     app.setApplicationName("Message Evidence Workstation")
 
@@ -65,7 +56,6 @@ def main() -> int:
     if options.dataset_path is not None:
         startup_load = StartupLoadOptions(
             dataset_path=options.dataset_path,
-            reload=options.reload_dataset,
             skip_embedding=options.skip_embedding,
         )
 
@@ -73,9 +63,7 @@ def main() -> int:
     window = MainWindow(context, startup_load=startup_load)
     window.show()
     app.processEvents()
-    trace("app", "exec_begin")
     code = app.exec()
-    trace("app", "exec_end", exit_code=code)
     return code
 
 

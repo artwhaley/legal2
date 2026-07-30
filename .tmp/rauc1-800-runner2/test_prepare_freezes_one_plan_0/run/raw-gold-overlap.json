@@ -1,0 +1,19 @@
+[
+  {
+    "best_raw_rank_by_query": {
+      "q0001": 1
+    },
+    "end_message_id": "m1",
+    "end_ordinal": 0,
+    "event_date": "2026-01-01",
+    "retrieved": true,
+    "retrieved_by_query": {
+      "q0001": [
+        "m1"
+      ]
+    },
+    "start_message_id": "m1",
+    "start_ordinal": 0,
+    "thread_id": "t1"
+  }
+]

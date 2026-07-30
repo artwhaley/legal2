@@ -10,21 +10,37 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "PySide6>=6.6",
-    "sentence-transformers>=3.0",
     "sqlite-vec>=0.1.6",
+    "tiktoken>=0.7",
 ]
 
 [project.optional-dependencies]
+server = [
+    "fastapi>=0.100",
+    "pydantic>=2.0",
+    "httpx>=0.27",
+    "cryptography>=42",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "sentence-transformers>=3.0",
+    "transformers>=5.12.1",
+    "uvicorn>=0.20",
+]
 dev = [
     "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "playwright>=1.45",
+    "fastapi>=0.100",
+    "pydantic>=2.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["message_evidence_workstation*"]
+include = ["message_evidence_workstation*", "server*"]
 
 [tool.setuptools.package-data]
 message_evidence_workstation = ["native/*.dll", "native/*.so", "native/*.dylib"]
+server = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -32,4 +48,5 @@ pythonpath = ["."]
 addopts = "-m 'not scale'"
 markers = [
     "scale: performance or large-fixture tests (run with -m scale)",
+    "browser: real headless browser tests for the admin interface",
 ]

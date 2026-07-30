@@ -1,0 +1,22 @@
+{
+  "accepted": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "endpoint": "/v1/embeddings",
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "normalization": "unit_l2",
+    "requested_revision": "",
+    "total_items": 4
+  },
+  "completed": {
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "total_items": 4
+  },
+  "query_vector_sha256": {
+    "q0001": "7cbe3485d19bb8dab1b79ef6c98603d03e107a5b85f2630f46c8cb01cb10ea0c",
+    "q0002": "9987e22184d639dfa84aef082d5392a90f605b07307219733fae9af1be88a4e3",
+    "q0003": "9831775d2b7db2616c40c7c23e2dee0dd49fe903283b753e3319c073d0569784",
+    "q0004": "0797925e072f0ad8e2800122279595106e5bc9888775697e52de560db2e49b18"
+  }
+}

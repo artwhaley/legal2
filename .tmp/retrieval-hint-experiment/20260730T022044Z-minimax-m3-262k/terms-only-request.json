@@ -1,0 +1,99 @@
+{
+  "message_count": 12402,
+  "question": "When did we fight about school?",
+  "retrieval_assistance": {
+    "compatibility_fingerprint": "0bcdfa95d3802e08f4db0db84ee2d9fd3b41b7880d2274fbf0dde93428d7ef4d",
+    "dimensions": 384,
+    "embedding_artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "hits": [],
+    "normalization": "unit_l2",
+    "plan_config_version": 55,
+    "queries": [
+      {
+        "query_id": "q0001",
+        "text": "when did we fight about school"
+      },
+      {
+        "query_id": "q0002",
+        "text": "fight about school"
+      },
+      {
+        "query_id": "q0003",
+        "text": "school fight"
+      },
+      {
+        "query_id": "q0004",
+        "text": "when did we fight"
+      },
+      {
+        "query_id": "q0005",
+        "text": "we fought about school"
+      },
+      {
+        "query_id": "q0006",
+        "text": "argument about school"
+      },
+      {
+        "query_id": "q0007",
+        "text": "disagreement about school"
+      },
+      {
+        "query_id": "q0008",
+        "text": "school argument"
+      },
+      {
+        "query_id": "q0009",
+        "text": "school disagreement"
+      },
+      {
+        "query_id": "q0010",
+        "text": "when was the fight about school"
+      },
+      {
+        "query_id": "q0011",
+        "text": "date of school fight"
+      },
+      {
+        "query_id": "q0012",
+        "text": "school conflict"
+      },
+      {
+        "query_id": "q0013",
+        "text": "conflict about school"
+      },
+      {
+        "query_id": "q0014",
+        "text": "when did the school fight happen"
+      },
+      {
+        "query_id": "q0015",
+        "text": "school fight date"
+      },
+      {
+        "query_id": "q0016",
+        "text": "fight over school"
+      },
+      {
+        "query_id": "q0017",
+        "text": "school dispute"
+      },
+      {
+        "query_id": "q0018",
+        "text": "dispute about school"
+      },
+      {
+        "query_id": "q0019",
+        "text": "when did we argue about school"
+      },
+      {
+        "query_id": "q0020",
+        "text": "argue about school"
+      }
+    ],
+    "retrieval_plan_id": "b46ab5e2-73cf-4660-8f0b-db29ae945298"
+  },
+  "scope_id": "retrieval-investigation-revision-4",
+  "working_corpus_messages_omitted_from_artifact": true,
+  "working_corpus_revision_id": 4
+}

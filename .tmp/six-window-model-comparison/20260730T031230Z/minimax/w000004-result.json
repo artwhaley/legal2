@@ -1,0 +1,58 @@
+{
+  "window_id": "w000004",
+  "status_code": 200,
+  "elapsed_seconds": 22.34752169999956,
+  "response": {
+    "id": "chatcmpl-b19c5827-0d8e-4a00-8834-b66f3c52f1c6",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000004\",\"no_relevant_evidence\":true,\"evidence_ranges\":[],\"uncertainties\":[\"The supplied window contains extensive co-parenting logistics, gymnastics scheduling, school/camp coordination, and a major argument about gymnastics investment vs. family time, but no exchange in which the participants are in conflict specifically about school (education, homeschooling, academic quality, curriculum, school-related schedules, educational costs, or responsibility for educational decisions). The closest education-related tension is the broader disagreement on 2024-02-23 about gymnastics vs. family time, which references school only incidentally (school workbooks, school schedule) and is primarily about gymnastics, not school.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785383550,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 155922,
+      "completion_tokens": 139,
+      "total_tokens": 156061,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 128
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000004",
+      "no_relevant_evidence": true,
+      "evidence_ranges": [],
+      "uncertainties": [
+        "The supplied window contains extensive co-parenting logistics, gymnastics scheduling, school/camp coordination, and a major argument about gymnastics investment vs. family time, but no exchange in which the participants are in conflict specifically about school (education, homeschooling, academic quality, curriculum, school-related schedules, educational costs, or responsibility for educational decisions). The closest education-related tension is the broader disagreement on 2024-02-23 about gymnastics vs. family time, which references school only incidentally (school workbooks, school schedule) and is primarily about gymnastics, not school."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000004",
+      "no_relevant_evidence": true,
+      "evidence_ranges": [],
+      "uncertainties": [
+        "The supplied window contains extensive co-parenting logistics, gymnastics scheduling, school/camp coordination, and a major argument about gymnastics investment vs. family time, but no exchange in which the participants are in conflict specifically about school (education, homeschooling, academic quality, curriculum, school-related schedules, educational costs, or responsibility for educational decisions). The closest education-related tension is the broader disagreement on 2024-02-23 about gymnastics vs. family time, which references school only incidentally (school workbooks, school schedule) and is primarily about gymnastics, not school."
+      ]
+    },
+    "evidence_range_count": 0
+  }
+}

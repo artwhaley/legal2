@@ -1,0 +1,13 @@
+{
+  "server_url": "http://127.0.0.1:8710",
+  "search": {
+    "fts_page_size": 200,
+    "max_expansion_terms": 20
+  },
+  "answer": {
+    "answer_mode": "whole_transcript"
+  },
+  "transcript": {
+    "speaker_tints": []
+  }
+}

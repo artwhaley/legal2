@@ -1,0 +1,19 @@
+{
+  "accepted": {
+    "artifact_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "dimensions": 3,
+    "embedding_profile_id": "profile",
+    "endpoint": "/v1/embeddings",
+    "model": "fake",
+    "normalization": "unit_l2",
+    "requested_revision": "",
+    "total_items": 1
+  },
+  "completed": {
+    "embedding_profile_id": "profile",
+    "total_items": 1
+  },
+  "query_vector_sha256": {
+    "q0001": "4038c71f32b1e0b99e22be8120608645adba7fe339e63085b8c9ca1580576685"
+  }
+}

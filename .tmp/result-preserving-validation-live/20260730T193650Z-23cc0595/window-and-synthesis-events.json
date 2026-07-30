@@ -1,0 +1,168 @@
+{
+  "per_window": [
+    {
+      "accepted_range_count": 11,
+      "estimated_cost": null,
+      "input_tokens": 106236,
+      "normalized_range_count": 0,
+      "output_tokens": 1832,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000001",
+      "window_index": 0
+    },
+    {
+      "accepted_range_count": 7,
+      "estimated_cost": null,
+      "input_tokens": 106204,
+      "normalized_range_count": 0,
+      "output_tokens": 1592,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000002",
+      "window_index": 1
+    },
+    {
+      "accepted_range_count": 10,
+      "estimated_cost": null,
+      "input_tokens": 105942,
+      "normalized_range_count": 0,
+      "output_tokens": 2089,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000003",
+      "window_index": 2
+    },
+    {
+      "accepted_range_count": 21,
+      "estimated_cost": null,
+      "input_tokens": 106831,
+      "normalized_range_count": 0,
+      "output_tokens": 3077,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000004",
+      "window_index": 3
+    },
+    {
+      "accepted_range_count": 9,
+      "estimated_cost": null,
+      "input_tokens": 106502,
+      "normalized_range_count": 0,
+      "output_tokens": 1809,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000005",
+      "window_index": 4
+    },
+    {
+      "accepted_range_count": 3,
+      "estimated_cost": null,
+      "input_tokens": 105995,
+      "normalized_range_count": 0,
+      "output_tokens": 1113,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000006",
+      "window_index": 5
+    },
+    {
+      "accepted_range_count": 1,
+      "estimated_cost": null,
+      "input_tokens": 105894,
+      "normalized_range_count": 0,
+      "output_tokens": 343,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000007",
+      "window_index": 6
+    },
+    {
+      "accepted_range_count": 3,
+      "estimated_cost": null,
+      "input_tokens": 106372,
+      "normalized_range_count": 0,
+      "output_tokens": 959,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000008",
+      "window_index": 7
+    },
+    {
+      "accepted_range_count": 22,
+      "estimated_cost": null,
+      "input_tokens": 106231,
+      "normalized_range_count": 0,
+      "output_tokens": 3099,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000009",
+      "window_index": 8
+    }
+  ],
+  "preflight": [
+    {
+      "direct_fit": false,
+      "evidence_message_count": 1221,
+      "evidence_range_count": 87,
+      "excess_input_tokens": 505,
+      "required_input_tokens": 185375,
+      "usable_input_tokens": 184870
+    },
+    {
+      "direct_fit": false,
+      "evidence_message_count": 1221,
+      "evidence_range_count": 87,
+      "excess_input_tokens": 505,
+      "maximum_depth": 4,
+      "required_input_tokens": 185375,
+      "usable_input_tokens": 184870
+    },
+    {
+      "covered_range_count": 87,
+      "final_synthesis_input_tokens": 24248,
+      "group_calls": 1,
+      "levels": 1,
+      "original_range_count": 87
+    }
+  ],
+  "terminal_event": "completed",
+  "unavailable_windows": [],
+  "unusable_output_events": [],
+  "window_count": 9,
+  "window_plan": {
+    "config_version": 65,
+    "data": {
+      "hard_input_tokens": 184870,
+      "message_count": 12402,
+      "retrieval_reserve_tokens": 3519,
+      "strategy": "multi_window_ledger",
+      "target_input_tokens": 110922,
+      "utilization_percent": 60.0,
+      "window_count": 9,
+      "window_plan_hash": "798b2ddc064424761259b2326b0cdbdf3738d4fb1b740dac12e7e0d152e0b561"
+    },
+    "event": "window_plan_created",
+    "request_id": "39110a1a-b65b-42fb-bcf8-0f25d702ba1d",
+    "sequence": 5,
+    "timestamp": "2026-07-30T19:38:02.081339Z"
+  }
+}

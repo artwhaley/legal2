@@ -1,0 +1,12 @@
+{
+  "retrieval_queries": {
+    "q0001": [
+      {
+        "distance": 0.0,
+        "message_id": "m1",
+        "query_id": "q0001",
+        "rank": 1
+      }
+    ]
+  }
+}

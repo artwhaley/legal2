@@ -1,0 +1,29 @@
+{
+  "arms": {
+    "terms-only": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "f14866196d35d40032419f12472a06ac81b8cd7242b440e6bd6748912a52d69b"
+    }
+  },
+  "compatibility_fingerprint": "97d5eefcc1c358a05f226fc2c2e05731e06dc6fc5d07a080d2b957531d18fc2d",
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "plan_id": "40e160dd-9dcc-4561-8c1f-232a0dbbb984",
+  "question": "When did we fight about school?",
+  "reasons": [
+    "terms-only and full-semantic arms are both required",
+    "terms-only returned a partial or failed result"
+  ],
+  "valid_apples_to_apples_quality_comparison": false
+}

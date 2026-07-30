@@ -1,0 +1,52 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+    },
+    "full-semantic": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+    },
+    "terms-only": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+    }
+  },
+  "compatibility_fingerprint": "c1eecc11e6ba9fb405eb9b5b092aae577d14b2931380adfae34ee5e1c01f4703",
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "plan_id": "5cd6c25e-c6df-486a-a62a-636c5ec159e3",
+  "question": "When did we fight about school?",
+  "reasons": [
+    "censored-semantic returned a partial or failed result",
+    "full-semantic returned a partial or failed result",
+    "terms-only returned a partial or failed result"
+  ],
+  "valid_apples_to_apples_quality_comparison": false
+}

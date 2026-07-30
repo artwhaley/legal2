@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from message_evidence_workstation.domain.search_scope import WorkingCorpusScope
+
 
 @dataclass(slots=True)
 class Dataset:
@@ -13,6 +15,7 @@ class Dataset:
     created_at: str
     schema_version: int
     notes: str
+    content_revision: int
 
 
 @dataclass(slots=True)
@@ -69,62 +72,57 @@ class EvidenceBlock:
     source_thread_id: str
     title: str
     summary: str
-    core_hit_message_id: str
-    context_start_slot: int
-    relevant_start_slot: int
-    relevant_end_slot: int
-    context_end_slot: int
+    context_start_message_id: str
+    relevant_start_message_id: str
+    core_message_id: str
+    relevant_end_message_id: str
+    context_end_message_id: str
+    origin_kind: str
+    origin_working_corpus_revision_id: int | None
+    origin_scope_hash: str | None
+    message_ids: tuple[str, ...]
+    sections: tuple[str, ...]
     highlighted_message_ids: frozenset[str]
     created_by: str
     created_at: str
     updated_at: str
 
-    def leading_context_message_ids(self, ordered_message_ids: list[str]) -> list[str]:
-        from message_evidence_workstation.domain.slots import message_ids_for_slot_range
+    @property
+    def core_hit_message_id(self) -> str:
+        return self.core_message_id
 
-        return message_ids_for_slot_range(
-            ordered_message_ids,
-            self.context_start_slot,
-            self.relevant_start_slot,
-        )
+    @property
+    def context_start_slot(self) -> int:
+        return 0
+
+    @property
+    def relevant_start_slot(self) -> int:
+        return self.message_ids.index(self.relevant_start_message_id)
+
+    @property
+    def relevant_end_slot(self) -> int:
+        return self.message_ids.index(self.relevant_end_message_id) + 1
+
+    @property
+    def context_end_slot(self) -> int:
+        return len(self.message_ids)
+
+    def leading_context_message_ids(self, ordered_message_ids: list[str]) -> list[str]:
+        del ordered_message_ids
+        return [m for m, section in zip(self.message_ids, self.sections) if section == "leading_context"]
 
     def relevant_message_ids(self, ordered_message_ids: list[str]) -> list[str]:
-        from message_evidence_workstation.domain.slots import message_ids_for_slot_range
-
-        return message_ids_for_slot_range(
-            ordered_message_ids,
-            self.relevant_start_slot,
-            self.relevant_end_slot,
-        )
+        del ordered_message_ids
+        return [m for m, section in zip(self.message_ids, self.sections) if section == "relevant"]
 
     def trailing_context_message_ids(self, ordered_message_ids: list[str]) -> list[str]:
-        from message_evidence_workstation.domain.slots import message_ids_for_slot_range
-
-        return message_ids_for_slot_range(
-            ordered_message_ids,
-            self.relevant_end_slot,
-            self.context_end_slot,
-        )
+        del ordered_message_ids
+        return [m for m, section in zip(self.message_ids, self.sections) if section == "trailing_context"]
 
 
 @dataclass(slots=True)
-class ModelRunSummary:
-    model_run_id: int
-    dataset_id: int | None
-    run_type: str
-    model: str
-    prompt_template_id: int | None
-    prompt_version: int | None
-    input_summary: str
-    created_at: str
-    latency_ms: int | None
-    error_type: str | None
-    error_message: str | None
-
-
-@dataclass(slots=True)
-class ProcessLogEntry:
-    process_log_id: int
+class DiagnosticEntry:
+    event_id: int
     dataset_id: int | None
     timestamp: str
     severity: str

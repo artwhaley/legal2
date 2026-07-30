@@ -1,0 +1,8 @@
+{
+  "error_type": "ExperimentError",
+  "message": "live analysis did not complete: PROVIDER_TIMEOUT: operation deadline expired (request_id=8292bfbc-f27e-4cab-ae26-2819226563c8)",
+  "provider_error_code": "PROVIDER_TIMEOUT",
+  "provider_error_message": "operation deadline expired",
+  "provider_error_stage": "provider",
+  "request_id": "8292bfbc-f27e-4cab-ae26-2819226563c8"
+}

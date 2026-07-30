@@ -1,0 +1,36 @@
+{
+  "compatibility_fingerprint": "9ab295718bd865b3da63d7f7c7462f98bf194b63a2f25b841fee9c9aab2bc134",
+  "config_version": 16,
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "queries": [
+    {
+      "query_id": "q0001",
+      "text": "fight"
+    },
+    {
+      "query_id": "q0002",
+      "text": "school"
+    }
+  ],
+  "request_id": "d380cf5e-eb06-4d2d-836b-5afdc68786a0",
+  "retrieval_plan_id": "8e4e6e84-bc07-4ba0-b423-a854e743b9a1",
+  "search_policy": {
+    "fusion_method": "reciprocal_rank_fusion",
+    "maximum_prompt_suggestion_messages": 40,
+    "rrf_constant": 60,
+    "top_k_per_query": 100
+  },
+  "usage": {
+    "cost_complete": false,
+    "currency": "USD",
+    "estimated_cost": null,
+    "input_tokens": 227,
+    "output_tokens": 8,
+    "source": "provider_reported"
+  }
+}

@@ -1,0 +1,4 @@
+# Windows x64 native EVW extensions used by the release compatibility probe.
+# Verify from flutter_client/windows/native with: Get-FileHash *.dll -Algorithm SHA256
+fcf98662a7ad9dce394b96a88f91032047823831b951c76636787c312a6476e6  vec0.dll
+fbf7f14c3f5b9f9c31b975c83db1a846097a1460d7f94be4bf716777a194588b  spellfix.dll

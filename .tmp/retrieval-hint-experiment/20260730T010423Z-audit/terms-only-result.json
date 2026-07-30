@@ -1,0 +1,1623 @@
+{
+  "events": [
+    {
+      "config_version": 23,
+      "data": {
+        "endpoint": "/v1/conversational-analysis",
+        "message_count": 12402,
+        "scope_id": "retrieval-investigation-revision-4"
+      },
+      "event": "accepted",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 1,
+      "timestamp": "2026-07-30T01:04:52.850505Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "analysis_input_tokens": 723365,
+        "context_window_tokens": 202752,
+        "corpus_tokens": 720646,
+        "reserved_output_tokens": 16384,
+        "safety_margin_tokens": 1498,
+        "strategy": "multi_window_ledger"
+      },
+      "event": "accounting_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 2,
+      "timestamp": "2026-07-30T01:04:52.850640Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "compatibility_fingerprint": "687e4dc77574584cda10148c747a32cadbd616a56e8652fd21803336e027e366",
+        "mode": "terms_only",
+        "query_count": 3,
+        "raw_hit_count": 0
+      },
+      "event": "retrieval_assistance_accepted",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 3,
+      "timestamp": "2026-07-30T01:04:52.850703Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "selected_suggestion_message_count": 0,
+        "suggestion_range_count": 0,
+        "unique_candidate_message_count": 0,
+        "unselected_candidate_message_count": 0
+      },
+      "event": "retrieval_suggestions_built",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 4,
+      "timestamp": "2026-07-30T01:04:52.850758Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "hard_input_tokens": 184870,
+        "message_count": 12402,
+        "retrieval_reserve_tokens": 2719,
+        "strategy": "multi_window_ledger",
+        "target_input_tokens": 166383,
+        "utilization_percent": 90.0,
+        "window_count": 6,
+        "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+      },
+      "event": "window_plan_created",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 5,
+      "timestamp": "2026-07-30T01:04:52.850946Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "message_count": 2200,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 6,
+      "timestamp": "2026-07-30T01:04:52.851267Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 10020,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 7,
+      "timestamp": "2026-07-30T01:05:02.867569Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 20029,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 8,
+      "timestamp": "2026-07-30T01:05:12.877648Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 30036,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 9,
+      "timestamp": "2026-07-30T01:05:22.884256Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 40044,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 10,
+      "timestamp": "2026-07-30T01:05:32.891788Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 50058,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 11,
+      "timestamp": "2026-07-30T01:05:42.906226Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 60067,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 12,
+      "timestamp": "2026-07-30T01:05:52.915821Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 70078,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 13,
+      "timestamp": "2026-07-30T01:06:02.926385Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 0,
+        "elapsed_ms": 80090,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 14,
+      "timestamp": "2026-07-30T01:06:12.937824Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 17,
+        "input_tokens": 157671,
+        "output_tokens": 2523,
+        "usage_source": "provider_reported",
+        "window_count": 6,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 15,
+      "timestamp": "2026-07-30T01:06:14.215357Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "message_count": 2136,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000002",
+        "window_index": 1
+      },
+      "event": "window_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 16,
+      "timestamp": "2026-07-30T01:06:14.215630Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 1,
+        "elapsed_ms": 91380,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 17,
+      "timestamp": "2026-07-30T01:06:24.227664Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 1,
+        "elapsed_ms": 101382,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 18,
+      "timestamp": "2026-07-30T01:06:34.230150Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 1,
+        "elapsed_ms": 111390,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 19,
+      "timestamp": "2026-07-30T01:06:44.239720Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 1,
+        "elapsed_ms": 121405,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 20,
+      "timestamp": "2026-07-30T01:06:54.253177Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 1,
+        "elapsed_ms": 131415,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 21,
+      "timestamp": "2026-07-30T01:07:04.263122Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 1,
+        "input_tokens": 157728,
+        "output_tokens": 456,
+        "usage_source": "provider_reported",
+        "window_count": 6,
+        "window_id": "w000002",
+        "window_index": 1
+      },
+      "event": "window_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 22,
+      "timestamp": "2026-07-30T01:07:07.366313Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "message_count": 2056,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000003",
+        "window_index": 2
+      },
+      "event": "window_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 23,
+      "timestamp": "2026-07-30T01:07:07.366601Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 2,
+        "elapsed_ms": 144529,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 24,
+      "timestamp": "2026-07-30T01:07:17.379779Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 2,
+        "elapsed_ms": 154538,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 25,
+      "timestamp": "2026-07-30T01:07:27.387748Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 2,
+        "elapsed_ms": 164550,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 26,
+      "timestamp": "2026-07-30T01:07:37.398193Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 6,
+        "input_tokens": 157782,
+        "output_tokens": 1101,
+        "usage_source": "provider_reported",
+        "window_count": 6,
+        "window_id": "w000003",
+        "window_index": 2
+      },
+      "event": "window_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 27,
+      "timestamp": "2026-07-30T01:07:42.518451Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "message_count": 2145,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000004",
+        "window_index": 3
+      },
+      "event": "window_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 28,
+      "timestamp": "2026-07-30T01:07:42.518748Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 3,
+        "elapsed_ms": 179679,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 29,
+      "timestamp": "2026-07-30T01:07:52.526607Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 3,
+        "elapsed_ms": 189691,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 30,
+      "timestamp": "2026-07-30T01:08:02.539254Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 3,
+        "elapsed_ms": 199693,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 31,
+      "timestamp": "2026-07-30T01:08:12.541327Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 3,
+        "elapsed_ms": 209700,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 32,
+      "timestamp": "2026-07-30T01:08:22.548641Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 4,
+        "input_tokens": 157816,
+        "output_tokens": 1207,
+        "usage_source": "provider_reported",
+        "window_count": 6,
+        "window_id": "w000004",
+        "window_index": 3
+      },
+      "event": "window_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 33,
+      "timestamp": "2026-07-30T01:08:27.393200Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "message_count": 2128,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000005",
+        "window_index": 4
+      },
+      "event": "window_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 34,
+      "timestamp": "2026-07-30T01:08:27.393489Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 4,
+        "elapsed_ms": 224553,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 35,
+      "timestamp": "2026-07-30T01:08:37.401707Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 0,
+        "input_tokens": 157740,
+        "output_tokens": 118,
+        "usage_source": "provider_reported",
+        "window_count": 6,
+        "window_id": "w000005",
+        "window_index": 4
+      },
+      "event": "window_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 36,
+      "timestamp": "2026-07-30T01:08:37.563467Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "message_count": 1737,
+        "suggestion_range_count": 0,
+        "window_count": 6,
+        "window_id": "w000006",
+        "window_index": 5
+      },
+      "event": "window_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 37,
+      "timestamp": "2026-07-30T01:08:37.563767Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 5,
+        "elapsed_ms": 234717,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 38,
+      "timestamp": "2026-07-30T01:08:47.564821Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 5,
+        "elapsed_ms": 244732,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 39,
+      "timestamp": "2026-07-30T01:08:57.580180Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 1,
+        "completed_windows": 5,
+        "elapsed_ms": 254735,
+        "operation": "window_evidence_extraction",
+        "window_count": 6
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 40,
+      "timestamp": "2026-07-30T01:09:07.582592Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 3,
+        "input_tokens": 158126,
+        "output_tokens": 942,
+        "usage_source": "provider_reported",
+        "window_count": 6,
+        "window_id": "w000006",
+        "window_index": 5
+      },
+      "event": "window_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 41,
+      "timestamp": "2026-07-30T01:09:13.812416Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "evidence_range_count": 31,
+        "window_count": 6
+      },
+      "event": "ledger_built",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 42,
+      "timestamp": "2026-07-30T01:09:13.826221Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "direct_fit": true,
+        "evidence_message_count": 646,
+        "evidence_range_count": 31,
+        "excess_input_tokens": 0,
+        "required_input_tokens": 68898,
+        "usable_input_tokens": 184870
+      },
+      "event": "ledger_synthesis_preflight",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 43,
+      "timestamp": "2026-07-30T01:09:13.931559Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "evidence_range_count": 31
+      },
+      "event": "ledger_synthesis_started",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 44,
+      "timestamp": "2026-07-30T01:09:13.931720Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 10008,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 45,
+      "timestamp": "2026-07-30T01:09:23.940199Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 20014,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 46,
+      "timestamp": "2026-07-30T01:09:33.948487Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 30025,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 47,
+      "timestamp": "2026-07-30T01:09:43.957466Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 40031,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 48,
+      "timestamp": "2026-07-30T01:09:53.963186Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 50043,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 49,
+      "timestamp": "2026-07-30T01:10:03.976754Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 60052,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 50,
+      "timestamp": "2026-07-30T01:10:13.984357Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 70064,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 51,
+      "timestamp": "2026-07-30T01:10:23.996361Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 80065,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 52,
+      "timestamp": "2026-07-30T01:10:33.997519Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 90073,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 53,
+      "timestamp": "2026-07-30T01:10:44.006954Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 100081,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 54,
+      "timestamp": "2026-07-30T01:10:54.013108Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 110088,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 55,
+      "timestamp": "2026-07-30T01:11:04.022842Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 120093,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 56,
+      "timestamp": "2026-07-30T01:11:14.025566Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 130099,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 57,
+      "timestamp": "2026-07-30T01:11:24.031411Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 140100,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 58,
+      "timestamp": "2026-07-30T01:11:34.033688Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 150113,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 59,
+      "timestamp": "2026-07-30T01:11:44.045132Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "active_windows": 0,
+        "completed_windows": 0,
+        "elapsed_ms": 160122,
+        "operation": "ledger_synthesis",
+        "window_count": 0
+      },
+      "event": "heartbeat",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 60,
+      "timestamp": "2026-07-30T01:11:54.054781Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "estimated_cost": null,
+        "evidence_range_count": 31,
+        "input_tokens": 68685,
+        "output_tokens": 2828,
+        "usage_source": "provider_reported"
+      },
+      "event": "ledger_synthesis_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 61,
+      "timestamp": "2026-07-30T01:11:54.723479Z"
+    },
+    {
+      "config_version": 23,
+      "data": {
+        "final_ranges_outside_suggestions": 31,
+        "final_ranges_overlapping_suggestions": 0,
+        "suggestions_without_final_evidence": 0,
+        "used_ranges_outside_suggestions": 8,
+        "used_ranges_overlapping_suggestions": 0
+      },
+      "event": "retrieval_overlap_completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "sequence": 62,
+      "timestamp": "2026-07-30T01:11:54.723620Z"
+    },
+    {
+      "config_version": 23,
+      "event": "completed",
+      "request_id": "77d3e338-3014-4077-9f52-65536423126a",
+      "result": {
+        "answer": "Based on the evidence ledger, the parties (Julie Kramer and Art Whaley) fought about school on the following dates, in chronological order:\n\n1. **March 28, 2023 (r000018):** The clearest and most direct fight about school-related issues. Julie and Art argued over how to split Olivia's two-week spring break between households. Julie insisted she should not spend the entire break at the farm and wanted substantial no-school days, noting school days are rushed and she barely sees Olivia. Art countered that Olivia said she wanted two weeks at the farm and that it had been three weeks since he last had her. The exchange escalated into a broader dispute about custody, finances, and parenting roles, with Julie stating she is 100% financially responsible for Olivia (including school tuition and all other costs) and that most dads who pay child support get every other weekend. Art responded that many dads have 50/50 custody. Both ultimately said they don't want to fight and want to co-parent peacefully.\n\n2. **November 13, 2023 (r000025):** A disagreement about whether to continue the microschool or switch to homeschooling at home. Art suggested homeschooling at home as an alternative, citing instability from adding/losing students and Julie's stress. Julie pushed back, saying the school is now set up with a solid schedule, teachers, curriculum, and cameras, and that Olivia would hate homeschooling at home. Art argued it's a sunk cost fallacy and needs stability; Julie insisted the hard/expensive part is done and the daily schedule won't change.\n\n3. **June 26, 2024 (r000027):** A disagreement about school scheduling and educational adequacy. Art expressed concern that the new gymnastics schedule left only 2.5 days of school, questioned whether Julie and Weston could run a school with twins, and said 4 days of individual instruction was better than 5 of a classroom. Julie pushed back, explaining the schedule is the same gym hours shifted to mornings, and that 12-15 hours is the homeschool recommendation for grades 1-4. Art relented somewhat: 'As long as it's the fluff getting cut out... Not the academics.'\n\n4. **July 10, 2024 (r000028):** A disagreement about school/socialization and scheduling. Art and Julie argued about whether Olivia could attend a theater arts camp (9am-5pm). Art said, 'She needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school.' Julie agreed but worried about the jump from what Olivia is used to, germs before the birthday party, and missing gymnastics. Art said, 'I really thought we had this cleared a long time ago.'\n\n5. **July 16, 2025 (r000029):** A heated argument about Olivia's education and gymnastics. Art said Olivia should be 'OUT of gymnastics until her education is on track,' claimed she did zero school for weeks at the farm, and said she'd be on academic probation in a real school. Julie disputed this, said Olivia is on track, does school 3-4 days a week, and that Olivia told her the farm schoolwork was 'way too easy, like pre-school stuff.' Art said he's 'not trying to pick a fight about it' but wants school prioritized. Julie defended homeschooling over public school and said gymnastics teaches resilience. Art said she needs to do lessons 'with as much regularity as she does gymnastics.'\n\n6. **August 4, 2025 (r000030):** A discussion with some tension about where and how often Olivia does schoolwork. Art said, 'If she's only doing school work here she needs to get here as often as possible anyway this year.' Julie pushed back: 'She's not only doing school work there? She does lots of school work here.' Julie acknowledged a gap in September/October and letting Olivia take off most of December, but said she does school 'almost at least 3-4 days a week.' This exchange is less heated than the July 16 argument.\n\n7. **July 1, 2026 (r000031):** An extended argument about educational neglect, homeschool curriculum choices, and who is responsible for Olivia's education. Art said Julie was 'neglecting her education again' and that he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputed being called neglectful, citing she paid over $30,000 for education, did full curriculum with Olivia in 2nd grade, and that Art bought a 'crappy subscription' for 3rd grade and didn't set it up properly, resulting in Olivia skipping chapters with no continuity. Art accused Julie of 'not torturing her by sending her back to be bullied, telling her she can't drop out, and neglecting her education again.'\n\nAdditionally, on **February 23, 2024 (r000026)**, there was a major fight about competing priorities (gymnastics vs. monster trucks and competition preparation) that touched on school indirectly through the broader conflict over priorities and scheduling, but was not specifically about school itself.\n\nNumerous other evidence ranges (r000001 through r000017, r000019 through r000024) reference school extensively but are collaborative discussions, shared anxieties, or logistics coordination rather than fights or arguments between the parties.",
+        "answer_summary": "Julie and Art fought about school on at least seven occasions between March 2023 and July 2026, with the most direct fights occurring on March 28, 2023 (spring break allocation and school tuition costs), November 13, 2023 (microschool vs. homeschool), June 26, 2024 (gymnastics schedule reducing school time), July 10, 2024 (socialization concerns tied to not being in 'real school'), July 16, 2025 (educational neglect and gymnastics vs. academics), August 4, 2025 (where Olivia does schoolwork), and July 1, 2026 (educational neglect, curriculum choices, and responsibility for schooling).",
+        "coverage": {
+          "evidence_range_count": 31,
+          "message_count": 12402,
+          "window_count": 6
+        },
+        "evidence_ledger": [
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:7200",
+            "range_id": "r000001",
+            "rationale": "Discusses the Uvalde school shooting and a homeschooling joke; no fight or argument between the parties about school.",
+            "relevance": "References school in the context of the Uvalde shooting and a homeschooling joke, but does not describe a fight between the parties about school.",
+            "start_message_id": "decipher_message_1:7210",
+            "summary": "Art and Julie discuss the Uvalde elementary school shooting. Art says 'Having a school squirrel sure makes me wonder about my stance on guns.' Julie mentions her friend's 10-year-old girl is still missing from the school. Art jokes 'We'll just homeschool her in an underground bunker. That's normal right?'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:6778",
+            "range_id": "r000002",
+            "rationale": "Initial discussion about Wildflower Acton Academy school options; no fight or disagreement evident.",
+            "relevance": "Initial discussion about school options for Olivia; no fight or disagreement is evident.",
+            "start_message_id": "decipher_message_1:6780",
+            "summary": "Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds that he hasn't but they could do the open house, and mentions a Montessori in Norman that Ben's girls attend, suggesting Julie could move south. Julie says the drive would be too far and that Wildflower is a Montessori-like school.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:6756",
+            "range_id": "r000003",
+            "rationale": "Discussion about school selection with mild tension about the Norman drive being too far; no explicit fight.",
+            "relevance": "Discussion and mild tension about school selection; Art suggests the cousins' school but Julie says the drive is too far. They agree on criteria. No explicit fight.",
+            "start_message_id": "decipher_message_1:6765",
+            "summary": "Julie reports visiting Wildflower and both she and Olivia loved it. She describes the school structure, class sizes, and non-religious approach. Art says if Julie liked it he'll make time to visit or look at it, and mentions the school Olivia's cousins attend (Nature Field Creative Academy) as the only other one he'd want to look at. Julie says the Norman drive is too far. Art says if it doesn't meet all criteria (private, Montessori/Acton, not religious), there's no reason not to just send her to Deer Creek schools. Julie agrees.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:6745",
+            "range_id": "r000004",
+            "rationale": "Collaborative school search discussion listing criteria and options; no fight or argument.",
+            "relevance": "Collaborative school search discussion; no fight or argument about school.",
+            "start_message_id": "decipher_message_1:6755",
+            "summary": "Julie asks about Nature Field Creative Academy and lists other schools she checked (Crème De la Crème, Goddard, Keystone) that aren't doing kindergarten or aren't accepting new kids. Art says Lyla went to Nature Field and Grace knows about it. Julie lists her criteria (private, Montessori/Acton, not religious). Art agrees and says if it doesn't meet all criteria, just send her to Deer Creek schools. Julie agrees. They discuss Rose Union and Deer Creek elementary ratings and class ratios.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:6727",
+            "range_id": "r000005",
+            "rationale": "Continued school selection discussion about Primrose and Heritage Hall; no disagreement.",
+            "relevance": "Continued school selection discussion; no fight.",
+            "start_message_id": "decipher_message_1:6735",
+            "summary": "Julie mentions Primrose has kindergarten spots but is very structured with uniforms. Art jokes Olivia would survive uniforms. Julie mentions Heritage Hall as another option. Art says it's a really good school. Julie says she still likes Wildflower better mainly because of size. No disagreement.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:6573",
+            "range_id": "r000006",
+            "rationale": "Collaborative school application process; Julie expresses frustration at the application difficulty but not at Art.",
+            "relevance": "Collaborative school application process; Julie expresses frustration at the application difficulty but not at Art. No fight between the parties.",
+            "start_message_id": "decipher_message_1:6605",
+            "summary": "Julie is filling out the Wildflower school application and asks Art for help with questions like 'What did we like about the child's previous school?' and 'What fears do you have about your child's school experience?' Art provides input about conflict, surprises, and confusion. They collaborate on answers. Julie expresses frustration at the extensive application: 'That application was a B. i can't believe it took me like 3 hours' and 'It's kindergarten not college.'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5902",
+            "range_id": "r000007",
+            "rationale": "School admission process coordination; no fight.",
+            "relevance": "School admission process coordination; no fight.",
+            "start_message_id": "decipher_message_1:5907",
+            "summary": "Julie reports Olivia advanced to step 5 (final round) in the Wildflower application. The school asks about availability for an interview on August 1st, 2nd, or 3rd. Art says Tuesday morning works because he'll be in town. Julie says she'll try to get Tuesday morning and mentions Olivia's Mondays at Metro camp on Monday.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5859",
+            "range_id": "r000008",
+            "rationale": "Scheduling the school interview; no fight.",
+            "relevance": "Scheduling the school interview; no fight.",
+            "start_message_id": "decipher_message_1:5862",
+            "summary": "Julie says Wildflower didn't have availability Tuesday but has a spot Wednesday at 10:30am. Art confirms he can do that. Julie confirms the interview.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5800",
+            "range_id": "r000009",
+            "rationale": "Shared anxiety about school acceptance; no fight between the parties.",
+            "relevance": "Shared anxiety about school acceptance; no fight between the parties.",
+            "start_message_id": "decipher_message_1:5809",
+            "summary": "After the interview, Art says Olivia really wants to get in and jokes about burning the place down if they don't take her. Julie later receives a 'check the mail' notification and worries it could be a rejection. Art worries too: 'I worry that a check the mail is a no!' and 'I'm going to be PISSED if we have to tell her we didn't get in. She has her heart set on it.'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5797",
+            "range_id": "r000010",
+            "rationale": "Waiting for school acceptance letter; no fight.",
+            "relevance": "Waiting for school acceptance letter; no fight.",
+            "start_message_id": "decipher_message_1:5799",
+            "summary": "Art notes no mail yet after two days. Julie says she checked twice and will check tomorrow. Julie says 'It's like we are waiting on a college acceptance but it's just kindergarten.'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5778",
+            "range_id": "r000011",
+            "rationale": "School acceptance and enrollment; no fight.",
+            "relevance": "School acceptance and enrollment; no fight.",
+            "start_message_id": "decipher_message_1:5789",
+            "summary": "Julie reports Olivia was accepted to Wildflower: 'Our little smartie pants is in!!' Art asks if she was excited. Julie signed paperwork and paid the technology fee. Art says he'll sign the paperwork. Julie paid the first $5000 and plans to pay the remaining $5000 next month, noting 'Can't believe kindergarten is so much.'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5693",
+            "range_id": "r000012",
+            "rationale": "Mild tension about a scheduling conflict between a school event and the fair, but they agree school takes priority; no fight.",
+            "relevance": "Mild tension about a scheduling conflict between a school event and the fair, but they agree school takes priority. No fight.",
+            "start_message_id": "decipher_message_1:5709",
+            "summary": "Julie and Art discuss a scheduling conflict: the Wildflower back-to-school night on August 25 conflicts with the county fair dog show in Ada. Art says 'school's more important' but is sad about missing the dog show. Julie says the back-to-school thing may be mandatory and she wants to make a good impression and meet parents. They discuss the timing conflict. Art says 'Yeah, school's more important. But still sad!'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5490",
+            "range_id": "r000013",
+            "rationale": "Decision to miss the school back-to-school event due to Covid; no fight.",
+            "relevance": "Decision to miss the school back-to-school event due to Covid; no fight, though Art's comment about testing could be read as slightly pointed.",
+            "start_message_id": "decipher_message_1:5549",
+            "summary": "On the day of the back-to-school event, Julie's dad tested positive for Covid and Olivia has a low-grade fever (99.5). Julie and Art discuss whether to attend. Julie says 'I want to go but I don't think it's a good idea.' Art says he'll come pick up Olivia anyway. Julie emails the school that they won't attend. Julie tests positive for Covid. Art asks 'Do you test negative between exposures or just always test positive though?'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5433",
+            "range_id": "r000014",
+            "rationale": "Positive report on Olivia's first day of school; no fight.",
+            "relevance": "Positive report on Olivia's first day of school; no fight.",
+            "start_message_id": "decipher_message_1:5456",
+            "summary": "Art asks how Olivia's first day of school went. Julie reports she was excited, picked her outfit, and two sweet older girls 'adopted' her. Julie signed her up for Tae Kwon Do trips on Wednesdays. Art is proud. Julie reports Olivia said 'Best school ever' and made 5 friends. Art asks if all her friends are girls; Julie confirms. They discuss class size (12 kids in her studio, 10 in the other).",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5403",
+            "range_id": "r000015",
+            "rationale": "Discussion about school schedule adjustment and bedtime; no fight.",
+            "relevance": "Discussion about school schedule adjustment and bedtime; no fight.",
+            "start_message_id": "decipher_message_1:5418",
+            "summary": "Julie proposes keeping Olivia through the weekend while Art is sick with Covid, noting Olivia is adjusting to the new school schedule of waking at 7am. Art agrees. Julie discusses difficulty getting Olivia to sleep on time despite starting wind-down at 8:30. Art asks about melatonin. Julie says she'll get some. Julie mentions missing the 3-day-a-week option. Art asks if she's still having fun; Julie says she loves it.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5350",
+            "range_id": "r000016",
+            "rationale": "Julie giving Art school pickup instructions; no fight.",
+            "relevance": "Julie giving Art school pickup instructions; no fight, though Julie's instructions are detailed and she notes trying to stay out of trouble.",
+            "start_message_id": "decipher_message_1:5355",
+            "summary": "Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of the car, don't block the driveway. Art says 'lol. alright.' Julie asks 'Did you clean your car? lol'",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:5242",
+            "range_id": "r000017",
+            "rationale": "Both parents expressing shared frustration about school taking up Olivia's waking hours; no fight between them.",
+            "relevance": "Both parents expressing shared frustration about school taking up Olivia's waking hours; no fight between them.",
+            "start_message_id": "decipher_message_1:5250",
+            "summary": "Julie expresses difficulty adjusting to Olivia being in school all day: 'It's so weird to only have like 4-5 hours and then time to get ready for bed.' Art agrees and says 'I totally get why people want to home school though. I hate that they get her more waking hours than we do now!' Art also notes Olivia was extra physically affectionate, possibly due to adjusting to school.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_message_1:3556",
+            "range_id": "r000018",
+            "rationale": "Primary fight about school-related issues on March 28, 2023: allocation of school-break time, financial burden of school tuition, and impact of school schedule on each parent's time with Olivia.",
+            "relevance": "This is the primary passage where Julie and Art fight about school-related issues: the allocation of school-break time, the financial burden of school tuition and school-related costs, and the impact of the school schedule on each parent's time with Olivia. The dispute directly concerns 'when' they fought about school (March 28, 2023) and the substance of the disagreement.",
+            "start_message_id": "decipher_message_1:3572",
+            "summary": "Julie and Art argue about how to split Olivia's two-week spring break between households. Julie insists she should not spend the entire break at the farm and wants substantial no-school days with her daughter, noting school days are rushed and she barely sees Olivia. Art counters that Olivia said she wanted two weeks at the farm, that it had been three weeks since he last had her, and that he feels the loss of time too. The exchange escalates into a broader dispute about custody, finances, and parenting roles, with Julie stating she is 100% financially responsible for Olivia (including $3500+ in medical bills in two months, school tuition, and all other costs) and that most dads who pay child support get every other weekend, while Art responds that many dads have 50/50 custody and that Julie's financial pressure isn't solely from parenting. Both ultimately say they don't want to fight and want to co-parent peacefully.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:3022",
+            "range_id": "r000019",
+            "rationale": "Brief exchange about school choice ('which is why she's in private'); no argument or fight.",
+            "relevance": "Touches on school as a topic between the parties, but does not depict a fight or argument about school.",
+            "start_message_id": "decipher_message_1:3023",
+            "summary": "Art says sailing around the world is 'still safer than public schools in America now.' Julie responds, 'which is why she's in private 😩' — a brief exchange about school choice but no argument or fight.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:2659",
+            "range_id": "r000020",
+            "rationale": "Disagreement about post-birthday-party logistics and scheduling, not about school itself.",
+            "relevance": "Shows tension and disagreement about scheduling and decision-making regarding Olivia, but the dispute is about post-birthday-party logistics, not about school itself.",
+            "start_message_id": "decipher_message_1:2671",
+            "summary": "Julie and Art discuss Olivia's school situation after a birthday party. Julie expresses frustration that Olivia was given a second chance to change her mind about staying vs. going to the farm, calling it 'too much stress for a tired little girl.' Art agrees it was fair that she 'didn't need a second chance to choose.' Julie mentions spending a month planning and $4000 on the birthday party and wanting to spend time with Olivia afterwards. This is a disagreement about parenting decisions around scheduling after the party, not specifically about school.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:2618",
+            "range_id": "r000021",
+            "rationale": "Lengthy cooperative discussion about Olivia's school situation with new owners; not a fight between Julie and Art.",
+            "relevance": "A lengthy, detailed discussion about Olivia's school situation, but it is a cooperative exchange between Julie and Art, not a fight or argument between them.",
+            "start_message_id": "decipher_message_1:2655",
+            "summary": "Julie and Art have an extensive discussion about Olivia's school (Wildflower) being 'up in flames' due to new owners (the Heinigers). Julie says parents are upset about lack of transparency, that Dave (a former youth pastor) wanting to pay teachers $5000 less is a 'big red flag,' and that Miss Chris may leave to start her own school. Julie states, 'I Don't want Olivia at wildflower if miss Chris isn't there.' Art agrees and asks questions about the situation. The discussion is collaborative, not a fight.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:2056",
+            "range_id": "r000022",
+            "rationale": "Extensive collaborative discussion about Olivia's school and education; parties are in agreement and working together.",
+            "relevance": "Extensive discussion about Olivia's school and education, but the parties are in agreement and working together rather than fighting.",
+            "start_message_id": "decipher_message_1:2137",
+            "summary": "Julie sends a long series of messages about Olivia's school situation, including non-negotiable education requirements (reading every day, weekly reports, core skills first), the removal of Jami and her children from the school, touring 13 schools, and the new school location. Art responds supportively ('Yes on all of that, of course'). Julie also discusses the possibility of Art homeschooling Olivia. The tone is collaborative and aligned, not adversarial.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:1733",
+            "range_id": "r000023",
+            "rationale": "Major discussion about Olivia's school with significant instability and stress, but parties are cooperating and brainstorming rather than fighting.",
+            "relevance": "A major discussion about Olivia's school and education with significant instability and stress, but the parties are cooperating and brainstorming rather than fighting with each other.",
+            "start_message_id": "decipher_message_1:1851",
+            "summary": "Julie announces she 'fired Chris & Emily' as teachers after realizing they were not qualified. Art is surprised and asks questions. They discuss multiple school options including Keystone, Westminster, Casady, Back to Earth, Epic Charter Schools, Deer Creek, and homeschooling. Art suggests Epic Charter Schools and offers to homeschool Olivia himself. Julie discusses education.com curriculum and concerns about reading. The exchange involves some tension about the instability of Olivia's school situation but is primarily collaborative problem-solving, not a fight between Julie and Art.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "not_material",
+            "end_message_id": "decipher_message_1:1326",
+            "range_id": "r000024",
+            "rationale": "Cooperative discussion about Olivia's school schedule needs; not a fight.",
+            "relevance": "Discusses Olivia's school schedule needs cooperatively, not a fight.",
+            "start_message_id": "decipher_message_1:1329",
+            "summary": "Julie tells Art that Olivia 'wants a set school schedule' and 'wants to be in school with Addy and Corey on an official schedule.' Art responds, 'She just needs us to make a plan and stick to it.' Julie agrees and says 'It'll be nice having an actual teacher there this week.' This is a cooperative discussion about Olivia's school routine.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_message_1:970",
+            "range_id": "r000025",
+            "rationale": "Direct fight/argument about school on November 13, 2023: whether to continue the microschool or switch to homeschooling at home.",
+            "relevance": "Directly shows a fight/argument about school — specifically whether to continue the microschool or switch to homeschooling at home. Art advocates giving up the school if things keep going wrong; Julie resists, citing the investment and setup already completed.",
+            "start_message_id": "decipher_message_1:986",
+            "summary": "Art Whaley suggests homeschooling at home as an alternative to the microschool, citing instability from adding/losing students and Julie's stress. Julie pushes back, saying the school is now set up with solid schedule, teachers, curriculum, cameras, and that Olivia would hate homeschooling at home. Art continues to argue it's a sunk cost fallacy and needs stability, while Julie insists the hard/expensive part is done and the daily schedule won't change. This is a disagreement about school arrangements on 2023-11-13.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_message_1:110",
+            "range_id": "r000026",
+            "rationale": "Major fight on February 23, 2024, primarily about gymnastics vs. monster trucks, but involves the broader theme of competing priorities and scheduling conflicts that also affect school arrangements.",
+            "relevance": "This is a major fight between the parents. While primarily about gymnastics vs. monster trucks and competition preparation, it involves the broader theme of competing priorities and scheduling conflicts that also affect school arrangements. Art's statement that 'things I've planned for her are equally important' and Julie's financial breakdown show the tension underlying school and activity decisions.",
+            "start_message_id": "decipher_message_1:128",
+            "summary": "On 2024-02-23, Art and Julie have a heated argument about weekend logistics surrounding Olivia's gymnastics competition, monster truck tickets, and who gets her ready. Art says 'I think the disconnect is... we're perfectly capable of getting her ready for a competition, too' and 'things I've planned for her are equally important.' Julie responds with a detailed breakdown of gymnastics costs ($761/month plus thousands in fees) and says 'You don't help pay for anything.' Art says 'time with her father... time here doing the things she loves to do... time with her cousins... those things are MORE IMPORTANT than gymnastics, yes. No matter how much money you waste on it.' He also references Julie's past gymnastics abuse. Julie defends the gymnastics investment and the getting-ready routine as special bonding time. The argument touches on school indirectly through the broader conflict over priorities and scheduling.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_export_19:603",
+            "range_id": "r000027",
+            "rationale": "Direct fight/argument about school on June 26, 2024: whether reducing school to accommodate morning gymnastics practices will compromise Olivia's education.",
+            "relevance": "Directly shows a fight/argument about school — specifically whether reducing school to accommodate morning gymnastics practices will compromise Olivia's education. Art questions whether Julie can run the school with twins coming and whether less school time is adequate. Julie defends the plan.",
+            "start_message_id": "decipher_export_19:583",
+            "summary": "On 2024-06-26, Art and Julie discuss the new gymnastics schedule and its impact on school. Art expresses concern: 'That's .. a lot of gymnastics. I wish it was more than 2 and a half days of school?' and 'are you and Weston really sure you can run a school with twins?' and '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education.' Julie pushes back, explaining the schedule is the same gym hours, just shifted to mornings, and that 12-15 hours is the homeschool recommendation for grades 1-4. She says fluff time will be cut, not academics. Art says 'As long as it's the fluff getting cut out... Not the academics.' This is a disagreement about school scheduling and educational adequacy.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_export_19:793",
+            "range_id": "r000028",
+            "rationale": "Fight about school-related activities and socialization on July 10, 2024: Art explicitly ties the theater camp to his concern about Olivia not being in 'real school' and needing group participation skills.",
+            "relevance": "Shows a fight about school-related activities and socialization. Art explicitly ties the theater camp to his concern about Olivia not being in 'real school' and needing group participation skills, which is a school-related disagreement.",
+            "start_message_id": "decipher_export_19:770",
+            "summary": "On 2024-07-10, Art and Julie argue about whether Olivia can attend a theater arts camp (9am-5pm) the week before her birthday. Julie raises concerns about Olivia missing morning gymnastics, the gym party on the 18th, seeing her grandmother, and being overwhelmed by 120 kids. Art says 'She needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school.' Julie says 'I agree. that's a big jump though compared to what she's used too' and worries about germs before the birthday party. Art says 'I really thought we had this cleared a long time ago.' This is a disagreement about school/socialization and scheduling.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_export_19:3397",
+            "range_id": "r000029",
+            "rationale": "Direct heated argument ('fight') about school on July 16, 2025: Olivia's homeschooling, whether she is doing enough schoolwork, whether gymnastics is taking priority over education, and whether Julie is neglecting Olivia's education.",
+            "relevance": "This is a direct argument ('fight') about school—specifically about Olivia's homeschooling, whether she is doing enough schoolwork, whether gymnastics is taking priority over education, and whether Julie is neglecting Olivia's education. The date is July 16, 2025.",
+            "start_message_id": "decipher_export_19:3370",
+            "summary": "Art and Julie have a heated argument on July 16, 2025 about Olivia's education and gymnastics. Art says Olivia should be 'OUT of gymnastics until her education is on track,' claims she did zero school for weeks at the farm, and says she'd be on academic probation in a real school. Julie disputes this, says Olivia is on track, that she does school 3-4 days a week, and that Olivia told her the farm schoolwork was 'way too easy, like pre-school stuff.' Art says he's 'not trying to pick a fight about it' but wants school prioritized. Julie defends homeschooling over public school and says gymnastics teaches resilience. Art says she needs to do lessons 'with as much regularity as she does gymnastics.' The exchange covers curriculum, grade levels, and disagreements about educational priorities.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_export_19:3456",
+            "range_id": "r000030",
+            "rationale": "Discussion about school with tension on August 4, 2025: where and how often Olivia does schoolwork, though less heated than the July 16 exchange.",
+            "relevance": "This is a discussion about school that carries some tension about where and how often Olivia does schoolwork, though it is less heated than the July 16 exchange. It relates to the question of fighting about school.",
+            "start_message_id": "decipher_export_19:3451",
+            "summary": "On August 4, 2025, Art and Julie discuss voice lessons and school. Art says 'If she's only doing school work here she needs to get here as often as possible anyway this year.' Julie pushes back: 'She's not only doing school work there? She does lots of school work here.' Julie notes there was a gap in September/October and she let Olivia take off most of December, but says she does school 'almost at least 3-4 days a week.' Art suggests letting Olivia do the first class or two and then figuring out scheduling. This exchange touches on school scheduling and where Olivia does schoolwork.",
+            "thread_id": "julie_kramer"
+          },
+          {
+            "disposition": "used",
+            "end_message_id": "decipher_export_5:142",
+            "range_id": "r000031",
+            "rationale": "Direct fight about school on July 1, 2026: educational neglect, homeschool curriculum choices, who is responsible for Olivia's education, and whether Olivia's schooling was being properly managed.",
+            "relevance": "This is a direct fight about school—specifically about educational neglect, homeschool curriculum choices, who is responsible for Olivia's education, and whether Olivia's schooling was being properly managed. The date is July 1, 2026.",
+            "start_message_id": "decipher_export_5:131",
+            "summary": "On July 1, 2026, Art and Julie have an extended argument about education. Art says Julie was 'neglecting her education again' and that he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputes being called neglectful, citing she paid over $30,000 for education, did full curriculum with Olivia in 2nd grade, and that Art bought a 'crappy subscription' for 3rd grade and didn't set it up properly. Julie says Olivia was skipping chapters and had no continuity. Art says Julie is 'not torturing her by sending her back to be bullied, telling her she can't drop out, and neglecting her education again.' Julie says she never forced gymnastics and tried to get Olivia to try other sports. The argument covers homeschool curriculum, educational oversight, and who is responsible for Olivia's learning.",
+            "thread_id": "julie_kramer"
+          }
+        ],
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 68898,
+          "synthesis_usable_input_tokens": 184870
+        },
+        "retrieval_diagnostics": {
+          "final_ranges_outside_suggestions": 31,
+          "final_ranges_overlapping_suggestions": 0,
+          "mode": "terms_only",
+          "query_count": 3,
+          "raw_hit_count": 0,
+          "selected_suggestion_message_count": 0,
+          "suggestion_range_count": 0,
+          "suggestions_without_final_evidence": 0,
+          "unique_candidate_message_count": 0,
+          "used_ranges_outside_suggestions": 8,
+          "used_ranges_overlapping_suggestions": 0
+        },
+        "strategy": "multi_window_ledger",
+        "uncertainties": [
+          "The word 'fight' is never used by the participants in direct relation to school except on July 16, 2025, when Art says 'I'm not trying to pick a fight about it,' which suggests the conversation had fight-like qualities but Art was disclaiming intent to fight.",
+          "Whether the February 23, 2024 argument (r000026) qualifies as a 'fight about school' is uncertain; it is primarily about gymnastics vs. monster trucks and competition preparation, touching on school only indirectly through broader conflicts over priorities and scheduling.",
+          "Whether the August 4, 2025 exchange (r000030) rises to the level of a 'fight' is uncertain; it carries tension about where and how often Olivia does schoolwork but is less heated than other identified fights.",
+          "Whether the July 10, 2024 theater camp discussion (r000028) qualifies as a 'fight about school' is uncertain; it is about a camp, not school itself, though Art explicitly ties it to his concern about Olivia not being in 'real school.'",
+          "It is possible that additional fights about school occurred outside the scanned message windows or in contexts not captured in the evidence ledger.",
+          "Window w000005 (decipher_export_19:1154 to decipher_export_19:3281) contains no evidence ranges and extensive cooperative school discussion with no conflict, but there may be brief disagreements not identified as evidence ranges."
+        ],
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 1015548,
+          "output_tokens": 9175,
+          "source": "provider_reported"
+        }
+      },
+      "sequence": 63,
+      "timestamp": "2026-07-30T01:11:54.723822Z"
+    }
+  ],
+  "metrics": {
+    "coverage": {
+      "evidence_range_count": 31,
+      "message_count": 12402,
+      "window_count": 6
+    },
+    "final_range_inventory": [
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:7200",
+        "range_id": "r000001",
+        "rationale": "Discusses the Uvalde school shooting and a homeschooling joke; no fight or argument between the parties about school.",
+        "relevance": "References school in the context of the Uvalde shooting and a homeschooling joke, but does not describe a fight between the parties about school.",
+        "start_message_id": "decipher_message_1:7210",
+        "summary": "Art and Julie discuss the Uvalde elementary school shooting. Art says 'Having a school squirrel sure makes me wonder about my stance on guns.' Julie mentions her friend's 10-year-old girl is still missing from the school. Art jokes 'We'll just homeschool her in an underground bunker. That's normal right?'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:6778",
+        "range_id": "r000002",
+        "rationale": "Initial discussion about Wildflower Acton Academy school options; no fight or disagreement evident.",
+        "relevance": "Initial discussion about school options for Olivia; no fight or disagreement is evident.",
+        "start_message_id": "decipher_message_1:6780",
+        "summary": "Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds that he hasn't but they could do the open house, and mentions a Montessori in Norman that Ben's girls attend, suggesting Julie could move south. Julie says the drive would be too far and that Wildflower is a Montessori-like school.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:6756",
+        "range_id": "r000003",
+        "rationale": "Discussion about school selection with mild tension about the Norman drive being too far; no explicit fight.",
+        "relevance": "Discussion and mild tension about school selection; Art suggests the cousins' school but Julie says the drive is too far. They agree on criteria. No explicit fight.",
+        "start_message_id": "decipher_message_1:6765",
+        "summary": "Julie reports visiting Wildflower and both she and Olivia loved it. She describes the school structure, class sizes, and non-religious approach. Art says if Julie liked it he'll make time to visit or look at it, and mentions the school Olivia's cousins attend (Nature Field Creative Academy) as the only other one he'd want to look at. Julie says the Norman drive is too far. Art says if it doesn't meet all criteria (private, Montessori/Acton, not religious), there's no reason not to just send her to Deer Creek schools. Julie agrees.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:6745",
+        "range_id": "r000004",
+        "rationale": "Collaborative school search discussion listing criteria and options; no fight or argument.",
+        "relevance": "Collaborative school search discussion; no fight or argument about school.",
+        "start_message_id": "decipher_message_1:6755",
+        "summary": "Julie asks about Nature Field Creative Academy and lists other schools she checked (Crème De la Crème, Goddard, Keystone) that aren't doing kindergarten or aren't accepting new kids. Art says Lyla went to Nature Field and Grace knows about it. Julie lists her criteria (private, Montessori/Acton, not religious). Art agrees and says if it doesn't meet all criteria, just send her to Deer Creek schools. Julie agrees. They discuss Rose Union and Deer Creek elementary ratings and class ratios.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:6727",
+        "range_id": "r000005",
+        "rationale": "Continued school selection discussion about Primrose and Heritage Hall; no disagreement.",
+        "relevance": "Continued school selection discussion; no fight.",
+        "start_message_id": "decipher_message_1:6735",
+        "summary": "Julie mentions Primrose has kindergarten spots but is very structured with uniforms. Art jokes Olivia would survive uniforms. Julie mentions Heritage Hall as another option. Art says it's a really good school. Julie says she still likes Wildflower better mainly because of size. No disagreement.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:6573",
+        "range_id": "r000006",
+        "rationale": "Collaborative school application process; Julie expresses frustration at the application difficulty but not at Art.",
+        "relevance": "Collaborative school application process; Julie expresses frustration at the application difficulty but not at Art. No fight between the parties.",
+        "start_message_id": "decipher_message_1:6605",
+        "summary": "Julie is filling out the Wildflower school application and asks Art for help with questions like 'What did we like about the child's previous school?' and 'What fears do you have about your child's school experience?' Art provides input about conflict, surprises, and confusion. They collaborate on answers. Julie expresses frustration at the extensive application: 'That application was a B. i can't believe it took me like 3 hours' and 'It's kindergarten not college.'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5902",
+        "range_id": "r000007",
+        "rationale": "School admission process coordination; no fight.",
+        "relevance": "School admission process coordination; no fight.",
+        "start_message_id": "decipher_message_1:5907",
+        "summary": "Julie reports Olivia advanced to step 5 (final round) in the Wildflower application. The school asks about availability for an interview on August 1st, 2nd, or 3rd. Art says Tuesday morning works because he'll be in town. Julie says she'll try to get Tuesday morning and mentions Olivia's Mondays at Metro camp on Monday.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5859",
+        "range_id": "r000008",
+        "rationale": "Scheduling the school interview; no fight.",
+        "relevance": "Scheduling the school interview; no fight.",
+        "start_message_id": "decipher_message_1:5862",
+        "summary": "Julie says Wildflower didn't have availability Tuesday but has a spot Wednesday at 10:30am. Art confirms he can do that. Julie confirms the interview.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5800",
+        "range_id": "r000009",
+        "rationale": "Shared anxiety about school acceptance; no fight between the parties.",
+        "relevance": "Shared anxiety about school acceptance; no fight between the parties.",
+        "start_message_id": "decipher_message_1:5809",
+        "summary": "After the interview, Art says Olivia really wants to get in and jokes about burning the place down if they don't take her. Julie later receives a 'check the mail' notification and worries it could be a rejection. Art worries too: 'I worry that a check the mail is a no!' and 'I'm going to be PISSED if we have to tell her we didn't get in. She has her heart set on it.'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5797",
+        "range_id": "r000010",
+        "rationale": "Waiting for school acceptance letter; no fight.",
+        "relevance": "Waiting for school acceptance letter; no fight.",
+        "start_message_id": "decipher_message_1:5799",
+        "summary": "Art notes no mail yet after two days. Julie says she checked twice and will check tomorrow. Julie says 'It's like we are waiting on a college acceptance but it's just kindergarten.'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5778",
+        "range_id": "r000011",
+        "rationale": "School acceptance and enrollment; no fight.",
+        "relevance": "School acceptance and enrollment; no fight.",
+        "start_message_id": "decipher_message_1:5789",
+        "summary": "Julie reports Olivia was accepted to Wildflower: 'Our little smartie pants is in!!' Art asks if she was excited. Julie signed paperwork and paid the technology fee. Art says he'll sign the paperwork. Julie paid the first $5000 and plans to pay the remaining $5000 next month, noting 'Can't believe kindergarten is so much.'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5693",
+        "range_id": "r000012",
+        "rationale": "Mild tension about a scheduling conflict between a school event and the fair, but they agree school takes priority; no fight.",
+        "relevance": "Mild tension about a scheduling conflict between a school event and the fair, but they agree school takes priority. No fight.",
+        "start_message_id": "decipher_message_1:5709",
+        "summary": "Julie and Art discuss a scheduling conflict: the Wildflower back-to-school night on August 25 conflicts with the county fair dog show in Ada. Art says 'school's more important' but is sad about missing the dog show. Julie says the back-to-school thing may be mandatory and she wants to make a good impression and meet parents. They discuss the timing conflict. Art says 'Yeah, school's more important. But still sad!'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5490",
+        "range_id": "r000013",
+        "rationale": "Decision to miss the school back-to-school event due to Covid; no fight.",
+        "relevance": "Decision to miss the school back-to-school event due to Covid; no fight, though Art's comment about testing could be read as slightly pointed.",
+        "start_message_id": "decipher_message_1:5549",
+        "summary": "On the day of the back-to-school event, Julie's dad tested positive for Covid and Olivia has a low-grade fever (99.5). Julie and Art discuss whether to attend. Julie says 'I want to go but I don't think it's a good idea.' Art says he'll come pick up Olivia anyway. Julie emails the school that they won't attend. Julie tests positive for Covid. Art asks 'Do you test negative between exposures or just always test positive though?'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5433",
+        "range_id": "r000014",
+        "rationale": "Positive report on Olivia's first day of school; no fight.",
+        "relevance": "Positive report on Olivia's first day of school; no fight.",
+        "start_message_id": "decipher_message_1:5456",
+        "summary": "Art asks how Olivia's first day of school went. Julie reports she was excited, picked her outfit, and two sweet older girls 'adopted' her. Julie signed her up for Tae Kwon Do trips on Wednesdays. Art is proud. Julie reports Olivia said 'Best school ever' and made 5 friends. Art asks if all her friends are girls; Julie confirms. They discuss class size (12 kids in her studio, 10 in the other).",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5403",
+        "range_id": "r000015",
+        "rationale": "Discussion about school schedule adjustment and bedtime; no fight.",
+        "relevance": "Discussion about school schedule adjustment and bedtime; no fight.",
+        "start_message_id": "decipher_message_1:5418",
+        "summary": "Julie proposes keeping Olivia through the weekend while Art is sick with Covid, noting Olivia is adjusting to the new school schedule of waking at 7am. Art agrees. Julie discusses difficulty getting Olivia to sleep on time despite starting wind-down at 8:30. Art asks about melatonin. Julie says she'll get some. Julie mentions missing the 3-day-a-week option. Art asks if she's still having fun; Julie says she loves it.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5350",
+        "range_id": "r000016",
+        "rationale": "Julie giving Art school pickup instructions; no fight.",
+        "relevance": "Julie giving Art school pickup instructions; no fight, though Julie's instructions are detailed and she notes trying to stay out of trouble.",
+        "start_message_id": "decipher_message_1:5355",
+        "summary": "Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of the car, don't block the driveway. Art says 'lol. alright.' Julie asks 'Did you clean your car? lol'",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:5242",
+        "range_id": "r000017",
+        "rationale": "Both parents expressing shared frustration about school taking up Olivia's waking hours; no fight between them.",
+        "relevance": "Both parents expressing shared frustration about school taking up Olivia's waking hours; no fight between them.",
+        "start_message_id": "decipher_message_1:5250",
+        "summary": "Julie expresses difficulty adjusting to Olivia being in school all day: 'It's so weird to only have like 4-5 hours and then time to get ready for bed.' Art agrees and says 'I totally get why people want to home school though. I hate that they get her more waking hours than we do now!' Art also notes Olivia was extra physically affectionate, possibly due to adjusting to school.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_message_1:3556",
+        "range_id": "r000018",
+        "rationale": "Primary fight about school-related issues on March 28, 2023: allocation of school-break time, financial burden of school tuition, and impact of school schedule on each parent's time with Olivia.",
+        "relevance": "This is the primary passage where Julie and Art fight about school-related issues: the allocation of school-break time, the financial burden of school tuition and school-related costs, and the impact of the school schedule on each parent's time with Olivia. The dispute directly concerns 'when' they fought about school (March 28, 2023) and the substance of the disagreement.",
+        "start_message_id": "decipher_message_1:3572",
+        "summary": "Julie and Art argue about how to split Olivia's two-week spring break between households. Julie insists she should not spend the entire break at the farm and wants substantial no-school days with her daughter, noting school days are rushed and she barely sees Olivia. Art counters that Olivia said she wanted two weeks at the farm, that it had been three weeks since he last had her, and that he feels the loss of time too. The exchange escalates into a broader dispute about custody, finances, and parenting roles, with Julie stating she is 100% financially responsible for Olivia (including $3500+ in medical bills in two months, school tuition, and all other costs) and that most dads who pay child support get every other weekend, while Art responds that many dads have 50/50 custody and that Julie's financial pressure isn't solely from parenting. Both ultimately say they don't want to fight and want to co-parent peacefully.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:3022",
+        "range_id": "r000019",
+        "rationale": "Brief exchange about school choice ('which is why she's in private'); no argument or fight.",
+        "relevance": "Touches on school as a topic between the parties, but does not depict a fight or argument about school.",
+        "start_message_id": "decipher_message_1:3023",
+        "summary": "Art says sailing around the world is 'still safer than public schools in America now.' Julie responds, 'which is why she's in private 😩' — a brief exchange about school choice but no argument or fight.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:2659",
+        "range_id": "r000020",
+        "rationale": "Disagreement about post-birthday-party logistics and scheduling, not about school itself.",
+        "relevance": "Shows tension and disagreement about scheduling and decision-making regarding Olivia, but the dispute is about post-birthday-party logistics, not about school itself.",
+        "start_message_id": "decipher_message_1:2671",
+        "summary": "Julie and Art discuss Olivia's school situation after a birthday party. Julie expresses frustration that Olivia was given a second chance to change her mind about staying vs. going to the farm, calling it 'too much stress for a tired little girl.' Art agrees it was fair that she 'didn't need a second chance to choose.' Julie mentions spending a month planning and $4000 on the birthday party and wanting to spend time with Olivia afterwards. This is a disagreement about parenting decisions around scheduling after the party, not specifically about school.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:2618",
+        "range_id": "r000021",
+        "rationale": "Lengthy cooperative discussion about Olivia's school situation with new owners; not a fight between Julie and Art.",
+        "relevance": "A lengthy, detailed discussion about Olivia's school situation, but it is a cooperative exchange between Julie and Art, not a fight or argument between them.",
+        "start_message_id": "decipher_message_1:2655",
+        "summary": "Julie and Art have an extensive discussion about Olivia's school (Wildflower) being 'up in flames' due to new owners (the Heinigers). Julie says parents are upset about lack of transparency, that Dave (a former youth pastor) wanting to pay teachers $5000 less is a 'big red flag,' and that Miss Chris may leave to start her own school. Julie states, 'I Don't want Olivia at wildflower if miss Chris isn't there.' Art agrees and asks questions about the situation. The discussion is collaborative, not a fight.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:2056",
+        "range_id": "r000022",
+        "rationale": "Extensive collaborative discussion about Olivia's school and education; parties are in agreement and working together.",
+        "relevance": "Extensive discussion about Olivia's school and education, but the parties are in agreement and working together rather than fighting.",
+        "start_message_id": "decipher_message_1:2137",
+        "summary": "Julie sends a long series of messages about Olivia's school situation, including non-negotiable education requirements (reading every day, weekly reports, core skills first), the removal of Jami and her children from the school, touring 13 schools, and the new school location. Art responds supportively ('Yes on all of that, of course'). Julie also discusses the possibility of Art homeschooling Olivia. The tone is collaborative and aligned, not adversarial.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:1733",
+        "range_id": "r000023",
+        "rationale": "Major discussion about Olivia's school with significant instability and stress, but parties are cooperating and brainstorming rather than fighting.",
+        "relevance": "A major discussion about Olivia's school and education with significant instability and stress, but the parties are cooperating and brainstorming rather than fighting with each other.",
+        "start_message_id": "decipher_message_1:1851",
+        "summary": "Julie announces she 'fired Chris & Emily' as teachers after realizing they were not qualified. Art is surprised and asks questions. They discuss multiple school options including Keystone, Westminster, Casady, Back to Earth, Epic Charter Schools, Deer Creek, and homeschooling. Art suggests Epic Charter Schools and offers to homeschool Olivia himself. Julie discusses education.com curriculum and concerns about reading. The exchange involves some tension about the instability of Olivia's school situation but is primarily collaborative problem-solving, not a fight between Julie and Art.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "not_material",
+        "end_message_id": "decipher_message_1:1326",
+        "range_id": "r000024",
+        "rationale": "Cooperative discussion about Olivia's school schedule needs; not a fight.",
+        "relevance": "Discusses Olivia's school schedule needs cooperatively, not a fight.",
+        "start_message_id": "decipher_message_1:1329",
+        "summary": "Julie tells Art that Olivia 'wants a set school schedule' and 'wants to be in school with Addy and Corey on an official schedule.' Art responds, 'She just needs us to make a plan and stick to it.' Julie agrees and says 'It'll be nice having an actual teacher there this week.' This is a cooperative discussion about Olivia's school routine.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_message_1:970",
+        "range_id": "r000025",
+        "rationale": "Direct fight/argument about school on November 13, 2023: whether to continue the microschool or switch to homeschooling at home.",
+        "relevance": "Directly shows a fight/argument about school — specifically whether to continue the microschool or switch to homeschooling at home. Art advocates giving up the school if things keep going wrong; Julie resists, citing the investment and setup already completed.",
+        "start_message_id": "decipher_message_1:986",
+        "summary": "Art Whaley suggests homeschooling at home as an alternative to the microschool, citing instability from adding/losing students and Julie's stress. Julie pushes back, saying the school is now set up with solid schedule, teachers, curriculum, cameras, and that Olivia would hate homeschooling at home. Art continues to argue it's a sunk cost fallacy and needs stability, while Julie insists the hard/expensive part is done and the daily schedule won't change. This is a disagreement about school arrangements on 2023-11-13.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_message_1:110",
+        "range_id": "r000026",
+        "rationale": "Major fight on February 23, 2024, primarily about gymnastics vs. monster trucks, but involves the broader theme of competing priorities and scheduling conflicts that also affect school arrangements.",
+        "relevance": "This is a major fight between the parents. While primarily about gymnastics vs. monster trucks and competition preparation, it involves the broader theme of competing priorities and scheduling conflicts that also affect school arrangements. Art's statement that 'things I've planned for her are equally important' and Julie's financial breakdown show the tension underlying school and activity decisions.",
+        "start_message_id": "decipher_message_1:128",
+        "summary": "On 2024-02-23, Art and Julie have a heated argument about weekend logistics surrounding Olivia's gymnastics competition, monster truck tickets, and who gets her ready. Art says 'I think the disconnect is... we're perfectly capable of getting her ready for a competition, too' and 'things I've planned for her are equally important.' Julie responds with a detailed breakdown of gymnastics costs ($761/month plus thousands in fees) and says 'You don't help pay for anything.' Art says 'time with her father... time here doing the things she loves to do... time with her cousins... those things are MORE IMPORTANT than gymnastics, yes. No matter how much money you waste on it.' He also references Julie's past gymnastics abuse. Julie defends the gymnastics investment and the getting-ready routine as special bonding time. The argument touches on school indirectly through the broader conflict over priorities and scheduling.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_export_19:603",
+        "range_id": "r000027",
+        "rationale": "Direct fight/argument about school on June 26, 2024: whether reducing school to accommodate morning gymnastics practices will compromise Olivia's education.",
+        "relevance": "Directly shows a fight/argument about school — specifically whether reducing school to accommodate morning gymnastics practices will compromise Olivia's education. Art questions whether Julie can run the school with twins coming and whether less school time is adequate. Julie defends the plan.",
+        "start_message_id": "decipher_export_19:583",
+        "summary": "On 2024-06-26, Art and Julie discuss the new gymnastics schedule and its impact on school. Art expresses concern: 'That's .. a lot of gymnastics. I wish it was more than 2 and a half days of school?' and 'are you and Weston really sure you can run a school with twins?' and '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education.' Julie pushes back, explaining the schedule is the same gym hours, just shifted to mornings, and that 12-15 hours is the homeschool recommendation for grades 1-4. She says fluff time will be cut, not academics. Art says 'As long as it's the fluff getting cut out... Not the academics.' This is a disagreement about school scheduling and educational adequacy.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_export_19:793",
+        "range_id": "r000028",
+        "rationale": "Fight about school-related activities and socialization on July 10, 2024: Art explicitly ties the theater camp to his concern about Olivia not being in 'real school' and needing group participation skills.",
+        "relevance": "Shows a fight about school-related activities and socialization. Art explicitly ties the theater camp to his concern about Olivia not being in 'real school' and needing group participation skills, which is a school-related disagreement.",
+        "start_message_id": "decipher_export_19:770",
+        "summary": "On 2024-07-10, Art and Julie argue about whether Olivia can attend a theater arts camp (9am-5pm) the week before her birthday. Julie raises concerns about Olivia missing morning gymnastics, the gym party on the 18th, seeing her grandmother, and being overwhelmed by 120 kids. Art says 'She needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school.' Julie says 'I agree. that's a big jump though compared to what she's used too' and worries about germs before the birthday party. Art says 'I really thought we had this cleared a long time ago.' This is a disagreement about school/socialization and scheduling.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_export_19:3397",
+        "range_id": "r000029",
+        "rationale": "Direct heated argument ('fight') about school on July 16, 2025: Olivia's homeschooling, whether she is doing enough schoolwork, whether gymnastics is taking priority over education, and whether Julie is neglecting Olivia's education.",
+        "relevance": "This is a direct argument ('fight') about school—specifically about Olivia's homeschooling, whether she is doing enough schoolwork, whether gymnastics is taking priority over education, and whether Julie is neglecting Olivia's education. The date is July 16, 2025.",
+        "start_message_id": "decipher_export_19:3370",
+        "summary": "Art and Julie have a heated argument on July 16, 2025 about Olivia's education and gymnastics. Art says Olivia should be 'OUT of gymnastics until her education is on track,' claims she did zero school for weeks at the farm, and says she'd be on academic probation in a real school. Julie disputes this, says Olivia is on track, that she does school 3-4 days a week, and that Olivia told her the farm schoolwork was 'way too easy, like pre-school stuff.' Art says he's 'not trying to pick a fight about it' but wants school prioritized. Julie defends homeschooling over public school and says gymnastics teaches resilience. Art says she needs to do lessons 'with as much regularity as she does gymnastics.' The exchange covers curriculum, grade levels, and disagreements about educational priorities.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_export_19:3456",
+        "range_id": "r000030",
+        "rationale": "Discussion about school with tension on August 4, 2025: where and how often Olivia does schoolwork, though less heated than the July 16 exchange.",
+        "relevance": "This is a discussion about school that carries some tension about where and how often Olivia does schoolwork, though it is less heated than the July 16 exchange. It relates to the question of fighting about school.",
+        "start_message_id": "decipher_export_19:3451",
+        "summary": "On August 4, 2025, Art and Julie discuss voice lessons and school. Art says 'If she's only doing school work here she needs to get here as often as possible anyway this year.' Julie pushes back: 'She's not only doing school work there? She does lots of school work here.' Julie notes there was a gap in September/October and she let Olivia take off most of December, but says she does school 'almost at least 3-4 days a week.' Art suggests letting Olivia do the first class or two and then figuring out scheduling. This exchange touches on school scheduling and where Olivia does schoolwork.",
+        "thread_id": "julie_kramer"
+      },
+      {
+        "disposition": "used",
+        "end_message_id": "decipher_export_5:142",
+        "range_id": "r000031",
+        "rationale": "Direct fight about school on July 1, 2026: educational neglect, homeschool curriculum choices, who is responsible for Olivia's education, and whether Olivia's schooling was being properly managed.",
+        "relevance": "This is a direct fight about school—specifically about educational neglect, homeschool curriculum choices, who is responsible for Olivia's education, and whether Olivia's schooling was being properly managed. The date is July 1, 2026.",
+        "start_message_id": "decipher_export_5:131",
+        "summary": "On July 1, 2026, Art and Julie have an extended argument about education. Art says Julie was 'neglecting her education again' and that he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputes being called neglectful, citing she paid over $30,000 for education, did full curriculum with Olivia in 2nd grade, and that Art bought a 'crappy subscription' for 3rd grade and didn't set it up properly. Julie says Olivia was skipping chapters and had no continuity. Art says Julie is 'not torturing her by sending her back to be bullied, telling her she can't drop out, and neglecting her education again.' Julie says she never forced gymnastics and tried to get Olivia to try other sports. The argument covers homeschool curriculum, educational oversight, and who is responsible for Olivia's learning.",
+        "thread_id": "julie_kramer"
+      }
+    ],
+    "final_ranges_outside_suggestions": 31,
+    "final_ranges_overlapping_suggestions": 0,
+    "ledger_processing": {
+      "compaction_applied": false,
+      "compaction_group_calls": 0,
+      "compaction_levels": 0,
+      "direct_synthesis_input_tokens": 68898,
+      "synthesis_usable_input_tokens": 184870
+    },
+    "mode_projection": {
+      "active_config_version": 23,
+      "configuration_fingerprint": "19adc4c932de84b4407c631abceb672d633d02ead19ed886ef0f2bb9eca1dd0a",
+      "mode_independent_configuration_fingerprint": "8d83afe55e5d2b5084c97132aae7ceb42e1412d2c1c4fa822bf4fa8282cd62f0",
+      "retrieval_assistance_mode": "terms_only"
+    },
+    "partial": false,
+    "provider_retry_or_queue_events": 0,
+    "provisional_gold_recall": {
+      "count": 7,
+      "found": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "total": 7
+    },
+    "selected_suggestion_message_ids": [],
+    "strategy": "multi_window_ledger",
+    "suggestions_without_final_evidence": 0,
+    "terminal_event": "completed",
+    "usage": {
+      "cost_complete": false,
+      "currency": "USD",
+      "estimated_cost": null,
+      "input_tokens": 1015548,
+      "output_tokens": 9175,
+      "source": "provider_reported"
+    },
+    "used_ranges_outside_suggestions": 8,
+    "used_ranges_overlapping_suggestions": 0,
+    "wall_time_ms": 426497.96809999953,
+    "window_count": 6,
+    "window_durations_ms": [
+      81364.08996582031,
+      53150.68292617798,
+      35151.84998512268,
+      44874.451875686646,
+      10169.978141784668,
+      36248.64912033081
+    ],
+    "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+  }
+}

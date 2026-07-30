@@ -1,0 +1,137 @@
+{
+  "events": [
+    {
+      "config_version": 53,
+      "data": {
+        "endpoint": "/v1/conversational-analysis",
+        "message_count": 12402,
+        "scope_id": "retrieval-investigation-revision-4"
+      },
+      "event": "accepted",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 1,
+      "timestamp": "2026-07-30T02:19:21.961527Z"
+    },
+    {
+      "config_version": 53,
+      "data": {
+        "analysis_input_tokens": 696750,
+        "context_window_tokens": 1000000,
+        "corpus_tokens": 693912,
+        "reserved_output_tokens": 16384,
+        "safety_margin_tokens": 1498,
+        "strategy": "multi_window_ledger"
+      },
+      "event": "accounting_completed",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 2,
+      "timestamp": "2026-07-30T02:19:21.961667Z"
+    },
+    {
+      "config_version": 53,
+      "data": {
+        "compatibility_fingerprint": "989b400c5c686184e5af096725b85071ff2271b23b78780cf4846cabd0414692",
+        "mode": "terms_only",
+        "query_count": 4,
+        "raw_hit_count": 0
+      },
+      "event": "retrieval_assistance_accepted",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 3,
+      "timestamp": "2026-07-30T02:19:21.961727Z"
+    },
+    {
+      "config_version": 53,
+      "data": {
+        "selected_suggestion_message_count": 0,
+        "suggestion_range_count": 0,
+        "unique_candidate_message_count": 0,
+        "unselected_candidate_message_count": 0
+      },
+      "event": "retrieval_suggestions_built",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 4,
+      "timestamp": "2026-07-30T02:19:21.961778Z"
+    },
+    {
+      "config_version": 53,
+      "data": {
+        "hard_input_tokens": 982118,
+        "message_count": 12402,
+        "retrieval_reserve_tokens": 2838,
+        "strategy": "multi_window_ledger",
+        "target_input_tokens": 883906,
+        "utilization_percent": 90.0,
+        "window_count": 2,
+        "window_plan_hash": "7b45af86f6c4d8a1316d09fbea2208068ac6b2c84bcac7241d56c9af2b799c16"
+      },
+      "event": "window_plan_created",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 5,
+      "timestamp": "2026-07-30T02:19:21.961982Z"
+    },
+    {
+      "config_version": 53,
+      "data": {
+        "message_count": 6397,
+        "suggestion_range_count": 0,
+        "window_count": 2,
+        "window_id": "w000001",
+        "window_index": 0
+      },
+      "event": "window_started",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 6,
+      "timestamp": "2026-07-30T02:19:21.962323Z"
+    },
+    {
+      "config_version": 53,
+      "error": {
+        "code": "PROVIDER_REJECTED",
+        "details": {
+          "completed_windows": 0,
+          "window_count": 2
+        },
+        "message": "provider returned HTTP 400",
+        "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+        "retryable": false,
+        "stage": "provider"
+      },
+      "event": "failed",
+      "request_id": "ccb68fa5-0e53-4409-9e5f-b3b9a86b8d97",
+      "sequence": 7,
+      "timestamp": "2026-07-30T02:19:25.454250Z"
+    }
+  ],
+  "metrics": {
+    "coverage": null,
+    "final_range_inventory": [],
+    "final_ranges_outside_suggestions": null,
+    "final_ranges_overlapping_suggestions": null,
+    "ledger_processing": {},
+    "mode_projection": {
+      "active_config_version": 53,
+      "configuration_fingerprint": "6de8c1d6b81730b031e926bc9fc4c11da2444c3344b8e6fb9f7a55297e03c35a",
+      "mode_independent_configuration_fingerprint": "8bf3c6270becb049af340da2e9f4b4a4d70068ad4156add8f9a7070e5aeb5230",
+      "retrieval_assistance_mode": "terms_only"
+    },
+    "partial": true,
+    "provider_retry_or_queue_events": 0,
+    "provisional_gold_recall": {
+      "count": 0,
+      "found": [],
+      "total": 7
+    },
+    "selected_suggestion_message_ids": [],
+    "strategy": null,
+    "suggestions_without_final_evidence": null,
+    "terminal_event": "failed",
+    "usage": null,
+    "used_ranges_outside_suggestions": null,
+    "used_ranges_overlapping_suggestions": null,
+    "wall_time_ms": 10430.72199999915,
+    "window_count": 2,
+    "window_durations_ms": [],
+    "window_plan_hash": "7b45af86f6c4d8a1316d09fbea2208068ac6b2c84bcac7241d56c9af2b799c16"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 78193,
+        "synthesis_usable_input_tokens": 184870
+      },
+      "outside_suggestion_ranges": 24,
+      "recall": {
+        "count": 6,
+        "found": [
+          0,
+          1,
+          2,
+          4,
+          5,
+          6
+        ],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+    },
+    "full-semantic": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 30145,
+        "synthesis_usable_input_tokens": 184870
+      },
+      "outside_suggestion_ranges": 14,
+      "recall": {
+        "count": 5,
+        "found": [
+          0,
+          1,
+          4,
+          5,
+          6
+        ],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+    },
+    "terms-only": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 68898,
+        "synthesis_usable_input_tokens": 184870
+      },
+      "outside_suggestion_ranges": 31,
+      "recall": {
+        "count": 7,
+        "found": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+    }
+  },
+  "compatibility_fingerprint": "687e4dc77574584cda10148c747a32cadbd616a56e8652fd21803336e027e366",
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "plan_id": "96b53ea1-854a-45bb-bdf4-7104da20797a",
+  "question": "When did we fight about school?",
+  "reasons": [],
+  "valid_apples_to_apples_quality_comparison": true
+}

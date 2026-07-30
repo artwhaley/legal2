@@ -1,0 +1,69 @@
+{
+  "config_version": 1,
+  "host": "127.0.0.1",
+  "port": 8711,
+  "operations": {
+    "keyword_expansion": {
+      "provider": "openai_compatible",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key": "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",
+      "model_id": "z-ai/glm-5.2",
+      "context_window_tokens": 500000,
+      "max_request_tokens": 482118,
+      "max_output_tokens": 16384,
+      "timeout_seconds": 1200.0,
+      "temperature": 0.1
+    },
+    "retrieval_terms": {
+      "provider": "openai_compatible",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key": "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",
+      "model_id": "z-ai/glm-5.2",
+      "context_window_tokens": 500000,
+      "max_request_tokens": 482118,
+      "max_output_tokens": 16384,
+      "timeout_seconds": 1200.0,
+      "temperature": 0.1
+    },
+    "whole_transcript": {
+      "provider": "openai_compatible",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key": "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",
+      "model_id": "deepseek-ai/deepseek-v4-flash",
+      "context_window_tokens": 500000,
+      "max_request_tokens": 482118,
+      "max_output_tokens": 16384,
+      "timeout_seconds": 1200.0,
+      "temperature": 0.1
+    },
+    "window_scan": {
+      "provider": "openai_compatible",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key": "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",
+      "model_id": "deepseek-ai/deepseek-v4-flash",
+      "context_window_tokens": 500000,
+      "max_request_tokens": 482118,
+      "max_output_tokens": 16384,
+      "timeout_seconds": 1200.0,
+      "temperature": 0.1
+    },
+    "evidence_ledger_synthesis": {
+      "provider": "openai_compatible",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key": "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",
+      "model_id": "deepseek-ai/deepseek-v4-flash",
+      "context_window_tokens": 500000,
+      "max_request_tokens": 482118,
+      "max_output_tokens": 16384,
+      "timeout_seconds": 1200.0,
+      "temperature": 0.1
+    }
+  },
+  "embedding": {
+    "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+    "model_revision": "",
+    "normalization": "unit_l2",
+    "max_batch_size": 32,
+    "dimensions": 384
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "window_id": "w000005",
+  "status_code": 200,
+  "elapsed_seconds": 14.224586100001034,
+  "response": {
+    "id": "chatcmpl-6fa53da9-5dbd-4b2e-92e4-c1c098be83c7",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000005\",\"no_relevant_evidence\":true,\"evidence_ranges\":[],\"uncertainties\":[\"The supplied window contains many exchanges about Olivia's homeschooling, gymnastics scheduling, custody logistics, and parenting disagreements, but no passage shows the participants themselves in a direct argument, criticism, accusation, or sustained tense exchange specifically about school, education, homeschooling, curriculum, or educational responsibility. School-related topics appear only in cooperative or logistical contexts (e.g., coordinating who will help with schoolwork, sharing curriculum platforms like Time4Learning and Education.com, discussing grades and progress). No materially distinct school-related fight between the conversation participants was identified in this window.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785383579,
+    "model": "minimaxai/minimax-m3",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 156342,
+      "completion_tokens": 136,
+      "total_tokens": 156478,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cached_tokens": 128
+      }
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000005",
+      "no_relevant_evidence": true,
+      "evidence_ranges": [],
+      "uncertainties": [
+        "The supplied window contains many exchanges about Olivia's homeschooling, gymnastics scheduling, custody logistics, and parenting disagreements, but no passage shows the participants themselves in a direct argument, criticism, accusation, or sustained tense exchange specifically about school, education, homeschooling, curriculum, or educational responsibility. School-related topics appear only in cooperative or logistical contexts (e.g., coordinating who will help with schoolwork, sharing curriculum platforms like Time4Learning and Education.com, discussing grades and progress). No materially distinct school-related fight between the conversation participants was identified in this window."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000005",
+      "no_relevant_evidence": true,
+      "evidence_ranges": [],
+      "uncertainties": [
+        "The supplied window contains many exchanges about Olivia's homeschooling, gymnastics scheduling, custody logistics, and parenting disagreements, but no passage shows the participants themselves in a direct argument, criticism, accusation, or sustained tense exchange specifically about school, education, homeschooling, curriculum, or educational responsibility. School-related topics appear only in cooperative or logistical contexts (e.g., coordinating who will help with schoolwork, sharing curriculum platforms like Time4Learning and Education.com, discussing grades and progress). No materially distinct school-related fight between the conversation participants was identified in this window."
+      ]
+    },
+    "evidence_range_count": 0
+  }
+}

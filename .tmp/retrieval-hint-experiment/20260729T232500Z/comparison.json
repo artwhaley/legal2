@@ -1,0 +1,65 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+    },
+    "full-semantic": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 72654,
+        "synthesis_usable_input_tokens": 184870
+      },
+      "outside_suggestion_ranges": 69,
+      "recall": {
+        "count": 7,
+        "found": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+    },
+    "terms-only": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660"
+    }
+  },
+  "compatibility_fingerprint": "9ab295718bd865b3da63d7f7c7462f98bf194b63a2f25b841fee9c9aab2bc134",
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "plan_id": "8e4e6e84-bc07-4ba0-b423-a854e743b9a1",
+  "question": "When did we fight about school?",
+  "reasons": [
+    "censored-semantic returned a partial or failed result",
+    "terms-only returned a partial or failed result"
+  ],
+  "valid_apples_to_apples_quality_comparison": false
+}

@@ -1,0 +1,66 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 1280,
+        "synthesis_usable_input_tokens": 244262
+      },
+      "outside_suggestion_ranges": 0,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+    },
+    "full-semantic": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 1217,
+        "synthesis_usable_input_tokens": 244262
+      },
+      "outside_suggestion_ranges": 0,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+    },
+    "terms-only": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 1256,
+        "synthesis_usable_input_tokens": 244262
+      },
+      "outside_suggestion_ranges": 0,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "38f38a781b2a6cd62b3ed53fac6b757d9e6509f1e4ce2d0a78242db02626b922"
+    }
+  },
+  "compatibility_fingerprint": "0bcdfa95d3802e08f4db0db84ee2d9fd3b41b7880d2274fbf0dde93428d7ef4d",
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "plan_id": "b46ab5e2-73cf-4660-8f0b-db29ae945298",
+  "question": "When did we fight about school?",
+  "reasons": [],
+  "valid_apples_to_apples_quality_comparison": true
+}

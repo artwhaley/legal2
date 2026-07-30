@@ -1,0 +1,232 @@
+{
+  "window_id": "w000001",
+  "status_code": 200,
+  "elapsed_seconds": 82.08304070000122,
+  "response": {
+    "id": "chatcmpl-f615b8b8-e2ff-4957-a14e-14a7f384b2b2",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "content": "{\"window_id\":\"w000001\",\"no_relevant_evidence\":false,\"evidence_ranges\":[{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:6780\",\"end_message_id\":\"decipher_message_1:6727\",\"summary\":\"Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds that he hasn't, but suggests a Montessori in Norman that Ben's girls attend. Julie says the daily drive to Norman would be too far. They discuss Wildflower being Montessori-like, Julie shares an article about Acton Academy, and Julie asks Art to attend an open house. Art says he may be too busy for the next one but encourages Julie to go ahead. This is a cooperative discussion about school options with no disagreement or tension.\",\"relevance\":\"This passage is about school selection but is cooperative, not a fight. It provides context for the school decision but does not show conflict between the participants.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:6765\",\"end_message_id\":\"decipher_message_1:6743\",\"summary\":\"Julie reports visiting Wildflower and both she and Olivia loved it. She describes the school in detail (ages 4-11, two studios, not religious, Taekwondo on Wednesdays). Art says he'll make time to visit. Julie notes they need to apply soon as the school is only taking 1-2 more students. Art says he doesn't want to miss another one and mentions the Norman school as the only other he'd consider, but acknowledges the drive is impractical. Julie lists other schools that aren't options (Crème, Goddard, Keystone all unavailable). They agree on criteria: private, Montessori/Acton, not religious. Art says if it doesn't meet those, 'there's no reason not to just send her to Deer Creek schools.' Julie agrees. They also discuss Heritage Hall and Primrose as alternatives. Throughout, both are cooperative and aligned.\",\"relevance\":\"This is a detailed school-selection discussion but remains cooperative throughout. No fight or disagreement is present. It establishes the shared criteria and options being considered.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:6609\",\"end_message_id\":\"decipher_message_1:6520\",\"summary\":\"Julie is filling out the Wildflower application and asks Art for help with several questions: 'What did we like about the child's previous school?' (Art suggests 'animals and open structure'), 'What fears do you have about your child's school experience?' (Art says he worries about conflict since she's an only child), 'When do you see your child experience stress?' (Art: 'when other kids aren't behaving and when she doesn't know what's expected'), 'How do you motivate your child?' (Julie says bribery, Art laughs), 'Share a time when your child struggled at school or home' (Julie jokes she can't answer how she wants), 'Does the past predict the future.' They also discuss submitting 2-3 projects, making a family video, and timeline pressure before the 24th open house. The tone is collaborative and humorous throughout.\",\"relevance\":\"This is a cooperative joint effort to complete a school application. No disagreement or conflict is present. It shows both parents working together on the school decision.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5907\",\"end_message_id\":\"decipher_message_1:5854\",\"summary\":\"Julie reports Olivia has reached step 5 (final round) of the Wildflower application. The school asks about availability Aug 1-3 for an interview. Julie and Art coordinate scheduling—Art says Tuesday morning works best since he'll be in town. Julie confirms Wednesday at 10:30. They discuss whether Olivia goes back with Art after the interview. Julie mentions insurance lapse and needing to be careful. No disagreement; purely logistical coordination.\",\"relevance\":\"Cooperative scheduling for a school interview. No fight or disagreement.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5807\",\"end_message_id\":\"decipher_message_1:5778\",\"summary\":\"Julie receives a 'check the mail' notification from Wildflower and worries it could be a rejection. Art also worries: 'I worry that a check the mail is a no!' and 'I'm going to be PISSED if we have to tell her we didn't get in. She has her heart set on it.' Julie says she'll be pissed too. They wait anxiously. Julie then reports Olivia was accepted: 'Our little smartie pants is in!!' Art asks if Olivia was excited. They share relief and excitement. No disagreement between them; shared anxiety and shared joy.\",\"relevance\":\"This shows shared emotional investment in school acceptance but no conflict between the participants. The tension is with the school's decision, not between the parents.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5746\",\"end_message_id\":\"decipher_message_1:5744\",\"summary\":\"Julie says she is glad Olivia's school doesn't start until September 6, and that she paid the first $5,000 of tuition and plans to pay the remaining $5,000 next month. She says 'Can't believe kindergarten is so much' but thinks it's '100% worth it.' Art does not respond to this specific message in the supplied window.\",\"relevance\":\"Julie unilaterally reports paying $10,000 in tuition. No disagreement is shown, but Art's response is not visible. This is educational cost information without evidence of conflict.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5709\",\"end_message_id\":\"decipher_message_1:5682\",\"summary\":\"Julie and Art discuss a scheduling conflict: the Wildflower back-to-school night on Aug 25 overlaps with a county fair dog show Art wanted Olivia to attend. Julie says the back-to-school event may be mandatory and that Olivia was excited to meet other kids with both parents there. Art says 'school's more important' but is sad about missing the dog show. Julie tells Olivia, who says 'okay' with missing the dog show as long as she can go to the fair another day. Art suggests not telling her about the watermelon event Thursday. They also discuss a doctor appointment in Seminole on Aug 22. The exchange is cooperative—both prioritize school, though Art expresses disappointment about the fair.\",\"relevance\":\"This shows a minor scheduling tension between a school event and a non-school activity, but both parents agree school takes priority. It is not a fight between them.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5549\",\"end_message_id\":\"decipher_message_1:5489\",\"summary\":\"On Aug 25, Julie and Art discuss whether to attend the Wildflower back-to-school night. Julie's dad tested positive for Covid, Olivia has a low-grade fever (99.5), and Julie has a sore throat. They scramble to find costumes for the Candy Land-themed event. Art asks repeatedly whether they're going. Julie is uncertain, says 'I want to go but I don't think it's a good idea.' Olivia says 'I feel like I'm gonna give my whole class the covid.' Julie ultimately emails the school saying they won't attend and tests positive for Covid herself. Art is supportive throughout, offering to pick up Olivia regardless. No disagreement between the parents; the tension is about illness, not about school itself.\",\"relevance\":\"This shows a school-related event being missed due to Covid, with cooperative decision-making. No fight between the participants about school.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5456\",\"end_message_id\":\"decipher_message_1:5433\",\"summary\":\"Art asks how Olivia's first day of school went. Julie reports she was excited, picked her outfit, was initially leery but two sweet older girls 'adopted' her. Julie signed her up for Tae Kwon Do trips on Wednesdays. Art is supportive and proud. Julie says Olivia reported 'Best school ever' and made 5 friends. They discuss class size (12 kids in her studio, 10 in the other). Cooperative and positive throughout.\",\"relevance\":\"This is a positive report on Olivia starting school. No conflict or disagreement.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5418\",\"end_message_id\":\"decipher_message_1:5403\",\"summary\":\"Julie proposes keeping Olivia through the weekend to maintain school-morning consistency, noting Olivia has had a hard time adjusting to the 7am wake-up schedule. Art agrees, saying he was planning to grab her but doesn't want to get her sick. They discuss bedtime struggles—Julie says Olivia still falls asleep at 10:30/11pm despite starting wind-down at 8:30. Art asks about melatonin. Julie says she'll get some. They discuss the difficulty of the new school schedule. No disagreement; cooperative problem-solving.\",\"relevance\":\"This shows cooperative discussion about school schedule adjustment. No fight between the participants.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5353\",\"end_message_id\":\"decipher_message_1:5350\",\"summary\":\"Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of the car, don't block the driveway. Art responds 'lol. alright.' Julie asks if he cleaned his car. The exchange is logistical and cooperative, though Julie is giving detailed directives.\",\"relevance\":\"This is school pickup logistics with no disagreement. Art complies without objection.\"},{\"thread_id\":\"julie_kramer\",\"start_message_id\":\"decipher_message_1:5250\",\"end_message_id\":\"decipher_message_1:5242\",\"summary\":\"Julie expresses frustration about only having 4-5 hours with Olivia after school: 'It's so weird to only have like 4-5 hours and then time to get ready for bed. I know that's what everyone does but I happen to really like my child and I think most parents don't.' Art agrees and says 'I totally get why people want to home school though. I hate that they get her more waking hours than we do now!' They also discuss Olivia being extra clingy, possibly due to the adjustment. No disagreement between them; shared frustration about the school schedule reducing their time.\",\"relevance\":\"Both parents express frustration about the school schedule reducing their time with Olivia, but they agree with each other. This is a shared sentiment about school's impact, not a fight between them.\"}],\"uncertainties\":[\"The entire window shows extensive discussion about school selection, enrollment, scheduling, and logistics, but no clear instance of the conversation participants fighting or disagreeing with each other about school. All school-related exchanges are cooperative or aligned.\",\"Art's comment 'I totally get why people want to home school though' (message 5242) touches on homeschooling but is an expression of empathy about reduced parenting time, not a proposal to homeschool or a disagreement about it.\",\"Julie's unilateral payment of $10,000 tuition (message 5745) could potentially be a point of disagreement, but Art's response is not visible in the supplied messages, so no conflict is evidenced.\",\"The scheduling conflict between the back-to-school night and the county fair dog show (messages 5709-5682) creates a mild tension, but both parents immediately agree school is more important, so it does not rise to a fight.\",\"'When did we fight about school?' may refer to exchanges outside this window's date range (May 15 - Sep 27, 2022), or the participants may not have fought about school during this period.\"]}",
+          "role": "assistant",
+          "reasoning_content": null
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "created": 1785381289,
+    "model": "z-ai/glm-5.2",
+    "service_tier": null,
+    "system_fingerprint": null,
+    "object": "chat.completion",
+    "usage": {
+      "prompt_tokens": 158460,
+      "completion_tokens": 2536,
+      "total_tokens": 160996
+    }
+  },
+  "reasoning_content": null,
+  "validation": {
+    "schema_valid": true,
+    "strict_ledger_valid": true,
+    "normalized_ledger_valid": true,
+    "repairs": [],
+    "parsed_output": {
+      "window_id": "w000001",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:6780",
+          "end_message_id": "decipher_message_1:6727",
+          "summary": "Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds that he hasn't, but suggests a Montessori in Norman that Ben's girls attend. Julie says the daily drive to Norman would be too far. They discuss Wildflower being Montessori-like, Julie shares an article about Acton Academy, and Julie asks Art to attend an open house. Art says he may be too busy for the next one but encourages Julie to go ahead. This is a cooperative discussion about school options with no disagreement or tension.",
+          "relevance": "This passage is about school selection but is cooperative, not a fight. It provides context for the school decision but does not show conflict between the participants."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:6765",
+          "end_message_id": "decipher_message_1:6743",
+          "summary": "Julie reports visiting Wildflower and both she and Olivia loved it. She describes the school in detail (ages 4-11, two studios, not religious, Taekwondo on Wednesdays). Art says he'll make time to visit. Julie notes they need to apply soon as the school is only taking 1-2 more students. Art says he doesn't want to miss another one and mentions the Norman school as the only other he'd consider, but acknowledges the drive is impractical. Julie lists other schools that aren't options (Crème, Goddard, Keystone all unavailable). They agree on criteria: private, Montessori/Acton, not religious. Art says if it doesn't meet those, 'there's no reason not to just send her to Deer Creek schools.' Julie agrees. They also discuss Heritage Hall and Primrose as alternatives. Throughout, both are cooperative and aligned.",
+          "relevance": "This is a detailed school-selection discussion but remains cooperative throughout. No fight or disagreement is present. It establishes the shared criteria and options being considered."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:6609",
+          "end_message_id": "decipher_message_1:6520",
+          "summary": "Julie is filling out the Wildflower application and asks Art for help with several questions: 'What did we like about the child's previous school?' (Art suggests 'animals and open structure'), 'What fears do you have about your child's school experience?' (Art says he worries about conflict since she's an only child), 'When do you see your child experience stress?' (Art: 'when other kids aren't behaving and when she doesn't know what's expected'), 'How do you motivate your child?' (Julie says bribery, Art laughs), 'Share a time when your child struggled at school or home' (Julie jokes she can't answer how she wants), 'Does the past predict the future.' They also discuss submitting 2-3 projects, making a family video, and timeline pressure before the 24th open house. The tone is collaborative and humorous throughout.",
+          "relevance": "This is a cooperative joint effort to complete a school application. No disagreement or conflict is present. It shows both parents working together on the school decision."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5907",
+          "end_message_id": "decipher_message_1:5854",
+          "summary": "Julie reports Olivia has reached step 5 (final round) of the Wildflower application. The school asks about availability Aug 1-3 for an interview. Julie and Art coordinate scheduling—Art says Tuesday morning works best since he'll be in town. Julie confirms Wednesday at 10:30. They discuss whether Olivia goes back with Art after the interview. Julie mentions insurance lapse and needing to be careful. No disagreement; purely logistical coordination.",
+          "relevance": "Cooperative scheduling for a school interview. No fight or disagreement."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5807",
+          "end_message_id": "decipher_message_1:5778",
+          "summary": "Julie receives a 'check the mail' notification from Wildflower and worries it could be a rejection. Art also worries: 'I worry that a check the mail is a no!' and 'I'm going to be PISSED if we have to tell her we didn't get in. She has her heart set on it.' Julie says she'll be pissed too. They wait anxiously. Julie then reports Olivia was accepted: 'Our little smartie pants is in!!' Art asks if Olivia was excited. They share relief and excitement. No disagreement between them; shared anxiety and shared joy.",
+          "relevance": "This shows shared emotional investment in school acceptance but no conflict between the participants. The tension is with the school's decision, not between the parents."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5746",
+          "end_message_id": "decipher_message_1:5744",
+          "summary": "Julie says she is glad Olivia's school doesn't start until September 6, and that she paid the first $5,000 of tuition and plans to pay the remaining $5,000 next month. She says 'Can't believe kindergarten is so much' but thinks it's '100% worth it.' Art does not respond to this specific message in the supplied window.",
+          "relevance": "Julie unilaterally reports paying $10,000 in tuition. No disagreement is shown, but Art's response is not visible. This is educational cost information without evidence of conflict."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5709",
+          "end_message_id": "decipher_message_1:5682",
+          "summary": "Julie and Art discuss a scheduling conflict: the Wildflower back-to-school night on Aug 25 overlaps with a county fair dog show Art wanted Olivia to attend. Julie says the back-to-school event may be mandatory and that Olivia was excited to meet other kids with both parents there. Art says 'school's more important' but is sad about missing the dog show. Julie tells Olivia, who says 'okay' with missing the dog show as long as she can go to the fair another day. Art suggests not telling her about the watermelon event Thursday. They also discuss a doctor appointment in Seminole on Aug 22. The exchange is cooperative—both prioritize school, though Art expresses disappointment about the fair.",
+          "relevance": "This shows a minor scheduling tension between a school event and a non-school activity, but both parents agree school takes priority. It is not a fight between them."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5549",
+          "end_message_id": "decipher_message_1:5489",
+          "summary": "On Aug 25, Julie and Art discuss whether to attend the Wildflower back-to-school night. Julie's dad tested positive for Covid, Olivia has a low-grade fever (99.5), and Julie has a sore throat. They scramble to find costumes for the Candy Land-themed event. Art asks repeatedly whether they're going. Julie is uncertain, says 'I want to go but I don't think it's a good idea.' Olivia says 'I feel like I'm gonna give my whole class the covid.' Julie ultimately emails the school saying they won't attend and tests positive for Covid herself. Art is supportive throughout, offering to pick up Olivia regardless. No disagreement between the parents; the tension is about illness, not about school itself.",
+          "relevance": "This shows a school-related event being missed due to Covid, with cooperative decision-making. No fight between the participants about school."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5456",
+          "end_message_id": "decipher_message_1:5433",
+          "summary": "Art asks how Olivia's first day of school went. Julie reports she was excited, picked her outfit, was initially leery but two sweet older girls 'adopted' her. Julie signed her up for Tae Kwon Do trips on Wednesdays. Art is supportive and proud. Julie says Olivia reported 'Best school ever' and made 5 friends. They discuss class size (12 kids in her studio, 10 in the other). Cooperative and positive throughout.",
+          "relevance": "This is a positive report on Olivia starting school. No conflict or disagreement."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5418",
+          "end_message_id": "decipher_message_1:5403",
+          "summary": "Julie proposes keeping Olivia through the weekend to maintain school-morning consistency, noting Olivia has had a hard time adjusting to the 7am wake-up schedule. Art agrees, saying he was planning to grab her but doesn't want to get her sick. They discuss bedtime struggles—Julie says Olivia still falls asleep at 10:30/11pm despite starting wind-down at 8:30. Art asks about melatonin. Julie says she'll get some. They discuss the difficulty of the new school schedule. No disagreement; cooperative problem-solving.",
+          "relevance": "This shows cooperative discussion about school schedule adjustment. No fight between the participants."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5353",
+          "end_message_id": "decipher_message_1:5350",
+          "summary": "Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of the car, don't block the driveway. Art responds 'lol. alright.' Julie asks if he cleaned his car. The exchange is logistical and cooperative, though Julie is giving detailed directives.",
+          "relevance": "This is school pickup logistics with no disagreement. Art complies without objection."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5250",
+          "end_message_id": "decipher_message_1:5242",
+          "summary": "Julie expresses frustration about only having 4-5 hours with Olivia after school: 'It's so weird to only have like 4-5 hours and then time to get ready for bed. I know that's what everyone does but I happen to really like my child and I think most parents don't.' Art agrees and says 'I totally get why people want to home school though. I hate that they get her more waking hours than we do now!' They also discuss Olivia being extra clingy, possibly due to the adjustment. No disagreement between them; shared frustration about the school schedule reducing their time.",
+          "relevance": "Both parents express frustration about the school schedule reducing their time with Olivia, but they agree with each other. This is a shared sentiment about school's impact, not a fight between them."
+        }
+      ],
+      "uncertainties": [
+        "The entire window shows extensive discussion about school selection, enrollment, scheduling, and logistics, but no clear instance of the conversation participants fighting or disagreeing with each other about school. All school-related exchanges are cooperative or aligned.",
+        "Art's comment 'I totally get why people want to home school though' (message 5242) touches on homeschooling but is an expression of empathy about reduced parenting time, not a proposal to homeschool or a disagreement about it.",
+        "Julie's unilateral payment of $10,000 tuition (message 5745) could potentially be a point of disagreement, but Art's response is not visible in the supplied messages, so no conflict is evidenced.",
+        "The scheduling conflict between the back-to-school night and the county fair dog show (messages 5709-5682) creates a mild tension, but both parents immediately agree school is more important, so it does not rise to a fight.",
+        "'When did we fight about school?' may refer to exchanges outside this window's date range (May 15 - Sep 27, 2022), or the participants may not have fought about school during this period."
+      ]
+    },
+    "accepted_output": {
+      "window_id": "w000001",
+      "no_relevant_evidence": false,
+      "evidence_ranges": [
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:6780",
+          "end_message_id": "decipher_message_1:6727",
+          "summary": "Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds that he hasn't, but suggests a Montessori in Norman that Ben's girls attend. Julie says the daily drive to Norman would be too far. They discuss Wildflower being Montessori-like, Julie shares an article about Acton Academy, and Julie asks Art to attend an open house. Art says he may be too busy for the next one but encourages Julie to go ahead. This is a cooperative discussion about school options with no disagreement or tension.",
+          "relevance": "This passage is about school selection but is cooperative, not a fight. It provides context for the school decision but does not show conflict between the participants."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:6765",
+          "end_message_id": "decipher_message_1:6743",
+          "summary": "Julie reports visiting Wildflower and both she and Olivia loved it. She describes the school in detail (ages 4-11, two studios, not religious, Taekwondo on Wednesdays). Art says he'll make time to visit. Julie notes they need to apply soon as the school is only taking 1-2 more students. Art says he doesn't want to miss another one and mentions the Norman school as the only other he'd consider, but acknowledges the drive is impractical. Julie lists other schools that aren't options (Crème, Goddard, Keystone all unavailable). They agree on criteria: private, Montessori/Acton, not religious. Art says if it doesn't meet those, 'there's no reason not to just send her to Deer Creek schools.' Julie agrees. They also discuss Heritage Hall and Primrose as alternatives. Throughout, both are cooperative and aligned.",
+          "relevance": "This is a detailed school-selection discussion but remains cooperative throughout. No fight or disagreement is present. It establishes the shared criteria and options being considered."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:6609",
+          "end_message_id": "decipher_message_1:6520",
+          "summary": "Julie is filling out the Wildflower application and asks Art for help with several questions: 'What did we like about the child's previous school?' (Art suggests 'animals and open structure'), 'What fears do you have about your child's school experience?' (Art says he worries about conflict since she's an only child), 'When do you see your child experience stress?' (Art: 'when other kids aren't behaving and when she doesn't know what's expected'), 'How do you motivate your child?' (Julie says bribery, Art laughs), 'Share a time when your child struggled at school or home' (Julie jokes she can't answer how she wants), 'Does the past predict the future.' They also discuss submitting 2-3 projects, making a family video, and timeline pressure before the 24th open house. The tone is collaborative and humorous throughout.",
+          "relevance": "This is a cooperative joint effort to complete a school application. No disagreement or conflict is present. It shows both parents working together on the school decision."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5907",
+          "end_message_id": "decipher_message_1:5854",
+          "summary": "Julie reports Olivia has reached step 5 (final round) of the Wildflower application. The school asks about availability Aug 1-3 for an interview. Julie and Art coordinate scheduling—Art says Tuesday morning works best since he'll be in town. Julie confirms Wednesday at 10:30. They discuss whether Olivia goes back with Art after the interview. Julie mentions insurance lapse and needing to be careful. No disagreement; purely logistical coordination.",
+          "relevance": "Cooperative scheduling for a school interview. No fight or disagreement."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5807",
+          "end_message_id": "decipher_message_1:5778",
+          "summary": "Julie receives a 'check the mail' notification from Wildflower and worries it could be a rejection. Art also worries: 'I worry that a check the mail is a no!' and 'I'm going to be PISSED if we have to tell her we didn't get in. She has her heart set on it.' Julie says she'll be pissed too. They wait anxiously. Julie then reports Olivia was accepted: 'Our little smartie pants is in!!' Art asks if Olivia was excited. They share relief and excitement. No disagreement between them; shared anxiety and shared joy.",
+          "relevance": "This shows shared emotional investment in school acceptance but no conflict between the participants. The tension is with the school's decision, not between the parents."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5746",
+          "end_message_id": "decipher_message_1:5744",
+          "summary": "Julie says she is glad Olivia's school doesn't start until September 6, and that she paid the first $5,000 of tuition and plans to pay the remaining $5,000 next month. She says 'Can't believe kindergarten is so much' but thinks it's '100% worth it.' Art does not respond to this specific message in the supplied window.",
+          "relevance": "Julie unilaterally reports paying $10,000 in tuition. No disagreement is shown, but Art's response is not visible. This is educational cost information without evidence of conflict."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5709",
+          "end_message_id": "decipher_message_1:5682",
+          "summary": "Julie and Art discuss a scheduling conflict: the Wildflower back-to-school night on Aug 25 overlaps with a county fair dog show Art wanted Olivia to attend. Julie says the back-to-school event may be mandatory and that Olivia was excited to meet other kids with both parents there. Art says 'school's more important' but is sad about missing the dog show. Julie tells Olivia, who says 'okay' with missing the dog show as long as she can go to the fair another day. Art suggests not telling her about the watermelon event Thursday. They also discuss a doctor appointment in Seminole on Aug 22. The exchange is cooperative—both prioritize school, though Art expresses disappointment about the fair.",
+          "relevance": "This shows a minor scheduling tension between a school event and a non-school activity, but both parents agree school takes priority. It is not a fight between them."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5549",
+          "end_message_id": "decipher_message_1:5489",
+          "summary": "On Aug 25, Julie and Art discuss whether to attend the Wildflower back-to-school night. Julie's dad tested positive for Covid, Olivia has a low-grade fever (99.5), and Julie has a sore throat. They scramble to find costumes for the Candy Land-themed event. Art asks repeatedly whether they're going. Julie is uncertain, says 'I want to go but I don't think it's a good idea.' Olivia says 'I feel like I'm gonna give my whole class the covid.' Julie ultimately emails the school saying they won't attend and tests positive for Covid herself. Art is supportive throughout, offering to pick up Olivia regardless. No disagreement between the parents; the tension is about illness, not about school itself.",
+          "relevance": "This shows a school-related event being missed due to Covid, with cooperative decision-making. No fight between the participants about school."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5456",
+          "end_message_id": "decipher_message_1:5433",
+          "summary": "Art asks how Olivia's first day of school went. Julie reports she was excited, picked her outfit, was initially leery but two sweet older girls 'adopted' her. Julie signed her up for Tae Kwon Do trips on Wednesdays. Art is supportive and proud. Julie says Olivia reported 'Best school ever' and made 5 friends. They discuss class size (12 kids in her studio, 10 in the other). Cooperative and positive throughout.",
+          "relevance": "This is a positive report on Olivia starting school. No conflict or disagreement."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5418",
+          "end_message_id": "decipher_message_1:5403",
+          "summary": "Julie proposes keeping Olivia through the weekend to maintain school-morning consistency, noting Olivia has had a hard time adjusting to the 7am wake-up schedule. Art agrees, saying he was planning to grab her but doesn't want to get her sick. They discuss bedtime struggles—Julie says Olivia still falls asleep at 10:30/11pm despite starting wind-down at 8:30. Art asks about melatonin. Julie says she'll get some. They discuss the difficulty of the new school schedule. No disagreement; cooperative problem-solving.",
+          "relevance": "This shows cooperative discussion about school schedule adjustment. No fight between the participants."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5353",
+          "end_message_id": "decipher_message_1:5350",
+          "summary": "Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of the car, don't block the driveway. Art responds 'lol. alright.' Julie asks if he cleaned his car. The exchange is logistical and cooperative, though Julie is giving detailed directives.",
+          "relevance": "This is school pickup logistics with no disagreement. Art complies without objection."
+        },
+        {
+          "thread_id": "julie_kramer",
+          "start_message_id": "decipher_message_1:5250",
+          "end_message_id": "decipher_message_1:5242",
+          "summary": "Julie expresses frustration about only having 4-5 hours with Olivia after school: 'It's so weird to only have like 4-5 hours and then time to get ready for bed. I know that's what everyone does but I happen to really like my child and I think most parents don't.' Art agrees and says 'I totally get why people want to home school though. I hate that they get her more waking hours than we do now!' They also discuss Olivia being extra clingy, possibly due to the adjustment. No disagreement between them; shared frustration about the school schedule reducing their time.",
+          "relevance": "Both parents express frustration about the school schedule reducing their time with Olivia, but they agree with each other. This is a shared sentiment about school's impact, not a fight between them."
+        }
+      ],
+      "uncertainties": [
+        "The entire window shows extensive discussion about school selection, enrollment, scheduling, and logistics, but no clear instance of the conversation participants fighting or disagreeing with each other about school. All school-related exchanges are cooperative or aligned.",
+        "Art's comment 'I totally get why people want to home school though' (message 5242) touches on homeschooling but is an expression of empathy about reduced parenting time, not a proposal to homeschool or a disagreement about it.",
+        "Julie's unilateral payment of $10,000 tuition (message 5745) could potentially be a point of disagreement, but Art's response is not visible in the supplied messages, so no conflict is evidenced.",
+        "The scheduling conflict between the back-to-school night and the county fair dog show (messages 5709-5682) creates a mild tension, but both parents immediately agree school is more important, so it does not rise to a fight.",
+        "'When did we fight about school?' may refer to exchanges outside this window's date range (May 15 - Sep 27, 2022), or the participants may not have fought about school during this period."
+      ]
+    },
+    "evidence_range_count": 12
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "arms": {
+    "full-semantic": {
+      "metrics": {
+        "answer_ranges_outside_suggestions": 0,
+        "answer_ranges_overlapping_suggestions": 1,
+        "coverage": {
+          "evidence_range_count": 1,
+          "message_count": 1,
+          "planned_window_count": 1,
+          "unavailable_window_count": 0,
+          "usable_window_count": 1
+        },
+        "final_range_inventory": [
+          {
+            "end_message_id": "m1",
+            "normalizations": [],
+            "range_id": "r000001",
+            "relevance": "direct",
+            "source_range_index": 0,
+            "start_message_id": "m1",
+            "summary": "school conflict",
+            "thread_id": "t1",
+            "window_id": "w0001"
+          }
+        ],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 1,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0
+        },
+        "mode_projection": {
+          "active_config_version": 1,
+          "configuration_fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "mode_independent_configuration_fingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "retrieval_assistance_mode": "semantic_ranges"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 1,
+          "found": [
+            0
+          ],
+          "total": 1
+        },
+        "selected_suggestion_message_ids": [
+          "m1"
+        ],
+        "strategy": "single_window_ledger",
+        "suggestions_without_final_evidence": 0,
+        "terminal_event": "completed",
+        "usage": {
+          "input_tokens": 1
+        },
+        "wall_time_ms": 0.0022000021999701858,
+        "window_count": 1,
+        "window_durations_ms": [],
+        "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "mode": "semantic_ranges",
+      "request_artifact": "full-semantic-request.json",
+      "result_artifact": "full-semantic-result.json"
+    }
+  },
+  "artifact_hashes": {
+    "analysis-plan.json": "9dcd98553e2c103acd1f94f8f88f8fa60e1326b80831329630ace85aecaf18b1",
+    "full-selected-suggestions.json": "808979a00bf64b0c6ae1ab5549b4b9f617cf74ed9f9a531e6df32b110a7ed029",
+    "full-semantic-request.json": "430501827748ff89261ef352d585c3abfa23cc7e0c7ac7376b9265260d3f1517",
+    "full-semantic-result.json": "fff7a4cc6c4d04c9f97428b611c70542d2a0f5c7294c8bda9b4aa9bedee59156",
+    "provisional-gold.json": "d44fc60f029519fe3ec7e3fc808734dfaaf0327773e8907ce814a63e5b792747",
+    "raw-candidates.json": "bf63bbaf63cdcee3914bb05f0903dc55dff5018bb1dec170bf5d0dbb96dd6485",
+    "raw-gold-overlap.json": "fdaf036084efbf5bcabb9fef5c6f16d352c7ea31cf49a7846c15b4a76f7ee305"
+  },
+  "capture": {},
+  "evw": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\rpv1-800-final-basetemp\\test_run_arm_reuses_frozen_pla0\\fixture.evw",
+  "plan_identity": {
+    "analysis_plan_id": "00000000-0000-0000-0000-000000000002",
+    "compatibility_fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "embedding": {
+      "artifact_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "dimensions": 3,
+      "embedding_profile_id": "profile",
+      "normalization": "unit_l2"
+    },
+    "retrieval_queries": [
+      {
+        "query_id": "q0001",
+        "text": "school"
+      }
+    ]
+  },
+  "question": "Show me fights about school.",
+  "runner": "QPA1-800",
+  "server_url": "http://fake",
+  "working_corpus_revision_id": 4
+}

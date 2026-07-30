@@ -1,0 +1,771 @@
+# Retrieval hint investigation
+
+Diagnostic comparison; this is not a statistical benchmark.
+
+- Question: `When did we fight about school?`
+- Apples-to-apples validity: **False**
+- Validity reasons:
+  - censored-semantic returned a partial or failed result
+  - terms-only returned a partial or failed result
+
+| Arm | Strategy | Gold recall | Outside-suggestion final ranges | Window hash |
+|---|---|---:|---:|---|
+| censored-semantic | None | 0/7 | None | `f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660` |
+| full-semantic | multi_window_ledger | 7/7 | 69 | `f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660` |
+| terms-only | None | 0/7 | None | `f9684a8ad9a3e69aaed24db10496a7987211602901a894a5abc65cdd220d7660` |
+
+## Exact final range inventories
+
+### censored-semantic
+```json
+[]
+```
+### full-semantic
+```json
+[
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:7210",
+    "range_id": "r000001",
+    "rationale": "Art references school in the context of the Uvalde shooting; no fight between the parties about school.",
+    "relevance": "References school in the context of a shooting event, but does not describe a fight between the parties about school.",
+    "start_message_id": "decipher_message_1:7210",
+    "summary": "Art says 'Having a school squirrel sure makes me wonder about my stance on guns. Sigh. So scary.' in the context of the Uvalde elementary school shooting.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:7200",
+    "range_id": "r000002",
+    "rationale": "Art jokes about homeschooling in a bunker due to shooting fears; no fight about school.",
+    "relevance": "References school/homeschool in the context of safety fears, not a fight between the parties about school.",
+    "start_message_id": "decipher_message_1:7200",
+    "summary": "Art jokes 'We'll just homeschool her in an underground bunker. That's normal right?' in response to the Uvalde school shooting fears.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:7171",
+    "range_id": "r000003",
+    "rationale": "Civil policy discussion about teachers carrying guns; not a fight between the parties.",
+    "relevance": "A policy disagreement about school safety/teachers carrying guns, but it is a civil discussion, not a fight.",
+    "start_message_id": "decipher_message_1:7173",
+    "summary": "Julie and Art discuss teachers carrying guns at school. Julie says she would rather teachers have the choice to be armed and would prefer her kid's teacher be carrying. Art agrees but says 'that's not a real solution.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6778",
+    "range_id": "r000004",
+    "rationale": "Mild discussion about school selection feasibility; no fight.",
+    "relevance": "Discussion about school selection for Olivia; involves a mild disagreement about location feasibility but not a fight.",
+    "start_message_id": "decipher_message_1:6780",
+    "summary": "Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds he hasn't but suggests a Montessori in Norman that Ben's girls attend, noting the drive would be far for Julie.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6745",
+    "range_id": "r000005",
+    "rationale": "Collaborative school selection discussion with aligned views; no fight.",
+    "relevance": "A substantive discussion about choosing Olivia's school with some differing preferences, but it remains collaborative rather than a fight.",
+    "start_message_id": "decipher_message_1:6777",
+    "summary": "Extended discussion about school options. Julie says the Norman school would be too far a drive daily. They discuss Wildflower (Montessori/Acton), Nature Field Creative Academy, Heritage Hall, Primrose, Deer Creek public schools, and various secular vs. religious private options. Art says if it doesn't meet all criteria 'there's no reason not to just send her to Deer Creek schools.' Julie agrees.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6764",
+    "range_id": "r000006",
+    "rationale": "Julie reports positively on a school visit; no conflict.",
+    "relevance": "Julie reporting positively on a school visit; no conflict.",
+    "start_message_id": "decipher_message_1:6765",
+    "summary": "Julie says they went to Wildflower and both she and Olivia really loved it. She describes the school's structure, ages, studios, and that it's not religious based.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6756",
+    "range_id": "r000007",
+    "rationale": "Collaborative planning about school application; no fight.",
+    "relevance": "Collaborative planning about school application; no fight.",
+    "start_message_id": "decipher_message_1:6758",
+    "summary": "Julie says Wildflower is only taking 1-2 more students so they need to apply and interview soon. Art says to apply if needed and mentions the only school he'd want to look at over it is the one her cousins attend, but if the drive is impossible there's no reason to look.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6747",
+    "range_id": "r000008",
+    "rationale": "Discussion of school criteria with aligned views; no fight.",
+    "relevance": "Discussion of school criteria with aligned views; no fight.",
+    "start_message_id": "decipher_message_1:6753",
+    "summary": "Julie lists other private kindergartens that are church-run and says she wants private, Montessori or Acton, and not religious based. Art agrees, saying if it's not all of those 'there's no reason not to just send her to Deer Creek schools.' They discuss class ratios at various schools.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6604",
+    "range_id": "r000009",
+    "rationale": "Julie proceeding with school application; no conflict.",
+    "relevance": "Julie proceeding with school application; no conflict.",
+    "start_message_id": "decipher_message_1:6605",
+    "summary": "Julie says she is doing the Wildflower application right now. Art asks what times the Metro gymnastics camp is and offers to handle it.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6570",
+    "range_id": "r000010",
+    "rationale": "Application question response about school fears; not a fight between the parties.",
+    "relevance": "Art expresses fears about Olivia's school experience, but this is an application question response, not a fight between the parties.",
+    "start_message_id": "decipher_message_1:6573",
+    "summary": "While filling out the Wildflower application, Julie asks Art 'What fears do you have about your child's school experience?' Art says he worries about conflict since she's an only child and isn't used to it, and fears she might 'go full mean girl one day as an over correction.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6563",
+    "range_id": "r000011",
+    "rationale": "Application question about school stress; not a fight between the parties.",
+    "relevance": "Application question about school stress; not a fight between the parties.",
+    "start_message_id": "decipher_message_1:6567",
+    "summary": "Julie asks 'When do you see your child experience stress?' and says Olivia gets pissed off at minor annoyances. Art says 'When other kids aren't behaving. And when she doesn't know what's expected of her.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6559",
+    "range_id": "r000012",
+    "rationale": "Application question about motivation; not a fight between the parties.",
+    "relevance": "Application question about motivation; not a fight between the parties.",
+    "start_message_id": "decipher_message_1:6560",
+    "summary": "Julie asks 'How do you motivate your child to move forward when they are stuck?' and answers 'Bribery. I mainly use bribery… if we finish this hard task, let's get ice cream.' She says she feels like that's the wrong answer.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6553",
+    "range_id": "r000013",
+    "rationale": "Application question about school struggles; not a fight between the parties.",
+    "relevance": "Application question about school struggles; not a fight between the parties.",
+    "start_message_id": "decipher_message_1:6554",
+    "summary": "Julie asks 'Share a time when your child struggled at school or home and how did you handle the situation?' and jokes 'She doesn't struggle that much because she's a badass' but says she can't answer any of these how she wants to.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:6520",
+    "range_id": "r000014",
+    "rationale": "Julie expressing frustration with application process; not a fight between the parties.",
+    "relevance": "Julie expressing frustration with the school application process; not a fight between the parties.",
+    "start_message_id": "decipher_message_1:6521",
+    "summary": "Julie says the Wildflower application took her about 3 hours and 'It's kindergarten not college.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5906",
+    "range_id": "r000015",
+    "rationale": "School application progress; no conflict.",
+    "relevance": "School application progress; no conflict.",
+    "start_message_id": "decipher_message_1:5907",
+    "summary": "Julie reports Olivia is through to step 5 of the Wildflower application process, the final round. She asks Art if he has any conflicts on August 1st, 2nd, or 3rd for the family interview.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5859",
+    "range_id": "r000016",
+    "rationale": "Scheduling the school interview; no fight.",
+    "relevance": "Scheduling the school interview; no fight.",
+    "start_message_id": "decipher_message_1:5862",
+    "summary": "Julie says Wildflower didn't have availability tomorrow but has a spot Wednesday at 10:30am for the interview. Art confirms he can do that and Julie confirms it.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5808",
+    "range_id": "r000017",
+    "rationale": "Positive reaction to school interview; no fight.",
+    "relevance": "Positive reaction to school interview; no fight.",
+    "start_message_id": "decipher_message_1:5809",
+    "summary": "Julie asks if Olivia said anything about her interview and says 'She did so amazing!' Art responds 'She really wants to get in. We're probably going to have to burn the place down if they don't take her.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5800",
+    "range_id": "r000018",
+    "rationale": "Shared anxiety about school acceptance; not a fight.",
+    "relevance": "Shared anxiety about school acceptance; not a fight.",
+    "start_message_id": "decipher_message_1:5807",
+    "summary": "Julie receives a 'check the mail' notification from Wildflower and wonders if it means acceptance. Art worries it could be a rejection. Both express anxiety about waiting for the decision.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5785",
+    "range_id": "r000019",
+    "rationale": "Shared excitement about school acceptance; no fight.",
+    "relevance": "Shared excitement about school acceptance; no fight.",
+    "start_message_id": "decipher_message_1:5789",
+    "summary": "Julie confirms 'Our little smartie pants is in!!' with photos of the acceptance letter. Art asks if she told Olivia and if Olivia was excited.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5777",
+    "range_id": "r000020",
+    "rationale": "Collaborative school enrollment process; no fight.",
+    "relevance": "Collaborative school enrollment process; no fight.",
+    "start_message_id": "decipher_message_1:5778",
+    "summary": "Julie says she signed all the paperwork and paid the technology fee, and Art needs to sign paperwork next before she pays tuition. Art says he'll do it that night.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5745",
+    "range_id": "r000021",
+    "rationale": "Julie's comment about school cost and start date; no fight.",
+    "relevance": "Julie's comment about school cost and start date; no fight.",
+    "start_message_id": "decipher_message_1:5746",
+    "summary": "Julie says she's glad Olivia's school doesn't start until September 6. She paid the first $5000 and plans to pay the remaining $5000 next month, saying 'Can't believe kindergarten is so much' but 'I think it's 100% worth it.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5690",
+    "range_id": "r000022",
+    "rationale": "Scheduling conflict between school event and fair, resolved civilly; not a fight.",
+    "relevance": "A scheduling conflict between a school event and a fair event, resolved through discussion; not a fight.",
+    "start_message_id": "decipher_message_1:5709",
+    "summary": "Julie and Art discuss a scheduling conflict: the county fair dog show and Wildflower's back-to-school night are both on August 25. Julie says the back-to-school thing is at 5 and the dog show is at 6. Art says 'school's more important' but it's 'still sad.' Julie says Olivia was okay missing the dog show as long as she gets to go to the fair on a different day.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5686",
+    "range_id": "r000023",
+    "rationale": "Discussion about attending a school event; no fight.",
+    "relevance": "Discussion about attending a school event; no fight.",
+    "start_message_id": "decipher_message_1:5689",
+    "summary": "Julie says she wants to make a good impression and meet all the parents at the back-to-school event. Art jokes about the heat. Julie says Olivia was okay with missing the dog show for the school event.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5540",
+    "range_id": "r000024",
+    "rationale": "Discussion about attending school event due to illness; no fight.",
+    "relevance": "Discussion about whether to attend a school event due to illness; no fight.",
+    "start_message_id": "decipher_message_1:5549",
+    "summary": "Julie's dad tested positive for Covid the night before the Wildflower back-to-school night. Julie says Olivia's stomach was hurting and she had a sore throat. They discuss whether to attend the school event. Julie says 'If little bear has a fever, we probably shouldn't go.' Art agrees.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5497",
+    "range_id": "r000025",
+    "rationale": "Decision to skip school event due to Covid; not a fight between the parties.",
+    "relevance": "Decision to skip a school event due to Covid; not a fight between the parties.",
+    "start_message_id": "decipher_message_1:5504",
+    "summary": "Olivia says 'I feel like I'm gonna give my whole class the covid.' Julie decides not to go to the back-to-school event and emails the school. Art asks if she's leaning towards going or not. Julie says 'I want to go but I don't think it's a good idea.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5490",
+    "range_id": "r000026",
+    "rationale": "Notification to school about absence; no fight.",
+    "relevance": "Notification to school about absence; no fight.",
+    "start_message_id": "decipher_message_1:5490",
+    "summary": "Julie says 'I sent her school an email telling them we wouldn't be there.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5441",
+    "range_id": "r000027",
+    "rationale": "Positive discussion about Olivia's first day of school; no fight.",
+    "relevance": "Positive discussion about Olivia's first day of school; no fight.",
+    "start_message_id": "decipher_message_1:5456",
+    "summary": "Art asks 'How'd our little school monster do this morning? Was she excited to go?' Julie says she was very excited, picked out her outfit, and was a little leery at first but two sweet girls 'adopted' her. Julie says Olivia reported 'Best school ever' and made 5 friends. Art says he's proud and glad she's making friends.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5425",
+    "range_id": "r000028",
+    "rationale": "School morning difficulty; not a fight between the parties.",
+    "relevance": "School morning difficulty; not a fight between the parties.",
+    "start_message_id": "decipher_message_1:5425",
+    "summary": "Julie reports Olivia's stomach was hurting on a school morning, so they went home, gave medicine, and went back to school. 'No fever, no throwing up or anything. She seemed fine by the time we got back to the school. I just dropped her off.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5417",
+    "range_id": "r000029",
+    "rationale": "Discussion about custody timing due to illness; no fight.",
+    "relevance": "Discussion about custody timing due to illness; no fight.",
+    "start_message_id": "decipher_message_1:5418",
+    "summary": "Julie says she was going to see if Art wanted to pick up Olivia for 3 nights but 'it's probably better I keep her thru the weekend with you being sick!' Art agrees, saying he was planning to grab her but doesn't want to get her sick again.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5403",
+    "range_id": "r000030",
+    "rationale": "Collaborative discussion about school schedule adjustment; no fight.",
+    "relevance": "Collaborative discussion about school schedule adjustment; no fight.",
+    "start_message_id": "decipher_message_1:5410",
+    "summary": "Julie says the problem is getting Olivia to sleep on time for school mornings. Art asks if she's doing melatonin. Julie says she'll get some. They discuss the adjustment to the school schedule.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5392",
+    "range_id": "r000031",
+    "rationale": "Olivia's reaction to a school activity; no fight.",
+    "relevance": "Olivia's reaction to a school activity; no fight.",
+    "start_message_id": "decipher_message_1:5392",
+    "summary": "Julie says Olivia wasn't too sure about Tae Kwon Do at school, saying 'it was a little too loud but she liked it.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5389",
+    "range_id": "r000032",
+    "rationale": "Description of school classmates; no fight.",
+    "relevance": "Description of school classmates; no fight.",
+    "start_message_id": "decipher_message_1:5389",
+    "summary": "Julie describes Olivia's class at school: 11 kids, 6 boys (she hates all of them), 5 girls including Olivia.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5350",
+    "range_id": "r000033",
+    "rationale": "Logistical instructions for school pickup; no fight.",
+    "relevance": "Logistical instructions for school pickup; no fight.",
+    "start_message_id": "decipher_message_1:5353",
+    "summary": "Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of car, don't block driveway. Art says 'alright.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5341",
+    "range_id": "r000034",
+    "rationale": "Brief exchange about school pickup; no fight.",
+    "relevance": "Brief exchange about school pickup; no fight.",
+    "start_message_id": "decipher_message_1:5342",
+    "summary": "Julie asks how pickup went and if Olivia said anything about school. Art says 'It went fine. She didn't learn anything of course. But she has fun!'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5333",
+    "range_id": "r000035",
+    "rationale": "Logistical exchange about a school item; no fight.",
+    "relevance": "Logistical exchange about a school item; no fight.",
+    "start_message_id": "decipher_message_1:5335",
+    "summary": "Julie asks if Olivia remembered to get her green unicorn sweater from lost and found at school. Art confirms she did.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5312",
+    "range_id": "r000036",
+    "rationale": "Discussion about school attendance due to illness; no fight.",
+    "relevance": "Discussion about school attendance due to illness; no fight.",
+    "start_message_id": "decipher_message_1:5314",
+    "summary": "Julie asks if Olivia will be able to go to school tomorrow. Art says she's feeling worse as it gets later and is leaning towards not sending her.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5284",
+    "range_id": "r000037",
+    "rationale": "Discussion about a difficult school morning; no fight.",
+    "relevance": "Discussion about a difficult school morning; no fight.",
+    "start_message_id": "decipher_message_1:5287",
+    "summary": "Julie says she got Olivia to school, had to bribe her with donut therapy and a mall trip after. Art asks if she was still froggy. Julie says she was okay and got a smile later.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5255",
+    "range_id": "r000038",
+    "rationale": "Scheduling a doctor appointment affecting school; no fight.",
+    "relevance": "Scheduling a doctor appointment that affects school; no fight.",
+    "start_message_id": "decipher_message_1:5258",
+    "summary": "Julie says Olivia has an appointment with Dr. Miles on Monday and will have to go to school a few hours late. Art says 'Yay!' Julie says it's worth it.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5249",
+    "range_id": "r000039",
+    "rationale": "Shared sentiment about adjusting to school schedule; no fight.",
+    "relevance": "Shared sentiment about adjusting to school schedule; no fight.",
+    "start_message_id": "decipher_message_1:5250",
+    "summary": "Julie says it's hard adjusting to Olivia being in school all day, only having 4-5 hours with her. Art agrees and says he hates that the school 'gets her more waking hours than we do now.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5242",
+    "range_id": "r000040",
+    "rationale": "Art's comment about homeschooling vs. school; not a fight.",
+    "relevance": "Art's comment about homeschooling vs. school; not a fight.",
+    "start_message_id": "decipher_message_1:5242",
+    "summary": "Art says 'I totally get why people want to home school though. lol. I hate that they get her more waking hours than we do now!'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:5190",
+    "range_id": "r000041",
+    "rationale": "Medical discussion related to child's health; not a fight about school.",
+    "relevance": "Medical discussion related to school-age child's health; not a fight about school.",
+    "start_message_id": "decipher_message_1:5193",
+    "summary": "Julie reports a 'really good doctors appointment' for Olivia. They discussed stomach issues; the doctor thinks Covid/throwing up threw off her gut flora. Doctor is doing a GI map test, testing for mold, and wants them to stop dairy for a month. Julie says the doctor would rather not do blood tests on kids unless needed.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3571",
+    "range_id": "r000042",
+    "rationale": "Direct dispute about school break custody arrangements and time balance during school vs. non-school days on 2023-03-28.",
+    "relevance": "Directly relates to a dispute about school break custody arrangements and the balance of time during school vs. non-school days, which is the context of fighting about school-related scheduling.",
+    "start_message_id": "decipher_message_1:3572",
+    "summary": "Julie states she doesn't get to do much with Olivia on school days because it's rushed, and says 'so sorry no, definitely not spending two weeks of no school days at the farm.' She references that most dads who pay child support get kids every other weekend and a week in summer, and says 'I let her spend her last week long school break at the farm but i don't want that to be the normal.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3566",
+    "range_id": "r000043",
+    "rationale": "Direct argument about custody time during school breaks with both parties expressing frustration on 2023-03-28.",
+    "relevance": "This is a direct argument between the parties about custody time during school breaks, with both sides expressing frustration about scheduling and fairness around school-related time allocation.",
+    "start_message_id": "decipher_message_1:3570",
+    "summary": "Art says 'Lots of dads see their kids half time or more' and 'I agreed that we could work out her coming back for some time. I just also told you what she said she wanted.' Julie responds 'I know. I'm not trying to be high and mighty or anything. I'm just saying I know it sucks not to see her as much because I don't see her as much as I used to either.' Art says he doesn't throw a fit when Julie decides at the last minute she wants a weekend with her, and asks her to think ahead to make sure mom visits or photos aren't scheduled the next weekend.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3549",
+    "range_id": "r000044",
+    "rationale": "Explicit fight including school tuition costs and financial responsibility on 2023-03-28; Art explicitly names it as a fight.",
+    "relevance": "This is an explicit fight that includes disputes about school tuition costs and financial responsibility, directly relevant to fighting about school-related matters. Art explicitly names it as a fight.",
+    "start_message_id": "decipher_message_1:3556",
+    "summary": "Julie says 'I'm 100% financially responsible for anything she needs' and lists medical bills, insurance premiums, school tuition, and other costs. Art responds that moms can pay child support too, that Julie works more hours and makes more, and says 'You can't blame all of your work hours on me or her.' He says 'I honestly don't know what you want to fight about, today.' Julie says 'I don't mean to fight about anything. I don't want to fight about anything. I always want to co-parent peacefully.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3516",
+    "range_id": "r000045",
+    "rationale": "Disagreement about school choice and educational philosophy including reading curriculum on 2023-03-28.",
+    "relevance": "This passage shows a discussion about school choice and educational philosophy that, while not explicitly called a 'fight,' is a disagreement about school matters including school type, reading curriculum, and academic expectations.",
+    "start_message_id": "decipher_message_1:3533",
+    "summary": "Julie says 'I saw what public school did to Kaidence and Kylie and honestly it scared me.' Art discusses school options including public schools in small towns. Julie says she signed the commit letter for Wildflower and 'if there's a better school, I'm willing to look at it and take a tour.' Art says 'I wish there was a little more push on the core skills' and 'I wish there was more pressure on reading and math.' Julie says 'I wish there was more focus on core skills too' and discusses Olivia not wanting to move into the reading curriculum.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3450",
+    "range_id": "r000046",
+    "rationale": "Direct argument about school break custody time on 2023-04-02, with both parties disagreeing about splitting non-school days.",
+    "relevance": "This is a direct argument about school break custody time, with both parties disagreeing about how to split non-school days, directly relevant to fighting about school-related scheduling.",
+    "start_message_id": "decipher_message_1:3460",
+    "summary": "Julie says 'You've had her most of the break so far other than two days so I plan to keep her most of the week. On her last full week off school she spent the entire week with you as well. No school doesnt automatically mean farm time.' Art says 'I just suggested two possible solutions to getting her time both places this week.' Julie says 'I'm not good with that' and 'I want to keep her for the full week starting tomorrow so we can actually make plans and do things.' Art says 'She's already on the edge of tears about having to go back and not having enough farm time. It's not just about me.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3630",
+    "range_id": "r000047",
+    "rationale": "Dispute about custody scheduling during and around school weeks on 2023-03-16, with tension about time allocation.",
+    "relevance": "This is a dispute about custody scheduling during and around school weeks, with tension about time allocation that relates to fighting about school-period scheduling.",
+    "start_message_id": "decipher_message_1:3642",
+    "summary": "Art asks about weekend plans and says Olivia was 'super clingy and mopey about how she didn't get enough time with me when she was here this weekend.' He asks 'So you don't have any reason she won't be coming here NEXT weekend then, do you?' Julie says 'She got more time than usual this trip to the farm.' Art says 'True. But it had also been 3 weeks!' Julie says 'I'll ask her if she wants to go to the farm at some point this weekend. She's been pretty off her schedule this week and been struggling.' Art says 'I'm just saying she was like... afraid to let me out of her grasp' and 'I just want to look ahead and make sure it won't be three weeks in a row again.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:3845",
+    "range_id": "r000048",
+    "rationale": "Dispute about scheduling around school days and weekends on 2023-03-03, with both parties expressing frustration about time allocation during school periods.",
+    "relevance": "This is a dispute about scheduling around school days and weekends, with both parties expressing frustration about time allocation during school periods.",
+    "start_message_id": "decipher_message_1:3848",
+    "summary": "Art says 'It just sucks that I didn't get her last weekend. I wish we could plan your mom's visits in advance to make sure that doesn't happen.' Julie says 'I know. School days, I don't really get much time at all maybe 2 hours' and 'Last weekend was the first weekend me and her actually got to do some things in a while.' Art says 'I know it is! That's why I don't mind only getting a couple of days a week' but 'three weeks without her is rough' and 'I'd have rather her stayed with you the weekend before if we knew your mom's visit was coming up, so it was two two week periods.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:2717",
+    "range_id": "r000049",
+    "rationale": "Fight on 2023-07-22 where Julie references private school expenses as part of broader complaint about financial and parenting responsibility; school is mentioned within the fight but is not the primary subject.",
+    "relevance": "Directly addresses a fight between the parties; Julie references being mad since 'that day' when Art made the comment, and ties it to broader conflict about responsibilities and their relationship dynamic.",
+    "start_message_id": "decipher_message_1:2720",
+    "summary": "Julie confronts Art about a comment he made refusing to do a simple task (pulling garbage cans up) because it was 'saved for girls who want to be useful,' which she interpreted as tied to her refusal to have FWB sex with him. She expresses anger about carrying all financial and parenting responsibility alone, including private school, and says she's been 'pretty mad about it since that day.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:2709",
+    "range_id": "r000050",
+    "rationale": "Continuation of the 2023-07-22 fight; clarifies the disagreement and includes Art's apology. School costs are tangentially referenced.",
+    "relevance": "Direct continuation of the fight; clarifies the nature of the disagreement, with Julie explicitly stating what made her upset and Art apologizing. The fight is resolved within this exchange.",
+    "start_message_id": "decipher_message_1:2716",
+    "summary": "Art responds that the trash can comment was meant as a joke about 'boyfriend behavior,' apologizes for hurting her feelings, and says he won't suggest sleeping together again. Julie clarifies she was upset because he said she was 'useless if I didn't' have sex with him and because he wouldn't do a 5-minute task she needed help with. Art apologizes again and says that wasn't what he meant.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:2657",
+    "range_id": "r000051",
+    "rationale": "Disagreement about parenting decisions related to birthday party, not explicitly about school.",
+    "relevance": "A disagreement/argument about parenting decisions related to Olivia's schedule and birthday party, though not explicitly about school. Shows tension and conflict between the parties.",
+    "start_message_id": "decipher_message_1:2671",
+    "summary": "Julie and Art disagree about whether Olivia should have been given a second chance to choose where to stay after her birthday party. Julie argues she shouldn't have been re-asked and that canceling plans with friends twice was stressful. Art defends letting her choose and notes communication issues with his mother. Julie expresses frustration about spending a month planning and $4000 on the party and not getting time with Olivia afterwards.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:2618",
+    "range_id": "r000052",
+    "rationale": "Extended discussion about Olivia's school situation including Wildflower changes, Miss Chris leaving, and potential new school; Julie expresses strong opinions and frustration about school leadership and finances.",
+    "relevance": "Extensive discussion about school decisions for Olivia; while not a direct fight, it shows the parties navigating significant disagreements about education and school choices, with Julie expressing frustration about school leadership and finances.",
+    "start_message_id": "decipher_message_1:2655",
+    "summary": "Extended discussion about Olivia's school situation — Wildflower school changes, Miss Chris possibly leaving, potential new school 'Spark Academy,' concerns about the Heinigers taking over and not paying teachers adequately. Julie and Art discuss options including Keystone, Acton Academy, and other schools. No explicit fighting, but Julie expresses strong opinions and frustration about the school situation.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:2136",
+    "range_id": "r000053",
+    "rationale": "Julie and Art aligning on education standards; not a fight but demonstrates intensity of Julie's feelings about education.",
+    "relevance": "Shows Julie and Art aligning on school/education standards for Olivia; not a fight but demonstrates the intensity of Julie's feelings about education and the cooperative resolution.",
+    "start_message_id": "decipher_message_1:2137",
+    "summary": "Julie lays out non-negotiable education requirements for Olivia including daily reading, weekly education reports, core skills priority, zero tolerance on bullying, and no 4-week 'get to know each other' period. Art agrees with all points and suggests Miss Chris could create a homework system for the fifth day.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:1848",
+    "range_id": "r000054",
+    "rationale": "Major conflict about Olivia's school and teachers; Julie fired Chris and Emily, creating school upheaval. Shows ongoing school-related stress.",
+    "relevance": "Major conflict about Olivia's school and teachers; Julie fired the teachers, creating another school upheaval. Shows the ongoing school-related stress and disagreements that characterized this period.",
+    "start_message_id": "decipher_message_1:1851",
+    "summary": "Julie announces she 'fired Chris & Emily' as teachers after realizing they were not qualified and not teaching the kids adequately. She explains that Jami was correct about them, that she was 'too pushy,' and that Chris flaked out on Wednesday. Art asks who's doing it now and confirms Jami is 'still a cunt though right?'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:1828",
+    "range_id": "r000055",
+    "rationale": "Agreement between parties about a school-related failure (Chris not teaching reading); not a fight.",
+    "relevance": "Shows agreement between parties about a school-related failure (Chris not teaching reading), highlighting the educational consequences of the school conflicts.",
+    "start_message_id": "decipher_message_1:1829",
+    "summary": "Julie says even if Olivia got accepted at Westminster she would struggle with first grade because 'Chris didn't teach her or anyone in the class to read.' Art agrees, saying he 'already thought they were too slow on that' and 'it's time to read.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_message_1:1765",
+    "range_id": "r000056",
+    "rationale": "Julie's concerns about public school quality; demonstrates school-related stress driving decisions but not a fight between the parties.",
+    "relevance": "Shows Julie's concerns about public school quality, reinforcing why the parties are pursuing alternative school arrangements; demonstrates the school-related stress driving their decisions.",
+    "start_message_id": "decipher_message_1:1769",
+    "summary": "Julie reports that Kaidence, in 3rd grade public school, couldn't read 'this is biscuit' (a kindergarten level book), and that Rhea cries every day after school and Kaidence has developed a skin picking habit and nightmares since school started. She also notes 28 kids per 1 teacher in public school.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:976",
+    "range_id": "r000057",
+    "rationale": "Disagreement/argument about whether to keep Olivia in microschool or switch to homeschooling at home on 2023-11-13; shows tension and opposing positions about schooling arrangement.",
+    "relevance": "This is a disagreement/argument about school — specifically whether to keep Olivia in the microschool or switch to homeschooling at home. The exchange shows tension and opposing positions about the child's schooling arrangement.",
+    "start_message_id": "decipher_message_1:986",
+    "summary": "Art suggests homeschooling at home instead of continuing the microschool, citing instability and sunk cost. Julie pushes back, saying the hard setup work is done, the schedule/teachers/curriculum are solid, and Olivia would be bored and would hate homeschooling at home. Art continues to argue it's a sunk cost fallacy and she needs stability, while Julie insists the daily schedule, teachers, curriculum, location, and school days won't change.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_message_1:110",
+    "range_id": "r000058",
+    "rationale": "Direct argument on 2024-02-23 involving school-adjacent activities (gymnastics competition preparation) and broader conflict over priorities; includes heated language and hurt feelings.",
+    "relevance": "This is a direct argument/fight involving school-related activities (gymnastics competition preparation) and the broader conflict over priorities between gymnastics and family time. The exchange includes heated language, hurt feelings, and references to past trauma, constituting a fight about school-adjacent priorities.",
+    "start_message_id": "decipher_message_1:128",
+    "summary": "Art says he assumed he could handle getting Olivia ready for the competition and that things he planned for her are 'equally important' as gymnastics. Julie responds with a detailed breakdown of the financial investment in gymnastics ($9132/year + fees), notes Art doesn't help pay, and says gymnastics is 'a little more important and definitely not equally important than watching monster trucks.' Art says he's upset by the attitude of 'I should have just kept her' and that it says gymnastics is more important than family, tying it to Julie's own childhood experience of being 'shipped off at age 12.' Julie clarifies she was talking about logistics and energy, not prioritizing gymnastics over family, and defends the pre-meet getting-ready routine as special bonding time.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_export_19:600",
+    "range_id": "r000059",
+    "rationale": "Disagreement about school schedule and educational quality on 2024-06-26; Art raises concerns about less school time and Julie's ability to run the school with twins.",
+    "relevance": "This is a disagreement about the school schedule and educational quality — Art raises concerns about less school time and Julie's ability to run the school with twins, while Julie defends the plan. This constitutes a dispute about school arrangements.",
+    "start_message_id": "decipher_export_19:583",
+    "summary": "Art expresses concern about the proposed school schedule reducing school time to 2.5 days, questions whether Julie and Weston can run a school with twins coming, and says '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education.' Julie pushes back explaining the schedule is the same gym hours, the reduced school time cuts fluff not academics, and the ratio of 4-5 kids per teacher allows accomplishing a lot. Art responds 'As long as it's the fluff getting cut out... Not the academics.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_export_19:793",
+    "range_id": "r000060",
+    "rationale": "Disagreement about school/camp scheduling and Olivia's socialization in 'not real school' on 2024-07-10; Art explicitly raises concern about her not being in real school.",
+    "relevance": "This is a disagreement about school/camp scheduling and concerns about Olivia's socialization in 'not real school.' Art explicitly raises concern about her not being in real school, which Julie counters with practical concerns. This is a school-related dispute.",
+    "start_message_id": "decipher_export_19:782",
+    "summary": "Art says he thought the theater arts camp schedule was cleared long ago and says 'whatever Olivia wants to do.' Julie explains she didn't realize the camp goes till 5pm and Olivia would miss a week of morning gym. Art says the camp is professional artists and 'a bigger deal than just arts and crafts' and that Olivia needs to 'learn to exist and participate in groups in a safe and fun way,' calling it 'one of my biggest worries with her in not real school.' Julie expresses concern about the large group size (120 kids), germs before the birthday party, and Olivia being overwhelmed. They go back and forth about whether partial attendance is worth it.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:1182",
+    "range_id": "r000061",
+    "rationale": "Early reference to school/homeschool arrangements; cooperative tone, no conflict.",
+    "relevance": "Early reference to school/homeschool arrangements; cooperative tone, no conflict about school at this point.",
+    "start_message_id": "decipher_export_19:1181",
+    "summary": "Julie mentions Olivia will need to do her school curriculum on Friday but can take it with her. Art responds that he's fine with her doing as much school as she wants at the farm, noting things might be 'a little crazy and unstructured for a few weeks.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:1231",
+    "range_id": "r000062",
+    "rationale": "Mentions school work being done; no conflict.",
+    "relevance": "Mentions school work being done; no conflict.",
+    "start_message_id": "decipher_export_19:1231",
+    "summary": "Julie notes Olivia 'is doing school right now' while at home with the dog.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:1394",
+    "range_id": "r000063",
+    "rationale": "Julie seeking Art's help with homeschool; no conflict.",
+    "relevance": "Shows Julie seeking Art's help with homeschool; no conflict yet, but highlights the challenge of balancing school with gymnastics and babies.",
+    "start_message_id": "decipher_export_19:1391",
+    "summary": "Julie lays out the week's schedule including 'homeschool after' gym on multiple days and asks Art to come help during the week so Olivia would get more homeschool done. She notes it's a busy week with lots of driving.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:1453",
+    "range_id": "r000064",
+    "rationale": "Growing concern about homeschool but no overt fight; tension about school consistency.",
+    "relevance": "Shows growing concern about Olivia falling behind on homeschool; Julie and Art discussing adjustments, no overt fight but tension about school consistency.",
+    "start_message_id": "decipher_export_19:1445",
+    "summary": "Julie says Olivia has been 'lacking on her homeschool' and thinks if Art were there she would get more done. Art suggests Olivia could come out to the farm more and focus on school there. Julie responds that Olivia 'definitely needs to start taking a few books to the farm on the weekend, especially if she doesn't do as much as she needs to during the week.'",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:1613",
+    "range_id": "r000065",
+    "rationale": "Ongoing concern about homeschool coverage; no fight but reveals gaps in coordination.",
+    "relevance": "Shows ongoing concern about homeschool coverage; Julie tracking subjects, Art acknowledging they forgot books. No fight but reveals gaps in coordination.",
+    "start_message_id": "decipher_export_19:1607",
+    "summary": "Julie asks if Olivia took school books to the farm; Art says they forgot her homework books but will do 'some academics.' Julie details which subjects Olivia is ahead in (math, phonics, reading) and which she's slacking on (handwriting, science, history, cursive, reading workbooks).",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:1907",
+    "range_id": "r000066",
+    "rationale": "Active discussion about homeschool curriculum and platforms; cooperative but reveals differences in approach.",
+    "relevance": "Shows active discussion about homeschool curriculum and platforms; cooperative but reveals differences in approach to pacing and structure.",
+    "start_message_id": "decipher_export_19:1889",
+    "summary": "Julie says Olivia is 'almost halfway done with 2nd grade on education.com' and did school every day that week. Art asks if she brought books; Julie says she took books out of her backpack. They discuss switching to Time4Learning. Art suggests it will 'space out the lessons' so she can't 'plow through it.' Julie notes Olivia will be done with 2nd grade on education.com in about 3 weeks.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:2538",
+    "range_id": "r000067",
+    "rationale": "Substantive discussion about homeschool progress and concerns; no fight but clear shared concern about falling behind.",
+    "relevance": "Shows a substantive discussion about homeschool progress and concerns; Art explicitly worried about Olivia being 'caught up,' Julie acknowledging gaps. No fight but clear shared concern about school falling behind.",
+    "start_message_id": "decipher_export_19:2532",
+    "summary": "Julie gives a detailed update on Olivia's homeschool progress by subject, noting math is solid but needs practice, handwriting improving, and history/science are behind. She suggests Art subscribe to Time4Learning too. Art responds that he wants to keep up 'low intensity school through the summer to try to catch up a little' and is 'worried about getting her caught up and in the habit of success.' Julie agrees and notes public school and college didn't help with routines for either of them.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:2546",
+    "range_id": "r000068",
+    "rationale": "Discussion about ADHD evaluation related to school struggles; no fight.",
+    "relevance": "Relates to school struggles; Julie connects Olivia's difficulty focusing on school to possible ADHD. No fight but a serious discussion about challenges affecting school performance.",
+    "start_message_id": "decipher_export_19:2539",
+    "summary": "Julie discusses considering getting Olivia evaluated for ADHD, describing her own diagnosis and medication experience. She says 'there's no doubt she has it' and weighs medicating vs. not. Art says getting evaluated doesn't mean having to treat it yet and hopes for minimum treatment options. Julie agrees it's worth getting a professional opinion.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:2689",
+    "range_id": "r000069",
+    "rationale": "Art taking active role in homeschool curriculum; cooperative effort, no conflict.",
+    "relevance": "Shows Art taking active role in homeschool curriculum; cooperative effort, no conflict.",
+    "start_message_id": "decipher_export_19:2684",
+    "summary": "Art sets up Time4Learning for Olivia, sharing login credentials. He says she found it 'super fun the first day... then harder to motivate the second day, but that's ADHD for ya.' Julie asks if it has science/history/typing. Art says it has science and social studies and suggests focusing on those. He describes the scheduling feature that divides lessons across the calendar.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "not_material",
+    "end_message_id": "decipher_export_19:2918",
+    "range_id": "r000070",
+    "rationale": "Julie references school in context of gymnastics hours; Art's financial response creates potential tension but not a fight about school.",
+    "relevance": "Julie references school in context of gymnastics hours; Art's financial response creates potential tension about costs including homeschool/gymnastics balance.",
+    "start_message_id": "decipher_export_19:2910",
+    "summary": "Julie shares the new gymnastics schedule and costs, asking Art to start splitting expenses. She says Olivia 'says it's still way less hours than she would be sitting at a desk in school.' Art later responds he'll look at how he can help but is 'putting everything I make into adding onto the house' so doesn't have a lot free.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_export_19:3397",
+    "range_id": "r000071",
+    "rationale": "Direct fight between Julie and Art about Olivia's schooling/education on 2025-07-16; Art says she should be out of gymnastics until education is on track, Julie disputes neglect claims, and they disagree about homeschool curriculum quality and education system.",
+    "relevance": "This is a direct argument ('fight') between Julie and Art about Olivia's schooling/education — specifically whether Olivia's education is being neglected in favor of gymnastics, whether the homeschool curriculum at Art's house is too easy, and broader disagreements about the education system. This is the primary evidence of a fight about school in this window.",
+    "start_message_id": "decipher_export_19:3370",
+    "summary": "Art says Olivia should be OUT of gymnastics until her education is on track, claiming she did zero school at his house and that education needs to be as much a priority as gymnastics. Julie responds that Olivia is on track with education and Art hasn't seen the hours of school she's done at Julie's house. Art says he's not trying to pick a fight but wants to be transparent. Julie says Olivia told her the farm schoolwork was too easy and she hated it but was scared to tell Art. Art acknowledges the curriculum started too easy and says he'll adjust it. Julie argues Olivia would not be on academic probation in real school, defends gymnastics as teaching life skills, and says school never stopped being a priority. Art says he just thinks she needs to do lessons with as much regularity as gymnastics. Julie then sends links and memes criticizing the public education system, defending homeschooling over public or private school. This exchange occurs on 2025-07-16.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_export_19:3456",
+    "range_id": "r000072",
+    "rationale": "Continuation of school-related disagreement on 2025-08-04; Art implies Olivia's education is primarily at his house, Julie disputes that characterization.",
+    "relevance": "A continuation of the school-related disagreement, with Art implying Olivia's education is primarily happening at his house and Julie disputing that characterization. Less heated than the July 16 exchange but still part of the ongoing tension about school.",
+    "start_message_id": "decipher_export_19:3451",
+    "summary": "Art says if Olivia is only doing schoolwork at his house she needs to get there as often as possible this year. Julie pushes back saying Olivia does lots of schoolwork at Julie's house too, acknowledging a gap in September/October and December but saying she does school at least 3-4 days a week. Art says they'll figure out voice lessons scheduling after the first class or two. This exchange occurs on 2025-08-04.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_export_19:4640",
+    "range_id": "r000073",
+    "rationale": "Fight about school/education on 2025-12-23 embedded in larger custody dispute; Art accuses Julie of educational neglect, Julie disputes it and says Art's curriculum was poorly set up.",
+    "relevance": "This is a later fight about school/education, embedded within the larger December custody conflict. Art directly accuses Julie of educational neglect and Julie disputes it, mirroring the July argument but in a more adversarial context.",
+    "start_message_id": "decipher_export_19:4631",
+    "summary": "During the December 23 custody dispute, Art accuses Julie of neglecting Olivia's education entirely for almost the full semester and says 'Gymnastics is all that's important to you.' Julie responds that she did schoolwork with Olivia all year but didn't start looking at the reports until the prior month, and says Art didn't have the online curriculum set up properly. Art says he told Julie she couldn't homeschool if she was due in September and that Olivia has been doing over an hour every day lately.",
+    "thread_id": "julie_kramer"
+  },
+  {
+    "disposition": "used",
+    "end_message_id": "decipher_export_5:142",
+    "range_id": "r000074",
+    "rationale": "Most detailed and extensive fight about school/education on 2026-07-01; Art demands final say over education and accuses Julie of neglect, Julie extensively defends her educational involvement with records and financial details.",
+    "relevance": "This is the most detailed and extensive fight about school/education in the window. It directly addresses the question of when they fought about school, occurring on July 1, 2026, and covers both the substance of the educational disagreement and the emotional intensity of the conflict.",
+    "start_message_id": "decipher_export_5:131",
+    "summary": "On 2026-07-01, Art says he won't agree to any settlement where he doesn't have final say about activities and education, accusing Julie of neglecting Olivia's education again. Julie extensively defends her educational involvement, detailing how she paid for private school and homeschool curriculum, sat with Olivia doing schoolwork in 2nd grade, and that Art's online curriculum (Time for Learning) was poorly set up and Olivia was skipping chapters. Julie says she has records showing Olivia scored past 2nd grade in every subject and into 6th grade in some reasoning portions.",
+    "thread_id": "julie_kramer"
+  }
+]
+```
+### terms-only
+```json
+[]
+```

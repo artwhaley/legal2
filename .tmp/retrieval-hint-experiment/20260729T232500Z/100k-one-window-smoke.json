@@ -1,0 +1,40 @@
+{
+  "active_config_version": 17,
+  "active_mode": "terms_only",
+  "elapsed_ms": 18688.410400000066,
+  "estimated_tokens": 99980,
+  "event_names": [
+    "accepted",
+    "accounting_completed",
+    "retrieval_assistance_accepted",
+    "retrieval_suggestions_built",
+    "window_plan_created",
+    "window_started",
+    "heartbeat",
+    "window_completed",
+    "failed"
+  ],
+  "frozen_plan_compatibility_fingerprint": "9ab295718bd865b3da63d7f7c7462f98bf194b63a2f25b841fee9c9aab2bc134",
+  "frozen_plan_config_version": 16,
+  "message_count": 1387,
+  "revision_id": 3,
+  "status": 200,
+  "terminal_event": {
+    "config_version": 17,
+    "error": {
+      "code": "LEDGER_BIJECTION_FAILED",
+      "details": {
+        "completed_windows": 1,
+        "window_count": 1
+      },
+      "message": "model evidence coverage is invalid",
+      "request_id": "741a2647-ff7f-43e9-a2f4-e8d24635ad2c",
+      "retryable": false,
+      "stage": "ledger"
+    },
+    "event": "failed",
+    "request_id": "741a2647-ff7f-43e9-a2f4-e8d24635ad2c",
+    "sequence": 9,
+    "timestamp": "2026-07-30T00:21:13.492827Z"
+  }
+}

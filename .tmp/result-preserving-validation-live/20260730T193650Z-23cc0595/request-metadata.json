@@ -1,0 +1,4913 @@
+{
+  "analysis_context": {
+    "analysis_plan": {
+      "analysis_question": "Show me fights about school.",
+      "answer_objective": "Identify and present evidence of disputes, arguments, conflicts, or physical altercations in which a school is a material subject, setting, cause, or stake of the conflict.",
+      "answer_requirements": [
+        "present each identified fight with its participants and the school-related subject, setting, cause, or stake",
+        "quote or reference the specific evidence showing both the conflict and its connection to school",
+        "note where the connection between the fight and school is inferred rather than directly stated",
+        "preserve uncertainty about the nature or scope of the fight where the evidence is ambiguous"
+      ],
+      "concepts": [
+        {
+          "definition": "Disagreements, arguments, verbal conflicts, physical altercations, or hostile exchanges between individuals or groups.",
+          "label": "fights",
+          "manifestations": [
+            "verbal arguments or heated disagreements",
+            "physical altercations or scuffles",
+            "hostile or confrontational exchanges in messages",
+            "disputes over decisions, policies, or actions",
+            "escalating tensions expressed as conflict"
+          ]
+        },
+        {
+          "definition": "An educational institution, its administration, staff, students, activities, policies, environment, or related matters.",
+          "label": "school",
+          "manifestations": [
+            "a school as the physical setting or location of a conflict",
+            "school policies, rules, or administrative decisions as the cause or subject of a dispute",
+            "school staff, teachers, administrators, or students as participants in a conflict",
+            "school events, activities, assignments, grades, discipline, or operations as the matter being fought over",
+            "school attendance, enrollment, admission, or placement as a source of disagreement"
+          ]
+        }
+      ],
+      "exclusion_criteria": [
+        "mentions of school or fights independently with no connection between the two",
+        "neutral or non-conflictual discussion of school matters",
+        "conflicts with no school-related subject, setting, cause, or stake"
+      ],
+      "inclusion_criteria": [
+        "evidence of a conflict, argument, dispute, or altercation where school is explicitly mentioned or clearly implicated",
+        "evidence where school-related matters are the cause, subject, setting, or stake of the conflict",
+        "evidence involving school personnel, students, parents, or administrators in a dispute connected to school",
+        "evidence of disagreements over school policies, decisions, events, discipline, grades, or operations"
+      ],
+      "interpretive_assumptions": [
+        "'fights' includes both verbal and physical conflicts, not limited to physical altercations",
+        "'school' encompasses the institution, its people, policies, activities, and environment",
+        "a fight is 'about school' when school is a material subject, setting, cause, or stake, not merely incidentally mentioned"
+      ]
+    },
+    "analysis_plan_id": "348f5526-58a0-4914-8a0b-5928492aeec4",
+    "compatibility_fingerprint": "4caa3989bf2ee5913f30b629a785377aefdff83c966e1ca7bc6318f52031a677",
+    "embedding": {
+      "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+      "dimensions": 384,
+      "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+      "normalization": "unit_l2"
+    },
+    "hits": [
+      {
+        "distance": 0.46538442828547133,
+        "message_id": "decipher_export_19:3396",
+        "query_id": "q0001",
+        "rank": 1
+      },
+      {
+        "distance": 0.4796669800251794,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0001",
+        "rank": 2
+      },
+      {
+        "distance": 0.4815619503580001,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0001",
+        "rank": 3
+      },
+      {
+        "distance": 0.49389822050939025,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0001",
+        "rank": 4
+      },
+      {
+        "distance": 0.4958278057549965,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0001",
+        "rank": 5
+      },
+      {
+        "distance": 0.5074330214714604,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0001",
+        "rank": 6
+      },
+      {
+        "distance": 0.5132821357332784,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0001",
+        "rank": 7
+      },
+      {
+        "distance": 0.5146729005697723,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0001",
+        "rank": 8
+      },
+      {
+        "distance": 0.5185809509564564,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0001",
+        "rank": 9
+      },
+      {
+        "distance": 0.5242732208618455,
+        "message_id": "decipher_message_1:1194",
+        "query_id": "q0001",
+        "rank": 10
+      },
+      {
+        "distance": 0.5324227783154667,
+        "message_id": "decipher_message_1:7162",
+        "query_id": "q0001",
+        "rank": 11
+      },
+      {
+        "distance": 0.5353659298979536,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0001",
+        "rank": 12
+      },
+      {
+        "distance": 0.5366024557541489,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0001",
+        "rank": 13
+      },
+      {
+        "distance": 0.5418783066536934,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0001",
+        "rank": 14
+      },
+      {
+        "distance": 0.5454226729821854,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0001",
+        "rank": 15
+      },
+      {
+        "distance": 0.54588187145401,
+        "message_id": "decipher_message_1:1473",
+        "query_id": "q0001",
+        "rank": 16
+      },
+      {
+        "distance": 0.5479427730774623,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0001",
+        "rank": 17
+      },
+      {
+        "distance": 0.5550175422407646,
+        "message_id": "decipher_message_1:1772",
+        "query_id": "q0001",
+        "rank": 18
+      },
+      {
+        "distance": 0.5592780405464206,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0001",
+        "rank": 19
+      },
+      {
+        "distance": 0.5632172938420344,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0001",
+        "rank": 20
+      },
+      {
+        "distance": 0.564073296209984,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0001",
+        "rank": 21
+      },
+      {
+        "distance": 0.565037548803567,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0001",
+        "rank": 22
+      },
+      {
+        "distance": 0.5672466937070729,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0001",
+        "rank": 23
+      },
+      {
+        "distance": 0.571476553685904,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0001",
+        "rank": 24
+      },
+      {
+        "distance": 0.5761732458083617,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0001",
+        "rank": 25
+      },
+      {
+        "distance": 0.5781276871360488,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0001",
+        "rank": 26
+      },
+      {
+        "distance": 0.5782343326616473,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0001",
+        "rank": 27
+      },
+      {
+        "distance": 0.5857492787159444,
+        "message_id": "decipher_message_1:931",
+        "query_id": "q0001",
+        "rank": 28
+      },
+      {
+        "distance": 0.58593696599355,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0001",
+        "rank": 29
+      },
+      {
+        "distance": 0.5863186808475522,
+        "message_id": "decipher_message_1:6520",
+        "query_id": "q0001",
+        "rank": 30
+      },
+      {
+        "distance": 0.587448381693928,
+        "message_id": "decipher_message_1:6602",
+        "query_id": "q0001",
+        "rank": 31
+      },
+      {
+        "distance": 0.5885743408478281,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0001",
+        "rank": 32
+      },
+      {
+        "distance": 0.5894419075752967,
+        "message_id": "decipher_message_1:7170",
+        "query_id": "q0001",
+        "rank": 33
+      },
+      {
+        "distance": 0.5899259865450546,
+        "message_id": "decipher_message_1:1765",
+        "query_id": "q0001",
+        "rank": 34
+      },
+      {
+        "distance": 0.5904292935586808,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0001",
+        "rank": 35
+      },
+      {
+        "distance": 0.5908543137656278,
+        "message_id": "decipher_export_19:586",
+        "query_id": "q0001",
+        "rank": 36
+      },
+      {
+        "distance": 0.5933583401363959,
+        "message_id": "decipher_export_19:4635",
+        "query_id": "q0001",
+        "rank": 37
+      },
+      {
+        "distance": 0.5937680527458014,
+        "message_id": "decipher_message_1:5797",
+        "query_id": "q0001",
+        "rank": 38
+      },
+      {
+        "distance": 0.5943298678103714,
+        "message_id": "decipher_export_19:3372",
+        "query_id": "q0001",
+        "rank": 39
+      },
+      {
+        "distance": 0.59455149424814,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0001",
+        "rank": 40
+      },
+      {
+        "distance": 0.5952381756922103,
+        "message_id": "decipher_message_1:1420",
+        "query_id": "q0001",
+        "rank": 41
+      },
+      {
+        "distance": 0.5954964762543933,
+        "message_id": "decipher_message_1:3023",
+        "query_id": "q0001",
+        "rank": 42
+      },
+      {
+        "distance": 0.5961187566802519,
+        "message_id": "decipher_message_1:375",
+        "query_id": "q0001",
+        "rank": 43
+      },
+      {
+        "distance": 0.5971748599997442,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0001",
+        "rank": 44
+      },
+      {
+        "distance": 0.5977611004280834,
+        "message_id": "decipher_message_1:2017",
+        "query_id": "q0001",
+        "rank": 45
+      },
+      {
+        "distance": 0.5981337633969654,
+        "message_id": "decipher_export_19:1556",
+        "query_id": "q0001",
+        "rank": 46
+      },
+      {
+        "distance": 0.5992786872587226,
+        "message_id": "decipher_message_1:3525",
+        "query_id": "q0001",
+        "rank": 47
+      },
+      {
+        "distance": 0.6019495025208315,
+        "message_id": "decipher_message_1:3034",
+        "query_id": "q0001",
+        "rank": 48
+      },
+      {
+        "distance": 0.6034725163680026,
+        "message_id": "decipher_message_1:1581",
+        "query_id": "q0001",
+        "rank": 49
+      },
+      {
+        "distance": 0.604079485640683,
+        "message_id": "decipher_message_1:1269",
+        "query_id": "q0001",
+        "rank": 50
+      },
+      {
+        "distance": 0.6060785469862549,
+        "message_id": "decipher_export_19:587",
+        "query_id": "q0001",
+        "rank": 51
+      },
+      {
+        "distance": 0.6073337627249449,
+        "message_id": "decipher_message_1:7173",
+        "query_id": "q0001",
+        "rank": 52
+      },
+      {
+        "distance": 0.607638509778025,
+        "message_id": "decipher_message_1:5242",
+        "query_id": "q0001",
+        "rank": 53
+      },
+      {
+        "distance": 0.6086176678578715,
+        "message_id": "decipher_export_19:768",
+        "query_id": "q0001",
+        "rank": 54
+      },
+      {
+        "distance": 0.6094357039169161,
+        "message_id": "decipher_message_1:5690",
+        "query_id": "q0001",
+        "rank": 55
+      },
+      {
+        "distance": 0.6123180461561745,
+        "message_id": "decipher_message_1:1780",
+        "query_id": "q0001",
+        "rank": 56
+      },
+      {
+        "distance": 0.6135780074553623,
+        "message_id": "decipher_message_1:2048",
+        "query_id": "q0001",
+        "rank": 57
+      },
+      {
+        "distance": 0.6169742603567304,
+        "message_id": "decipher_message_1:3791",
+        "query_id": "q0001",
+        "rank": 58
+      },
+      {
+        "distance": 0.6178706665693263,
+        "message_id": "decipher_export_19:1899",
+        "query_id": "q0001",
+        "rank": 59
+      },
+      {
+        "distance": 0.6179562040003157,
+        "message_id": "decipher_message_1:2107",
+        "query_id": "q0001",
+        "rank": 60
+      },
+      {
+        "distance": 0.618921571791464,
+        "message_id": "decipher_message_1:5745",
+        "query_id": "q0001",
+        "rank": 61
+      },
+      {
+        "distance": 0.6192425787411402,
+        "message_id": "decipher_message_1:2635",
+        "query_id": "q0001",
+        "rank": 62
+      },
+      {
+        "distance": 0.6204086260251936,
+        "message_id": "decipher_message_1:1752",
+        "query_id": "q0001",
+        "rank": 63
+      },
+      {
+        "distance": 0.620688375486345,
+        "message_id": "decipher_export_19:600",
+        "query_id": "q0001",
+        "rank": 64
+      },
+      {
+        "distance": 0.6267715714614226,
+        "message_id": "decipher_message_1:3708",
+        "query_id": "q0001",
+        "rank": 65
+      },
+      {
+        "distance": 0.6274453484483415,
+        "message_id": "decipher_message_1:978",
+        "query_id": "q0001",
+        "rank": 66
+      },
+      {
+        "distance": 0.6277668439549842,
+        "message_id": "decipher_message_1:3367",
+        "query_id": "q0001",
+        "rank": 67
+      },
+      {
+        "distance": 0.6279818283242643,
+        "message_id": "decipher_message_1:1892",
+        "query_id": "q0001",
+        "rank": 68
+      },
+      {
+        "distance": 0.6287347744399744,
+        "message_id": "decipher_message_1:4370",
+        "query_id": "q0001",
+        "rank": 69
+      },
+      {
+        "distance": 0.6305950042680317,
+        "message_id": "decipher_message_1:5342",
+        "query_id": "q0001",
+        "rank": 70
+      },
+      {
+        "distance": 0.630749212695872,
+        "message_id": "decipher_message_1:2165",
+        "query_id": "q0001",
+        "rank": 71
+      },
+      {
+        "distance": 0.6320304451385086,
+        "message_id": "decipher_message_1:1644",
+        "query_id": "q0001",
+        "rank": 72
+      },
+      {
+        "distance": 0.632038989527484,
+        "message_id": "decipher_message_1:1740",
+        "query_id": "q0001",
+        "rank": 73
+      },
+      {
+        "distance": 0.6323226879926022,
+        "message_id": "decipher_message_1:4947",
+        "query_id": "q0001",
+        "rank": 74
+      },
+      {
+        "distance": 0.6338505118028768,
+        "message_id": "decipher_message_1:3847",
+        "query_id": "q0001",
+        "rank": 75
+      },
+      {
+        "distance": 0.6348900052537187,
+        "message_id": "decipher_message_1:1641",
+        "query_id": "q0001",
+        "rank": 76
+      },
+      {
+        "distance": 0.6350640570481255,
+        "message_id": "decipher_message_1:587",
+        "query_id": "q0001",
+        "rank": 77
+      },
+      {
+        "distance": 0.6360157026396167,
+        "message_id": "decipher_message_1:6728",
+        "query_id": "q0001",
+        "rank": 78
+      },
+      {
+        "distance": 0.6366395249539465,
+        "message_id": "decipher_message_1:6731",
+        "query_id": "q0001",
+        "rank": 79
+      },
+      {
+        "distance": 0.6374310427139868,
+        "message_id": "decipher_message_1:4390",
+        "query_id": "q0001",
+        "rank": 80
+      },
+      {
+        "distance": 0.6384776324175612,
+        "message_id": "decipher_message_1:1761",
+        "query_id": "q0001",
+        "rank": 81
+      },
+      {
+        "distance": 0.63862339720965,
+        "message_id": "decipher_message_1:2117",
+        "query_id": "q0001",
+        "rank": 82
+      },
+      {
+        "distance": 0.6388470062179368,
+        "message_id": "decipher_message_1:5063",
+        "query_id": "q0001",
+        "rank": 83
+      },
+      {
+        "distance": 0.6388699501911457,
+        "message_id": "decipher_message_1:1826",
+        "query_id": "q0001",
+        "rank": 84
+      },
+      {
+        "distance": 0.6403982502905945,
+        "message_id": "decipher_message_1:7172",
+        "query_id": "q0001",
+        "rank": 85
+      },
+      {
+        "distance": 0.6412152099128927,
+        "message_id": "decipher_message_1:2096",
+        "query_id": "q0001",
+        "rank": 86
+      },
+      {
+        "distance": 0.6422726279960295,
+        "message_id": "decipher_message_1:2137",
+        "query_id": "q0001",
+        "rank": 87
+      },
+      {
+        "distance": 0.6426301306742551,
+        "message_id": "decipher_message_1:249",
+        "query_id": "q0001",
+        "rank": 88
+      },
+      {
+        "distance": 0.6436386928477422,
+        "message_id": "decipher_message_1:1282",
+        "query_id": "q0001",
+        "rank": 89
+      },
+      {
+        "distance": 0.6436978590448631,
+        "message_id": "decipher_message_1:3664",
+        "query_id": "q0001",
+        "rank": 90
+      },
+      {
+        "distance": 0.6444538980810604,
+        "message_id": "decipher_message_1:3715",
+        "query_id": "q0001",
+        "rank": 91
+      },
+      {
+        "distance": 0.6446045467346089,
+        "message_id": "decipher_message_1:1469",
+        "query_id": "q0001",
+        "rank": 92
+      },
+      {
+        "distance": 0.6450013823076759,
+        "message_id": "decipher_message_1:2108",
+        "query_id": "q0001",
+        "rank": 93
+      },
+      {
+        "distance": 0.6497800537160426,
+        "message_id": "decipher_message_1:4132",
+        "query_id": "q0001",
+        "rank": 94
+      },
+      {
+        "distance": 0.6505058069330868,
+        "message_id": "decipher_message_1:1867",
+        "query_id": "q0001",
+        "rank": 95
+      },
+      {
+        "distance": 0.651684141160314,
+        "message_id": "decipher_message_1:3520",
+        "query_id": "q0001",
+        "rank": 96
+      },
+      {
+        "distance": 0.6517842338603191,
+        "message_id": "decipher_message_1:2106",
+        "query_id": "q0001",
+        "rank": 97
+      },
+      {
+        "distance": 0.652305522085731,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0001",
+        "rank": 98
+      },
+      {
+        "distance": 0.653296279391999,
+        "message_id": "decipher_message_1:3652",
+        "query_id": "q0001",
+        "rank": 99
+      },
+      {
+        "distance": 0.6534869911155363,
+        "message_id": "decipher_message_1:6730",
+        "query_id": "q0001",
+        "rank": 100
+      },
+      {
+        "distance": 0.4896230458704727,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0002",
+        "rank": 1
+      },
+      {
+        "distance": 0.5149185526695064,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0002",
+        "rank": 2
+      },
+      {
+        "distance": 0.5297592237123748,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0002",
+        "rank": 3
+      },
+      {
+        "distance": 0.5353746711544332,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0002",
+        "rank": 4
+      },
+      {
+        "distance": 0.545448197445292,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0002",
+        "rank": 5
+      },
+      {
+        "distance": 0.5473539758840799,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0002",
+        "rank": 6
+      },
+      {
+        "distance": 0.5509445463509995,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0002",
+        "rank": 7
+      },
+      {
+        "distance": 0.5547146488190322,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0002",
+        "rank": 8
+      },
+      {
+        "distance": 0.5604076531805761,
+        "message_id": "decipher_message_1:5122",
+        "query_id": "q0002",
+        "rank": 9
+      },
+      {
+        "distance": 0.5614363204177553,
+        "message_id": "decipher_export_19:4770",
+        "query_id": "q0002",
+        "rank": 10
+      },
+      {
+        "distance": 0.5650557819307968,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0002",
+        "rank": 11
+      },
+      {
+        "distance": 0.5674745397273873,
+        "message_id": "decipher_message_1:2026",
+        "query_id": "q0002",
+        "rank": 12
+      },
+      {
+        "distance": 0.5709478977147444,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0002",
+        "rank": 13
+      },
+      {
+        "distance": 0.5768867648063334,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0002",
+        "rank": 14
+      },
+      {
+        "distance": 0.5833739827440609,
+        "message_id": "decipher_message_1:1194",
+        "query_id": "q0002",
+        "rank": 15
+      },
+      {
+        "distance": 0.5862971926473786,
+        "message_id": "decipher_message_1:7170",
+        "query_id": "q0002",
+        "rank": 16
+      },
+      {
+        "distance": 0.5887471010523075,
+        "message_id": "decipher_message_1:5490",
+        "query_id": "q0002",
+        "rank": 17
+      },
+      {
+        "distance": 0.5895832102502085,
+        "message_id": "decipher_message_1:679",
+        "query_id": "q0002",
+        "rank": 18
+      },
+      {
+        "distance": 0.5912870582198365,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0002",
+        "rank": 19
+      },
+      {
+        "distance": 0.5913316030083012,
+        "message_id": "decipher_message_1:2107",
+        "query_id": "q0002",
+        "rank": 20
+      },
+      {
+        "distance": 0.5919072097907625,
+        "message_id": "decipher_message_1:587",
+        "query_id": "q0002",
+        "rank": 21
+      },
+      {
+        "distance": 0.5920770800473136,
+        "message_id": "decipher_export_19:4524",
+        "query_id": "q0002",
+        "rank": 22
+      },
+      {
+        "distance": 0.5920878825851951,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0002",
+        "rank": 23
+      },
+      {
+        "distance": 0.5952212852703551,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0002",
+        "rank": 24
+      },
+      {
+        "distance": 0.5962956338376412,
+        "message_id": "decipher_export_19:4727",
+        "query_id": "q0002",
+        "rank": 25
+      },
+      {
+        "distance": 0.5988167138334447,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0002",
+        "rank": 26
+      },
+      {
+        "distance": 0.5996160332523357,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0002",
+        "rank": 27
+      },
+      {
+        "distance": 0.6006320938140589,
+        "message_id": "decipher_message_1:375",
+        "query_id": "q0002",
+        "rank": 28
+      },
+      {
+        "distance": 0.6013143381491877,
+        "message_id": "decipher_message_1:3034",
+        "query_id": "q0002",
+        "rank": 29
+      },
+      {
+        "distance": 0.6038830383365833,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0002",
+        "rank": 30
+      },
+      {
+        "distance": 0.6042719495812539,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0002",
+        "rank": 31
+      },
+      {
+        "distance": 0.6044804534985123,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0002",
+        "rank": 32
+      },
+      {
+        "distance": 0.6070899261713362,
+        "message_id": "decipher_message_1:1756",
+        "query_id": "q0002",
+        "rank": 33
+      },
+      {
+        "distance": 0.6087816995033419,
+        "message_id": "decipher_message_1:2633",
+        "query_id": "q0002",
+        "rank": 34
+      },
+      {
+        "distance": 0.6087917624131073,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0002",
+        "rank": 35
+      },
+      {
+        "distance": 0.6094015185800027,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0002",
+        "rank": 36
+      },
+      {
+        "distance": 0.6099827361116934,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0002",
+        "rank": 37
+      },
+      {
+        "distance": 0.6134720811828578,
+        "message_id": "decipher_message_1:6520",
+        "query_id": "q0002",
+        "rank": 38
+      },
+      {
+        "distance": 0.6135499680467642,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0002",
+        "rank": 39
+      },
+      {
+        "distance": 0.6144285802080446,
+        "message_id": "decipher_message_1:1719",
+        "query_id": "q0002",
+        "rank": 40
+      },
+      {
+        "distance": 0.6150596901032903,
+        "message_id": "decipher_message_1:1772",
+        "query_id": "q0002",
+        "rank": 41
+      },
+      {
+        "distance": 0.615438164896068,
+        "message_id": "decipher_message_1:931",
+        "query_id": "q0002",
+        "rank": 42
+      },
+      {
+        "distance": 0.616433753314154,
+        "message_id": "decipher_message_1:6602",
+        "query_id": "q0002",
+        "rank": 43
+      },
+      {
+        "distance": 0.6166031650098358,
+        "message_id": "decipher_message_1:1892",
+        "query_id": "q0002",
+        "rank": 44
+      },
+      {
+        "distance": 0.6175538259791882,
+        "message_id": "decipher_message_1:3650",
+        "query_id": "q0002",
+        "rank": 45
+      },
+      {
+        "distance": 0.6203255225464119,
+        "message_id": "decipher_message_1:1282",
+        "query_id": "q0002",
+        "rank": 46
+      },
+      {
+        "distance": 0.6203582643878205,
+        "message_id": "decipher_export_19:3396",
+        "query_id": "q0002",
+        "rank": 47
+      },
+      {
+        "distance": 0.6218639859568524,
+        "message_id": "decipher_message_1:2096",
+        "query_id": "q0002",
+        "rank": 48
+      },
+      {
+        "distance": 0.6219242090185755,
+        "message_id": "decipher_export_19:4804",
+        "query_id": "q0002",
+        "rank": 49
+      },
+      {
+        "distance": 0.6234759792682515,
+        "message_id": "decipher_export_19:4635",
+        "query_id": "q0002",
+        "rank": 50
+      },
+      {
+        "distance": 0.624257997611376,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0002",
+        "rank": 51
+      },
+      {
+        "distance": 0.6247038343256013,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0002",
+        "rank": 52
+      },
+      {
+        "distance": 0.6257423962797053,
+        "message_id": "decipher_message_1:1269",
+        "query_id": "q0002",
+        "rank": 53
+      },
+      {
+        "distance": 0.6286094795242388,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0002",
+        "rank": 54
+      },
+      {
+        "distance": 0.6291050195796762,
+        "message_id": "decipher_message_1:2282",
+        "query_id": "q0002",
+        "rank": 55
+      },
+      {
+        "distance": 0.6292447010383588,
+        "message_id": "decipher_message_1:1280",
+        "query_id": "q0002",
+        "rank": 56
+      },
+      {
+        "distance": 0.6316154211346647,
+        "message_id": "decipher_message_1:1641",
+        "query_id": "q0002",
+        "rank": 57
+      },
+      {
+        "distance": 0.6317999531819682,
+        "message_id": "decipher_export_5:88",
+        "query_id": "q0002",
+        "rank": 58
+      },
+      {
+        "distance": 0.6332239841163768,
+        "message_id": "decipher_message_1:5690",
+        "query_id": "q0002",
+        "rank": 59
+      },
+      {
+        "distance": 0.635919356582077,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0002",
+        "rank": 60
+      },
+      {
+        "distance": 0.6360858396707108,
+        "message_id": "decipher_message_1:3708",
+        "query_id": "q0002",
+        "rank": 61
+      },
+      {
+        "distance": 0.6363839560153788,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0002",
+        "rank": 62
+      },
+      {
+        "distance": 0.6379739472909898,
+        "message_id": "decipher_export_19:3062",
+        "query_id": "q0002",
+        "rank": 63
+      },
+      {
+        "distance": 0.638233509898203,
+        "message_id": "decipher_message_1:6742",
+        "query_id": "q0002",
+        "rank": 64
+      },
+      {
+        "distance": 0.6395198841785602,
+        "message_id": "decipher_message_1:1729",
+        "query_id": "q0002",
+        "rank": 65
+      },
+      {
+        "distance": 0.639776424669126,
+        "message_id": "decipher_message_1:2138",
+        "query_id": "q0002",
+        "rank": 66
+      },
+      {
+        "distance": 0.6399748920193188,
+        "message_id": "decipher_export_19:1076",
+        "query_id": "q0002",
+        "rank": 67
+      },
+      {
+        "distance": 0.6402246343881802,
+        "message_id": "decipher_export_19:586",
+        "query_id": "q0002",
+        "rank": 68
+      },
+      {
+        "distance": 0.6410795118576105,
+        "message_id": "decipher_export_19:1069",
+        "query_id": "q0002",
+        "rank": 69
+      },
+      {
+        "distance": 0.6416209964699195,
+        "message_id": "decipher_message_1:3715",
+        "query_id": "q0002",
+        "rank": 70
+      },
+      {
+        "distance": 0.6419818571145717,
+        "message_id": "decipher_export_19:4590",
+        "query_id": "q0002",
+        "rank": 71
+      },
+      {
+        "distance": 0.6440160002438322,
+        "message_id": "decipher_message_1:7162",
+        "query_id": "q0002",
+        "rank": 72
+      },
+      {
+        "distance": 0.6442611896012002,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0002",
+        "rank": 73
+      },
+      {
+        "distance": 0.6448408232074756,
+        "message_id": "decipher_message_1:1473",
+        "query_id": "q0002",
+        "rank": 74
+      },
+      {
+        "distance": 0.6448847583897747,
+        "message_id": "decipher_message_1:4390",
+        "query_id": "q0002",
+        "rank": 75
+      },
+      {
+        "distance": 0.6450903775156931,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0002",
+        "rank": 76
+      },
+      {
+        "distance": 0.6460996418250968,
+        "message_id": "decipher_export_5:140",
+        "query_id": "q0002",
+        "rank": 77
+      },
+      {
+        "distance": 0.6470182225694876,
+        "message_id": "decipher_message_1:1867",
+        "query_id": "q0002",
+        "rank": 78
+      },
+      {
+        "distance": 0.6487092261015917,
+        "message_id": "decipher_message_1:3572",
+        "query_id": "q0002",
+        "rank": 79
+      },
+      {
+        "distance": 0.6504364147870945,
+        "message_id": "decipher_message_1:3847",
+        "query_id": "q0002",
+        "rank": 80
+      },
+      {
+        "distance": 0.651568122582775,
+        "message_id": "decipher_message_1:5745",
+        "query_id": "q0002",
+        "rank": 81
+      },
+      {
+        "distance": 0.651612793147621,
+        "message_id": "decipher_message_1:4021",
+        "query_id": "q0002",
+        "rank": 82
+      },
+      {
+        "distance": 0.6531299785680758,
+        "message_id": "decipher_message_1:1765",
+        "query_id": "q0002",
+        "rank": 83
+      },
+      {
+        "distance": 0.653138245031605,
+        "message_id": "decipher_message_1:1595",
+        "query_id": "q0002",
+        "rank": 84
+      },
+      {
+        "distance": 0.6531622976864035,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0002",
+        "rank": 85
+      },
+      {
+        "distance": 0.6535531711948239,
+        "message_id": "decipher_message_1:1420",
+        "query_id": "q0002",
+        "rank": 86
+      },
+      {
+        "distance": 0.653875177584641,
+        "message_id": "decipher_message_1:4766",
+        "query_id": "q0002",
+        "rank": 87
+      },
+      {
+        "distance": 0.6543579653452545,
+        "message_id": "decipher_message_1:4132",
+        "query_id": "q0002",
+        "rank": 88
+      },
+      {
+        "distance": 0.6548435516377815,
+        "message_id": "decipher_message_1:3544",
+        "query_id": "q0002",
+        "rank": 89
+      },
+      {
+        "distance": 0.655073610626097,
+        "message_id": "decipher_message_1:6728",
+        "query_id": "q0002",
+        "rank": 90
+      },
+      {
+        "distance": 0.6558503616810456,
+        "message_id": "decipher_message_1:5797",
+        "query_id": "q0002",
+        "rank": 91
+      },
+      {
+        "distance": 0.6558691997096482,
+        "message_id": "decipher_export_19:763",
+        "query_id": "q0002",
+        "rank": 92
+      },
+      {
+        "distance": 0.656017648202042,
+        "message_id": "decipher_export_19:4676",
+        "query_id": "q0002",
+        "rank": 93
+      },
+      {
+        "distance": 0.6564918872269272,
+        "message_id": "decipher_message_1:4442",
+        "query_id": "q0002",
+        "rank": 94
+      },
+      {
+        "distance": 0.656789244092869,
+        "message_id": "decipher_export_19:4617",
+        "query_id": "q0002",
+        "rank": 95
+      },
+      {
+        "distance": 0.656789945403243,
+        "message_id": "decipher_message_1:6738",
+        "query_id": "q0002",
+        "rank": 96
+      },
+      {
+        "distance": 0.6569802547457706,
+        "message_id": "decipher_export_19:4653",
+        "query_id": "q0002",
+        "rank": 97
+      },
+      {
+        "distance": 0.6573660096204565,
+        "message_id": "decipher_message_1:5063",
+        "query_id": "q0002",
+        "rank": 98
+      },
+      {
+        "distance": 0.6581093465324823,
+        "message_id": "decipher_message_1:1202",
+        "query_id": "q0002",
+        "rank": 99
+      },
+      {
+        "distance": 0.6584559655472568,
+        "message_id": "decipher_export_19:4685",
+        "query_id": "q0002",
+        "rank": 100
+      },
+      {
+        "distance": 0.4836563588479701,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0003",
+        "rank": 1
+      },
+      {
+        "distance": 0.4930036310627576,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0003",
+        "rank": 2
+      },
+      {
+        "distance": 0.49555266769691864,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0003",
+        "rank": 3
+      },
+      {
+        "distance": 0.5285564549054802,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0003",
+        "rank": 4
+      },
+      {
+        "distance": 0.52912758067749,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0003",
+        "rank": 5
+      },
+      {
+        "distance": 0.5495577076989652,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0003",
+        "rank": 6
+      },
+      {
+        "distance": 0.5583182275464382,
+        "message_id": "decipher_export_19:3396",
+        "query_id": "q0003",
+        "rank": 7
+      },
+      {
+        "distance": 0.5650397050780783,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0003",
+        "rank": 8
+      },
+      {
+        "distance": 0.5660717573135385,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0003",
+        "rank": 9
+      },
+      {
+        "distance": 0.5758043082277321,
+        "message_id": "decipher_message_1:2321",
+        "query_id": "q0003",
+        "rank": 10
+      },
+      {
+        "distance": 0.5906282386047776,
+        "message_id": "decipher_message_1:3023",
+        "query_id": "q0003",
+        "rank": 11
+      },
+      {
+        "distance": 0.5985032011827063,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0003",
+        "rank": 12
+      },
+      {
+        "distance": 0.6023416672392056,
+        "message_id": "decipher_message_1:7170",
+        "query_id": "q0003",
+        "rank": 13
+      },
+      {
+        "distance": 0.6033478357661184,
+        "message_id": "decipher_message_1:2107",
+        "query_id": "q0003",
+        "rank": 14
+      },
+      {
+        "distance": 0.6042615012285071,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0003",
+        "rank": 15
+      },
+      {
+        "distance": 0.6043675183443398,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0003",
+        "rank": 16
+      },
+      {
+        "distance": 0.6050543815296079,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0003",
+        "rank": 17
+      },
+      {
+        "distance": 0.6075359616980265,
+        "message_id": "decipher_message_1:2026",
+        "query_id": "q0003",
+        "rank": 18
+      },
+      {
+        "distance": 0.6141077749408461,
+        "message_id": "decipher_message_1:1960",
+        "query_id": "q0003",
+        "rank": 19
+      },
+      {
+        "distance": 0.6169086130701712,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0003",
+        "rank": 20
+      },
+      {
+        "distance": 0.6215512228526322,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0003",
+        "rank": 21
+      },
+      {
+        "distance": 0.6269637862096836,
+        "message_id": "decipher_message_1:2138",
+        "query_id": "q0003",
+        "rank": 22
+      },
+      {
+        "distance": 0.6277355892094962,
+        "message_id": "decipher_export_19:600",
+        "query_id": "q0003",
+        "rank": 23
+      },
+      {
+        "distance": 0.6301440155238908,
+        "message_id": "decipher_message_1:1772",
+        "query_id": "q0003",
+        "rank": 24
+      },
+      {
+        "distance": 0.6331867445887689,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0003",
+        "rank": 25
+      },
+      {
+        "distance": 0.6333040298141277,
+        "message_id": "decipher_message_1:4370",
+        "query_id": "q0003",
+        "rank": 26
+      },
+      {
+        "distance": 0.63462617974112,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0003",
+        "rank": 27
+      },
+      {
+        "distance": 0.6364700854818125,
+        "message_id": "decipher_message_1:7173",
+        "query_id": "q0003",
+        "rank": 28
+      },
+      {
+        "distance": 0.6365437831873603,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0003",
+        "rank": 29
+      },
+      {
+        "distance": 0.6365666559882721,
+        "message_id": "decipher_message_1:1194",
+        "query_id": "q0003",
+        "rank": 30
+      },
+      {
+        "distance": 0.6396329379069421,
+        "message_id": "decipher_message_1:1719",
+        "query_id": "q0003",
+        "rank": 31
+      },
+      {
+        "distance": 0.639881173300783,
+        "message_id": "decipher_message_1:1892",
+        "query_id": "q0003",
+        "rank": 32
+      },
+      {
+        "distance": 0.6404026405269279,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0003",
+        "rank": 33
+      },
+      {
+        "distance": 0.6411169068363001,
+        "message_id": "decipher_message_1:5907",
+        "query_id": "q0003",
+        "rank": 34
+      },
+      {
+        "distance": 0.6412091231594639,
+        "message_id": "decipher_message_1:1280",
+        "query_id": "q0003",
+        "rank": 35
+      },
+      {
+        "distance": 0.6444578637506866,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0003",
+        "rank": 36
+      },
+      {
+        "distance": 0.645016871964746,
+        "message_id": "decipher_export_19:4804",
+        "query_id": "q0003",
+        "rank": 37
+      },
+      {
+        "distance": 0.6486490058819255,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0003",
+        "rank": 38
+      },
+      {
+        "distance": 0.6492888221628723,
+        "message_id": "decipher_message_1:1282",
+        "query_id": "q0003",
+        "rank": 39
+      },
+      {
+        "distance": 0.6511443219542744,
+        "message_id": "decipher_message_1:2137",
+        "query_id": "q0003",
+        "rank": 40
+      },
+      {
+        "distance": 0.65324928772393,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0003",
+        "rank": 41
+      },
+      {
+        "distance": 0.6578473864911553,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0003",
+        "rank": 42
+      },
+      {
+        "distance": 0.6584900158435965,
+        "message_id": "decipher_message_1:6763",
+        "query_id": "q0003",
+        "rank": 43
+      },
+      {
+        "distance": 0.6597218989634841,
+        "message_id": "decipher_message_1:6742",
+        "query_id": "q0003",
+        "rank": 44
+      },
+      {
+        "distance": 0.6602364608020821,
+        "message_id": "decipher_export_19:4798",
+        "query_id": "q0003",
+        "rank": 45
+      },
+      {
+        "distance": 0.6616670822878814,
+        "message_id": "decipher_message_1:5797",
+        "query_id": "q0003",
+        "rank": 46
+      },
+      {
+        "distance": 0.6635942998940179,
+        "message_id": "decipher_message_1:1169",
+        "query_id": "q0003",
+        "rank": 47
+      },
+      {
+        "distance": 0.6650980290318129,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0003",
+        "rank": 48
+      },
+      {
+        "distance": 0.666362506644837,
+        "message_id": "decipher_export_19:587",
+        "query_id": "q0003",
+        "rank": 49
+      },
+      {
+        "distance": 0.6665927816894808,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0003",
+        "rank": 50
+      },
+      {
+        "distance": 0.6668020593073827,
+        "message_id": "decipher_message_1:6745",
+        "query_id": "q0003",
+        "rank": 51
+      },
+      {
+        "distance": 0.6672461163550416,
+        "message_id": "decipher_message_1:6602",
+        "query_id": "q0003",
+        "rank": 52
+      },
+      {
+        "distance": 0.6674203997824448,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0003",
+        "rank": 53
+      },
+      {
+        "distance": 0.6683482815741615,
+        "message_id": "decipher_export_19:4770",
+        "query_id": "q0003",
+        "rank": 54
+      },
+      {
+        "distance": 0.6698091024625799,
+        "message_id": "decipher_message_1:2377",
+        "query_id": "q0003",
+        "rank": 55
+      },
+      {
+        "distance": 0.6725752703654797,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0003",
+        "rank": 56
+      },
+      {
+        "distance": 0.6730313461813275,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0003",
+        "rank": 57
+      },
+      {
+        "distance": 0.6731836355690317,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0003",
+        "rank": 58
+      },
+      {
+        "distance": 0.6741423318779358,
+        "message_id": "decipher_message_1:1473",
+        "query_id": "q0003",
+        "rank": 59
+      },
+      {
+        "distance": 0.6742190997628608,
+        "message_id": "decipher_message_1:2140",
+        "query_id": "q0003",
+        "rank": 60
+      },
+      {
+        "distance": 0.6748480175274276,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0003",
+        "rank": 61
+      },
+      {
+        "distance": 0.6749613055679071,
+        "message_id": "decipher_message_1:6738",
+        "query_id": "q0003",
+        "rank": 62
+      },
+      {
+        "distance": 0.6750806296615126,
+        "message_id": "decipher_message_1:7172",
+        "query_id": "q0003",
+        "rank": 63
+      },
+      {
+        "distance": 0.6755191462410861,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0003",
+        "rank": 64
+      },
+      {
+        "distance": 0.6758891020648357,
+        "message_id": "decipher_message_1:2282",
+        "query_id": "q0003",
+        "rank": 65
+      },
+      {
+        "distance": 0.6785419238654362,
+        "message_id": "decipher_message_1:6757",
+        "query_id": "q0003",
+        "rank": 66
+      },
+      {
+        "distance": 0.6793875712503195,
+        "message_id": "decipher_message_1:6520",
+        "query_id": "q0003",
+        "rank": 67
+      },
+      {
+        "distance": 0.6823563598342839,
+        "message_id": "decipher_export_19:788",
+        "query_id": "q0003",
+        "rank": 68
+      },
+      {
+        "distance": 0.6848379281776609,
+        "message_id": "decipher_message_1:5122",
+        "query_id": "q0003",
+        "rank": 69
+      },
+      {
+        "distance": 0.6853833167574022,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0003",
+        "rank": 70
+      },
+      {
+        "distance": 0.6868383556917977,
+        "message_id": "decipher_message_1:2246",
+        "query_id": "q0003",
+        "rank": 71
+      },
+      {
+        "distance": 0.6871504302557021,
+        "message_id": "decipher_export_19:4546",
+        "query_id": "q0003",
+        "rank": 72
+      },
+      {
+        "distance": 0.6884921901129435,
+        "message_id": "decipher_message_1:1302",
+        "query_id": "q0003",
+        "rank": 73
+      },
+      {
+        "distance": 0.6897107313003068,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0003",
+        "rank": 74
+      },
+      {
+        "distance": 0.6901223174987212,
+        "message_id": "decipher_message_1:2108",
+        "query_id": "q0003",
+        "rank": 75
+      },
+      {
+        "distance": 0.69050065219927,
+        "message_id": "decipher_message_1:6762",
+        "query_id": "q0003",
+        "rank": 76
+      },
+      {
+        "distance": 0.6912675432181344,
+        "message_id": "decipher_export_19:3020",
+        "query_id": "q0003",
+        "rank": 77
+      },
+      {
+        "distance": 0.691465733319385,
+        "message_id": "decipher_message_1:2633",
+        "query_id": "q0003",
+        "rank": 78
+      },
+      {
+        "distance": 0.6918527636851797,
+        "message_id": "decipher_export_19:588",
+        "query_id": "q0003",
+        "rank": 79
+      },
+      {
+        "distance": 0.6923828311372908,
+        "message_id": "decipher_message_1:2017",
+        "query_id": "q0003",
+        "rank": 80
+      },
+      {
+        "distance": 0.6935789225949087,
+        "message_id": "decipher_message_1:5706",
+        "query_id": "q0003",
+        "rank": 81
+      },
+      {
+        "distance": 0.6937108681207445,
+        "message_id": "decipher_export_19:4684",
+        "query_id": "q0003",
+        "rank": 82
+      },
+      {
+        "distance": 0.6952468768135547,
+        "message_id": "decipher_message_1:1734",
+        "query_id": "q0003",
+        "rank": 83
+      },
+      {
+        "distance": 0.6957977813855221,
+        "message_id": "decipher_message_1:3650",
+        "query_id": "q0003",
+        "rank": 84
+      },
+      {
+        "distance": 0.6960965810650009,
+        "message_id": "decipher_message_1:1520",
+        "query_id": "q0003",
+        "rank": 85
+      },
+      {
+        "distance": 0.696192760290606,
+        "message_id": "decipher_export_19:4685",
+        "query_id": "q0003",
+        "rank": 86
+      },
+      {
+        "distance": 0.6970190236388787,
+        "message_id": "decipher_export_19:4635",
+        "query_id": "q0003",
+        "rank": 87
+      },
+      {
+        "distance": 0.6975704045121657,
+        "message_id": "decipher_message_1:4677",
+        "query_id": "q0003",
+        "rank": 88
+      },
+      {
+        "distance": 0.6983559431451396,
+        "message_id": "decipher_message_1:931",
+        "query_id": "q0003",
+        "rank": 89
+      },
+      {
+        "distance": 0.6995132617598998,
+        "message_id": "decipher_message_1:1765",
+        "query_id": "q0003",
+        "rank": 90
+      },
+      {
+        "distance": 0.6995250624399688,
+        "message_id": "decipher_export_19:4534",
+        "query_id": "q0003",
+        "rank": 91
+      },
+      {
+        "distance": 0.7001575375671079,
+        "message_id": "decipher_message_1:1202",
+        "query_id": "q0003",
+        "rank": 92
+      },
+      {
+        "distance": 0.7002581932100989,
+        "message_id": "decipher_message_1:2185",
+        "query_id": "q0003",
+        "rank": 93
+      },
+      {
+        "distance": 0.7005061058501083,
+        "message_id": "decipher_message_1:3530",
+        "query_id": "q0003",
+        "rank": 94
+      },
+      {
+        "distance": 0.700989666277987,
+        "message_id": "decipher_export_19:1899",
+        "query_id": "q0003",
+        "rank": 95
+      },
+      {
+        "distance": 0.701282073502413,
+        "message_id": "decipher_message_1:1757",
+        "query_id": "q0003",
+        "rank": 96
+      },
+      {
+        "distance": 0.7013208302404705,
+        "message_id": "decipher_message_1:2432",
+        "query_id": "q0003",
+        "rank": 97
+      },
+      {
+        "distance": 0.7017029127722307,
+        "message_id": "decipher_export_19:603",
+        "query_id": "q0003",
+        "rank": 98
+      },
+      {
+        "distance": 0.701829520905128,
+        "message_id": "decipher_message_1:2635",
+        "query_id": "q0003",
+        "rank": 99
+      },
+      {
+        "distance": 0.7024882438186808,
+        "message_id": "decipher_message_1:375",
+        "query_id": "q0003",
+        "rank": 100
+      },
+      {
+        "distance": 0.5367230625574673,
+        "message_id": "decipher_message_1:3548",
+        "query_id": "q0004",
+        "rank": 1
+      },
+      {
+        "distance": 0.5512828587529182,
+        "message_id": "decipher_message_1:3549",
+        "query_id": "q0004",
+        "rank": 2
+      },
+      {
+        "distance": 0.5571486409782551,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0004",
+        "rank": 3
+      },
+      {
+        "distance": 0.5890852941276583,
+        "message_id": "decipher_export_19:740",
+        "query_id": "q0004",
+        "rank": 4
+      },
+      {
+        "distance": 0.5901410083471028,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0004",
+        "rank": 5
+      },
+      {
+        "distance": 0.5946495758003976,
+        "message_id": "decipher_message_1:6570",
+        "query_id": "q0004",
+        "rank": 6
+      },
+      {
+        "distance": 0.5962950507339855,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0004",
+        "rank": 7
+      },
+      {
+        "distance": 0.6013713183885828,
+        "message_id": "decipher_message_1:6962",
+        "query_id": "q0004",
+        "rank": 8
+      },
+      {
+        "distance": 0.6028039925298303,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0004",
+        "rank": 9
+      },
+      {
+        "distance": 0.6031714329476232,
+        "message_id": "decipher_export_19:1556",
+        "query_id": "q0004",
+        "rank": 10
+      },
+      {
+        "distance": 0.604910841962258,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0004",
+        "rank": 11
+      },
+      {
+        "distance": 0.6057747577632011,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0004",
+        "rank": 12
+      },
+      {
+        "distance": 0.6069913699915256,
+        "message_id": "decipher_message_1:1765",
+        "query_id": "q0004",
+        "rank": 13
+      },
+      {
+        "distance": 0.6101965566899992,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0004",
+        "rank": 14
+      },
+      {
+        "distance": 0.611268231729768,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0004",
+        "rank": 15
+      },
+      {
+        "distance": 0.6131705320461925,
+        "message_id": "decipher_message_1:1960",
+        "query_id": "q0004",
+        "rank": 16
+      },
+      {
+        "distance": 0.6134999762164359,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0004",
+        "rank": 17
+      },
+      {
+        "distance": 0.6153423124647985,
+        "message_id": "decipher_message_1:3708",
+        "query_id": "q0004",
+        "rank": 18
+      },
+      {
+        "distance": 0.61660264864614,
+        "message_id": "decipher_message_1:1194",
+        "query_id": "q0004",
+        "rank": 19
+      },
+      {
+        "distance": 0.6166674934829377,
+        "message_id": "decipher_message_1:6761",
+        "query_id": "q0004",
+        "rank": 20
+      },
+      {
+        "distance": 0.6176701940240118,
+        "message_id": "decipher_message_1:967",
+        "query_id": "q0004",
+        "rank": 21
+      },
+      {
+        "distance": 0.6179924397348452,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0004",
+        "rank": 22
+      },
+      {
+        "distance": 0.6265340830804671,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0004",
+        "rank": 23
+      },
+      {
+        "distance": 0.6268803316996812,
+        "message_id": "decipher_message_1:2695",
+        "query_id": "q0004",
+        "rank": 24
+      },
+      {
+        "distance": 0.6269301629476813,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0004",
+        "rank": 25
+      },
+      {
+        "distance": 0.6276815220364858,
+        "message_id": "decipher_message_1:4947",
+        "query_id": "q0004",
+        "rank": 26
+      },
+      {
+        "distance": 0.6297159240812693,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0004",
+        "rank": 27
+      },
+      {
+        "distance": 0.6311084688048645,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0004",
+        "rank": 28
+      },
+      {
+        "distance": 0.6311121842372457,
+        "message_id": "decipher_message_1:1280",
+        "query_id": "q0004",
+        "rank": 29
+      },
+      {
+        "distance": 0.6321266265694923,
+        "message_id": "decipher_export_19:1463",
+        "query_id": "q0004",
+        "rank": 30
+      },
+      {
+        "distance": 0.6322768563976242,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0004",
+        "rank": 31
+      },
+      {
+        "distance": 0.6330067586012742,
+        "message_id": "decipher_message_1:6520",
+        "query_id": "q0004",
+        "rank": 32
+      },
+      {
+        "distance": 0.6331153471895841,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0004",
+        "rank": 33
+      },
+      {
+        "distance": 0.6340699489518268,
+        "message_id": "decipher_message_1:6565",
+        "query_id": "q0004",
+        "rank": 34
+      },
+      {
+        "distance": 0.6348675392821738,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0004",
+        "rank": 35
+      },
+      {
+        "distance": 0.6369672720419077,
+        "message_id": "decipher_message_1:2635",
+        "query_id": "q0004",
+        "rank": 36
+      },
+      {
+        "distance": 0.637493980984769,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0004",
+        "rank": 37
+      },
+      {
+        "distance": 0.6398840245230474,
+        "message_id": "decipher_message_1:3652",
+        "query_id": "q0004",
+        "rank": 38
+      },
+      {
+        "distance": 0.6402909107097348,
+        "message_id": "decipher_message_1:6787",
+        "query_id": "q0004",
+        "rank": 39
+      },
+      {
+        "distance": 0.6413518522101634,
+        "message_id": "decipher_message_1:5690",
+        "query_id": "q0004",
+        "rank": 40
+      },
+      {
+        "distance": 0.6416395639218772,
+        "message_id": "decipher_message_1:5443",
+        "query_id": "q0004",
+        "rank": 41
+      },
+      {
+        "distance": 0.6423306044164045,
+        "message_id": "decipher_export_19:4027",
+        "query_id": "q0004",
+        "rank": 42
+      },
+      {
+        "distance": 0.6448928478620382,
+        "message_id": "decipher_message_1:5112",
+        "query_id": "q0004",
+        "rank": 43
+      },
+      {
+        "distance": 0.6471170257101209,
+        "message_id": "decipher_message_1:7162",
+        "query_id": "q0004",
+        "rank": 44
+      },
+      {
+        "distance": 0.6471641917776125,
+        "message_id": "decipher_message_1:587",
+        "query_id": "q0004",
+        "rank": 45
+      },
+      {
+        "distance": 0.647899255900224,
+        "message_id": "decipher_message_1:4871",
+        "query_id": "q0004",
+        "rank": 46
+      },
+      {
+        "distance": 0.6494512990488266,
+        "message_id": "decipher_export_19:3101",
+        "query_id": "q0004",
+        "rank": 47
+      },
+      {
+        "distance": 0.650465387003212,
+        "message_id": "decipher_message_1:7173",
+        "query_id": "q0004",
+        "rank": 48
+      },
+      {
+        "distance": 0.6507620544406586,
+        "message_id": "decipher_message_1:3791",
+        "query_id": "q0004",
+        "rank": 49
+      },
+      {
+        "distance": 0.6555193327619533,
+        "message_id": "decipher_export_19:1899",
+        "query_id": "q0004",
+        "rank": 50
+      },
+      {
+        "distance": 0.6556023848475765,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0004",
+        "rank": 51
+      },
+      {
+        "distance": 0.6566378031962794,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0004",
+        "rank": 52
+      },
+      {
+        "distance": 0.6577643686886351,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0004",
+        "rank": 53
+      },
+      {
+        "distance": 0.6587685189164199,
+        "message_id": "decipher_export_19:3471",
+        "query_id": "q0004",
+        "rank": 54
+      },
+      {
+        "distance": 0.6610819034993931,
+        "message_id": "decipher_message_1:2096",
+        "query_id": "q0004",
+        "rank": 55
+      },
+      {
+        "distance": 0.6612896603452187,
+        "message_id": "decipher_message_1:3034",
+        "query_id": "q0004",
+        "rank": 56
+      },
+      {
+        "distance": 0.661687857884312,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0004",
+        "rank": 57
+      },
+      {
+        "distance": 0.6635227284474572,
+        "message_id": "decipher_message_1:5163",
+        "query_id": "q0004",
+        "rank": 58
+      },
+      {
+        "distance": 0.664905605969761,
+        "message_id": "decipher_message_1:1761",
+        "query_id": "q0004",
+        "rank": 59
+      },
+      {
+        "distance": 0.6651423114494884,
+        "message_id": "decipher_message_1:5440",
+        "query_id": "q0004",
+        "rank": 60
+      },
+      {
+        "distance": 0.6669399269712395,
+        "message_id": "decipher_message_1:1319",
+        "query_id": "q0004",
+        "rank": 61
+      },
+      {
+        "distance": 0.6676140353383524,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0004",
+        "rank": 62
+      },
+      {
+        "distance": 0.6686407018398374,
+        "message_id": "decipher_message_1:844",
+        "query_id": "q0004",
+        "rank": 63
+      },
+      {
+        "distance": 0.6691582998533834,
+        "message_id": "decipher_message_1:6728",
+        "query_id": "q0004",
+        "rank": 64
+      },
+      {
+        "distance": 0.6698373205398473,
+        "message_id": "decipher_export_19:600",
+        "query_id": "q0004",
+        "rank": 65
+      },
+      {
+        "distance": 0.6706380585253853,
+        "message_id": "decipher_message_1:1644",
+        "query_id": "q0004",
+        "rank": 66
+      },
+      {
+        "distance": 0.670974297597335,
+        "message_id": "decipher_message_1:3376",
+        "query_id": "q0004",
+        "rank": 67
+      },
+      {
+        "distance": 0.6715891428803917,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0004",
+        "rank": 68
+      },
+      {
+        "distance": 0.6719737805063253,
+        "message_id": "decipher_export_19:583",
+        "query_id": "q0004",
+        "rank": 69
+      },
+      {
+        "distance": 0.6732491389438352,
+        "message_id": "decipher_message_1:4442",
+        "query_id": "q0004",
+        "rank": 70
+      },
+      {
+        "distance": 0.6750865592840143,
+        "message_id": "decipher_export_19:4589",
+        "query_id": "q0004",
+        "rank": 71
+      },
+      {
+        "distance": 0.675684450961788,
+        "message_id": "decipher_message_1:2285",
+        "query_id": "q0004",
+        "rank": 72
+      },
+      {
+        "distance": 0.676842040007088,
+        "message_id": "decipher_message_1:7171",
+        "query_id": "q0004",
+        "rank": 73
+      },
+      {
+        "distance": 0.6773130763865092,
+        "message_id": "decipher_message_1:3023",
+        "query_id": "q0004",
+        "rank": 74
+      },
+      {
+        "distance": 0.677839273945375,
+        "message_id": "decipher_message_1:3367",
+        "query_id": "q0004",
+        "rank": 75
+      },
+      {
+        "distance": 0.6779227571165893,
+        "message_id": "decipher_message_1:1437",
+        "query_id": "q0004",
+        "rank": 76
+      },
+      {
+        "distance": 0.6780419117514535,
+        "message_id": "decipher_export_19:3080",
+        "query_id": "q0004",
+        "rank": 77
+      },
+      {
+        "distance": 0.6780912969930898,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0004",
+        "rank": 78
+      },
+      {
+        "distance": 0.6784227642093295,
+        "message_id": "decipher_message_1:3530",
+        "query_id": "q0004",
+        "rank": 79
+      },
+      {
+        "distance": 0.6796394779521868,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0004",
+        "rank": 80
+      },
+      {
+        "distance": 0.6799259939841042,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0004",
+        "rank": 81
+      },
+      {
+        "distance": 0.6805361971608532,
+        "message_id": "decipher_message_1:1981",
+        "query_id": "q0004",
+        "rank": 82
+      },
+      {
+        "distance": 0.6806228543834101,
+        "message_id": "decipher_message_1:7210",
+        "query_id": "q0004",
+        "rank": 83
+      },
+      {
+        "distance": 0.681407005932079,
+        "message_id": "decipher_export_19:1822",
+        "query_id": "q0004",
+        "rank": 84
+      },
+      {
+        "distance": 0.6815034289455777,
+        "message_id": "decipher_message_1:6738",
+        "query_id": "q0004",
+        "rank": 85
+      },
+      {
+        "distance": 0.6823026518983046,
+        "message_id": "decipher_export_19:3372",
+        "query_id": "q0004",
+        "rank": 86
+      },
+      {
+        "distance": 0.683538937952505,
+        "message_id": "decipher_message_1:2048",
+        "query_id": "q0004",
+        "rank": 87
+      },
+      {
+        "distance": 0.6849153905328584,
+        "message_id": "decipher_message_1:1282",
+        "query_id": "q0004",
+        "rank": 88
+      },
+      {
+        "distance": 0.6854038605501058,
+        "message_id": "decipher_message_1:7168",
+        "query_id": "q0004",
+        "rank": 89
+      },
+      {
+        "distance": 0.6861234696898375,
+        "message_id": "decipher_export_19:3463",
+        "query_id": "q0004",
+        "rank": 90
+      },
+      {
+        "distance": 0.6862048165128258,
+        "message_id": "decipher_message_1:4352",
+        "query_id": "q0004",
+        "rank": 91
+      },
+      {
+        "distance": 0.6876868658518682,
+        "message_id": "decipher_message_1:1103",
+        "query_id": "q0004",
+        "rank": 92
+      },
+      {
+        "distance": 0.6884151621126322,
+        "message_id": "decipher_message_1:5113",
+        "query_id": "q0004",
+        "rank": 93
+      },
+      {
+        "distance": 0.6887420650111356,
+        "message_id": "decipher_message_1:7357",
+        "query_id": "q0004",
+        "rank": 94
+      },
+      {
+        "distance": 0.6888248522960648,
+        "message_id": "decipher_message_1:4388",
+        "query_id": "q0004",
+        "rank": 95
+      },
+      {
+        "distance": 0.6891315107303051,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0004",
+        "rank": 96
+      },
+      {
+        "distance": 0.6895177758378372,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0004",
+        "rank": 97
+      },
+      {
+        "distance": 0.6899384694654442,
+        "message_id": "decipher_message_1:1473",
+        "query_id": "q0004",
+        "rank": 98
+      },
+      {
+        "distance": 0.6900289063312859,
+        "message_id": "decipher_message_1:2165",
+        "query_id": "q0004",
+        "rank": 99
+      },
+      {
+        "distance": 0.6900573971199186,
+        "message_id": "decipher_message_1:4132",
+        "query_id": "q0004",
+        "rank": 100
+      },
+      {
+        "distance": 0.545275800444953,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0005",
+        "rank": 1
+      },
+      {
+        "distance": 0.5585971956124506,
+        "message_id": "decipher_message_1:7170",
+        "query_id": "q0005",
+        "rank": 2
+      },
+      {
+        "distance": 0.5625325887885342,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0005",
+        "rank": 3
+      },
+      {
+        "distance": 0.5707833472447797,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0005",
+        "rank": 4
+      },
+      {
+        "distance": 0.5807889587209527,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0005",
+        "rank": 5
+      },
+      {
+        "distance": 0.5816785677681069,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0005",
+        "rank": 6
+      },
+      {
+        "distance": 0.5891936346081222,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0005",
+        "rank": 7
+      },
+      {
+        "distance": 0.591368613971472,
+        "message_id": "decipher_message_1:2026",
+        "query_id": "q0005",
+        "rank": 8
+      },
+      {
+        "distance": 0.605587298590663,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0005",
+        "rank": 9
+      },
+      {
+        "distance": 0.608269860523545,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0005",
+        "rank": 10
+      },
+      {
+        "distance": 0.6209962897129828,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0005",
+        "rank": 11
+      },
+      {
+        "distance": 0.6223803446536185,
+        "message_id": "decipher_message_1:1167",
+        "query_id": "q0005",
+        "rank": 12
+      },
+      {
+        "distance": 0.6240111337276255,
+        "message_id": "decipher_export_19:600",
+        "query_id": "q0005",
+        "rank": 13
+      },
+      {
+        "distance": 0.6269343013729236,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0005",
+        "rank": 14
+      },
+      {
+        "distance": 0.6270301592829619,
+        "message_id": "decipher_export_19:4798",
+        "query_id": "q0005",
+        "rank": 15
+      },
+      {
+        "distance": 0.6341865411261629,
+        "message_id": "decipher_message_1:1772",
+        "query_id": "q0005",
+        "rank": 16
+      },
+      {
+        "distance": 0.6368180257145889,
+        "message_id": "decipher_message_1:2138",
+        "query_id": "q0005",
+        "rank": 17
+      },
+      {
+        "distance": 0.6421340723692138,
+        "message_id": "decipher_message_1:2635",
+        "query_id": "q0005",
+        "rank": 18
+      },
+      {
+        "distance": 0.6428802348907527,
+        "message_id": "decipher_export_19:3396",
+        "query_id": "q0005",
+        "rank": 19
+      },
+      {
+        "distance": 0.6435025750276693,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0005",
+        "rank": 20
+      },
+      {
+        "distance": 0.6486468369862727,
+        "message_id": "decipher_export_19:587",
+        "query_id": "q0005",
+        "rank": 21
+      },
+      {
+        "distance": 0.6500789699967733,
+        "message_id": "decipher_message_1:2108",
+        "query_id": "q0005",
+        "rank": 22
+      },
+      {
+        "distance": 0.6521117819834039,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0005",
+        "rank": 23
+      },
+      {
+        "distance": 0.6528679170389504,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0005",
+        "rank": 24
+      },
+      {
+        "distance": 0.6535672207901536,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0005",
+        "rank": 25
+      },
+      {
+        "distance": 0.6536566840632066,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0005",
+        "rank": 26
+      },
+      {
+        "distance": 0.6572556591395522,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0005",
+        "rank": 27
+      },
+      {
+        "distance": 0.6575882559981472,
+        "message_id": "decipher_message_1:3650",
+        "query_id": "q0005",
+        "rank": 28
+      },
+      {
+        "distance": 0.6580358640723689,
+        "message_id": "decipher_message_1:1892",
+        "query_id": "q0005",
+        "rank": 29
+      },
+      {
+        "distance": 0.6597963989269587,
+        "message_id": "decipher_message_1:5122",
+        "query_id": "q0005",
+        "rank": 30
+      },
+      {
+        "distance": 0.6598948964915761,
+        "message_id": "decipher_message_1:1757",
+        "query_id": "q0005",
+        "rank": 31
+      },
+      {
+        "distance": 0.6616227174054907,
+        "message_id": "decipher_message_1:7172",
+        "query_id": "q0005",
+        "rank": 32
+      },
+      {
+        "distance": 0.6616760706407397,
+        "message_id": "decipher_export_19:4634",
+        "query_id": "q0005",
+        "rank": 33
+      },
+      {
+        "distance": 0.6625571760063773,
+        "message_id": "decipher_export_19:3020",
+        "query_id": "q0005",
+        "rank": 34
+      },
+      {
+        "distance": 0.6633910694828551,
+        "message_id": "decipher_message_1:931",
+        "query_id": "q0005",
+        "rank": 35
+      },
+      {
+        "distance": 0.6650274781675669,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0005",
+        "rank": 36
+      },
+      {
+        "distance": 0.6665194067461081,
+        "message_id": "decipher_export_19:3454",
+        "query_id": "q0005",
+        "rank": 37
+      },
+      {
+        "distance": 0.668678732531613,
+        "message_id": "decipher_message_1:2321",
+        "query_id": "q0005",
+        "rank": 38
+      },
+      {
+        "distance": 0.668921073461698,
+        "message_id": "decipher_message_1:2137",
+        "query_id": "q0005",
+        "rank": 39
+      },
+      {
+        "distance": 0.6703438743743089,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0005",
+        "rank": 40
+      },
+      {
+        "distance": 0.6703730550831374,
+        "message_id": "decipher_export_19:788",
+        "query_id": "q0005",
+        "rank": 41
+      },
+      {
+        "distance": 0.6724356610562086,
+        "message_id": "decipher_message_1:2107",
+        "query_id": "q0005",
+        "rank": 42
+      },
+      {
+        "distance": 0.6737463459830222,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0005",
+        "rank": 43
+      },
+      {
+        "distance": 0.6740132936769456,
+        "message_id": "decipher_message_1:2135",
+        "query_id": "q0005",
+        "rank": 44
+      },
+      {
+        "distance": 0.6745963874099457,
+        "message_id": "decipher_message_1:1719",
+        "query_id": "q0005",
+        "rank": 45
+      },
+      {
+        "distance": 0.6747779423124569,
+        "message_id": "decipher_message_1:1840",
+        "query_id": "q0005",
+        "rank": 46
+      },
+      {
+        "distance": 0.6772811841869549,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0005",
+        "rank": 47
+      },
+      {
+        "distance": 0.677466938945128,
+        "message_id": "decipher_message_1:2282",
+        "query_id": "q0005",
+        "rank": 48
+      },
+      {
+        "distance": 0.6786578941695945,
+        "message_id": "decipher_message_1:5490",
+        "query_id": "q0005",
+        "rank": 49
+      },
+      {
+        "distance": 0.6791781522452891,
+        "message_id": "decipher_message_1:1282",
+        "query_id": "q0005",
+        "rank": 50
+      },
+      {
+        "distance": 0.6802663485398749,
+        "message_id": "decipher_message_1:1234",
+        "query_id": "q0005",
+        "rank": 51
+      },
+      {
+        "distance": 0.680354097384837,
+        "message_id": "decipher_export_19:1077",
+        "query_id": "q0005",
+        "rank": 52
+      },
+      {
+        "distance": 0.6809829210683729,
+        "message_id": "decipher_export_19:4638",
+        "query_id": "q0005",
+        "rank": 53
+      },
+      {
+        "distance": 0.6818848250151854,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0005",
+        "rank": 54
+      },
+      {
+        "distance": 0.6832940522611217,
+        "message_id": "decipher_message_1:2620",
+        "query_id": "q0005",
+        "rank": 55
+      },
+      {
+        "distance": 0.6833084117747772,
+        "message_id": "decipher_export_19:603",
+        "query_id": "q0005",
+        "rank": 56
+      },
+      {
+        "distance": 0.6836591054978216,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0005",
+        "rank": 57
+      },
+      {
+        "distance": 0.6841917142641648,
+        "message_id": "decipher_message_1:6602",
+        "query_id": "q0005",
+        "rank": 58
+      },
+      {
+        "distance": 0.6856505683462375,
+        "message_id": "decipher_message_1:6763",
+        "query_id": "q0005",
+        "rank": 59
+      },
+      {
+        "distance": 0.6882455459499495,
+        "message_id": "decipher_message_1:948",
+        "query_id": "q0005",
+        "rank": 60
+      },
+      {
+        "distance": 0.6883219974279275,
+        "message_id": "decipher_message_1:6762",
+        "query_id": "q0005",
+        "rank": 61
+      },
+      {
+        "distance": 0.6897630332280873,
+        "message_id": "decipher_message_1:7173",
+        "query_id": "q0005",
+        "rank": 62
+      },
+      {
+        "distance": 0.6898414988324507,
+        "message_id": "decipher_export_19:4534",
+        "query_id": "q0005",
+        "rank": 63
+      },
+      {
+        "distance": 0.6900703051121655,
+        "message_id": "decipher_message_1:3847",
+        "query_id": "q0005",
+        "rank": 64
+      },
+      {
+        "distance": 0.6907610744810757,
+        "message_id": "decipher_export_5:88",
+        "query_id": "q0005",
+        "rank": 65
+      },
+      {
+        "distance": 0.691817265748931,
+        "message_id": "decipher_export_19:3007",
+        "query_id": "q0005",
+        "rank": 66
+      },
+      {
+        "distance": 0.6924880458567297,
+        "message_id": "decipher_message_1:1641",
+        "query_id": "q0005",
+        "rank": 67
+      },
+      {
+        "distance": 0.6927870350276427,
+        "message_id": "decipher_message_1:984",
+        "query_id": "q0005",
+        "rank": 68
+      },
+      {
+        "distance": 0.6929279387271003,
+        "message_id": "decipher_message_1:5269",
+        "query_id": "q0005",
+        "rank": 69
+      },
+      {
+        "distance": 0.6932863714181527,
+        "message_id": "decipher_message_1:5907",
+        "query_id": "q0005",
+        "rank": 70
+      },
+      {
+        "distance": 0.6934281002740904,
+        "message_id": "decipher_message_1:1824",
+        "query_id": "q0005",
+        "rank": 71
+      },
+      {
+        "distance": 0.6952735450333283,
+        "message_id": "decipher_message_1:1843",
+        "query_id": "q0005",
+        "rank": 72
+      },
+      {
+        "distance": 0.6964252100443401,
+        "message_id": "decipher_message_1:6738",
+        "query_id": "q0005",
+        "rank": 73
+      },
+      {
+        "distance": 0.6976851926872951,
+        "message_id": "decipher_message_1:978",
+        "query_id": "q0005",
+        "rank": 74
+      },
+      {
+        "distance": 0.6985982421957018,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0005",
+        "rank": 75
+      },
+      {
+        "distance": 0.6986455900804347,
+        "message_id": "decipher_export_19:1070",
+        "query_id": "q0005",
+        "rank": 76
+      },
+      {
+        "distance": 0.7003530922905653,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0005",
+        "rank": 77
+      },
+      {
+        "distance": 0.7013708586453351,
+        "message_id": "decipher_message_1:4079",
+        "query_id": "q0005",
+        "rank": 78
+      },
+      {
+        "distance": 0.7024930825046967,
+        "message_id": "decipher_message_1:2140",
+        "query_id": "q0005",
+        "rank": 79
+      },
+      {
+        "distance": 0.7029402384659246,
+        "message_id": "decipher_message_1:3715",
+        "query_id": "q0005",
+        "rank": 80
+      },
+      {
+        "distance": 0.7030181660051846,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0005",
+        "rank": 81
+      },
+      {
+        "distance": 0.7043108074128206,
+        "message_id": "decipher_message_1:2056",
+        "query_id": "q0005",
+        "rank": 82
+      },
+      {
+        "distance": 0.7053035662360576,
+        "message_id": "decipher_export_19:1899",
+        "query_id": "q0005",
+        "rank": 83
+      },
+      {
+        "distance": 0.7053523678088214,
+        "message_id": "decipher_message_1:3520",
+        "query_id": "q0005",
+        "rank": 84
+      },
+      {
+        "distance": 0.7054393248011382,
+        "message_id": "decipher_message_1:375",
+        "query_id": "q0005",
+        "rank": 85
+      },
+      {
+        "distance": 0.7058768116050098,
+        "message_id": "decipher_message_1:5242",
+        "query_id": "q0005",
+        "rank": 86
+      },
+      {
+        "distance": 0.7060486092294975,
+        "message_id": "decipher_message_1:587",
+        "query_id": "q0005",
+        "rank": 87
+      },
+      {
+        "distance": 0.706164021933153,
+        "message_id": "decipher_message_1:3526",
+        "query_id": "q0005",
+        "rank": 88
+      },
+      {
+        "distance": 0.706265711727459,
+        "message_id": "decipher_message_1:679",
+        "query_id": "q0005",
+        "rank": 89
+      },
+      {
+        "distance": 0.706481692989949,
+        "message_id": "decipher_message_1:3265",
+        "query_id": "q0005",
+        "rank": 90
+      },
+      {
+        "distance": 0.7067097529006762,
+        "message_id": "decipher_message_1:900",
+        "query_id": "q0005",
+        "rank": 91
+      },
+      {
+        "distance": 0.7072118957555034,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0005",
+        "rank": 92
+      },
+      {
+        "distance": 0.7081581362277725,
+        "message_id": "decipher_message_1:5342",
+        "query_id": "q0005",
+        "rank": 93
+      },
+      {
+        "distance": 0.7090354638591547,
+        "message_id": "decipher_export_5:139",
+        "query_id": "q0005",
+        "rank": 94
+      },
+      {
+        "distance": 0.7099494689875587,
+        "message_id": "decipher_message_1:1774",
+        "query_id": "q0005",
+        "rank": 95
+      },
+      {
+        "distance": 0.7101399576377738,
+        "message_id": "decipher_message_1:5802",
+        "query_id": "q0005",
+        "rank": 96
+      },
+      {
+        "distance": 0.7106940662074204,
+        "message_id": "decipher_message_1:1771",
+        "query_id": "q0005",
+        "rank": 97
+      },
+      {
+        "distance": 0.7114334528460821,
+        "message_id": "decipher_message_1:448",
+        "query_id": "q0005",
+        "rank": 98
+      },
+      {
+        "distance": 0.7121692198071464,
+        "message_id": "decipher_message_1:3544",
+        "query_id": "q0005",
+        "rank": 99
+      },
+      {
+        "distance": 0.7132456842629669,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0005",
+        "rank": 100
+      },
+      {
+        "distance": 0.5266205586584974,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0006",
+        "rank": 1
+      },
+      {
+        "distance": 0.5348317599498787,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0006",
+        "rank": 2
+      },
+      {
+        "distance": 0.5367459975527964,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0006",
+        "rank": 3
+      },
+      {
+        "distance": 0.5487406207805599,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0006",
+        "rank": 4
+      },
+      {
+        "distance": 0.5638387186083903,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0006",
+        "rank": 5
+      },
+      {
+        "distance": 0.5654527594605825,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0006",
+        "rank": 6
+      },
+      {
+        "distance": 0.5705503245763193,
+        "message_id": "decipher_message_1:2107",
+        "query_id": "q0006",
+        "rank": 7
+      },
+      {
+        "distance": 0.5786130112119033,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0006",
+        "rank": 8
+      },
+      {
+        "distance": 0.5936166392374158,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0006",
+        "rank": 9
+      },
+      {
+        "distance": 0.604906250455822,
+        "message_id": "decipher_export_19:3386",
+        "query_id": "q0006",
+        "rank": 10
+      },
+      {
+        "distance": 0.6069320322921179,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0006",
+        "rank": 11
+      },
+      {
+        "distance": 0.608311541561535,
+        "message_id": "decipher_message_1:5122",
+        "query_id": "q0006",
+        "rank": 12
+      },
+      {
+        "distance": 0.6127962145547121,
+        "message_id": "decipher_message_1:1960",
+        "query_id": "q0006",
+        "rank": 13
+      },
+      {
+        "distance": 0.6149884503438589,
+        "message_id": "decipher_message_1:587",
+        "query_id": "q0006",
+        "rank": 14
+      },
+      {
+        "distance": 0.6158250762242736,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0006",
+        "rank": 15
+      },
+      {
+        "distance": 0.6168137246459151,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0006",
+        "rank": 16
+      },
+      {
+        "distance": 0.6194814304645897,
+        "message_id": "decipher_message_1:1734",
+        "query_id": "q0006",
+        "rank": 17
+      },
+      {
+        "distance": 0.6198817704328314,
+        "message_id": "decipher_message_1:1560",
+        "query_id": "q0006",
+        "rank": 18
+      },
+      {
+        "distance": 0.6205056548183756,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0006",
+        "rank": 19
+      },
+      {
+        "distance": 0.6236797721395384,
+        "message_id": "decipher_message_1:967",
+        "query_id": "q0006",
+        "rank": 20
+      },
+      {
+        "distance": 0.6265123067924296,
+        "message_id": "decipher_message_1:4011",
+        "query_id": "q0006",
+        "rank": 21
+      },
+      {
+        "distance": 0.6278828455037659,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0006",
+        "rank": 22
+      },
+      {
+        "distance": 0.6298856957324552,
+        "message_id": "decipher_export_19:788",
+        "query_id": "q0006",
+        "rank": 23
+      },
+      {
+        "distance": 0.6302090664511426,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0006",
+        "rank": 24
+      },
+      {
+        "distance": 0.6306105335007546,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0006",
+        "rank": 25
+      },
+      {
+        "distance": 0.6317051459747736,
+        "message_id": "decipher_message_1:864",
+        "query_id": "q0006",
+        "rank": 26
+      },
+      {
+        "distance": 0.634020390069268,
+        "message_id": "decipher_message_1:2140",
+        "query_id": "q0006",
+        "rank": 27
+      },
+      {
+        "distance": 0.6351572945491963,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0006",
+        "rank": 28
+      },
+      {
+        "distance": 0.6352952063216635,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0006",
+        "rank": 29
+      },
+      {
+        "distance": 0.6363084219361618,
+        "message_id": "decipher_message_1:7173",
+        "query_id": "q0006",
+        "rank": 30
+      },
+      {
+        "distance": 0.6376803258731512,
+        "message_id": "decipher_export_19:603",
+        "query_id": "q0006",
+        "rank": 31
+      },
+      {
+        "distance": 0.6398982524979071,
+        "message_id": "decipher_message_1:3328",
+        "query_id": "q0006",
+        "rank": 32
+      },
+      {
+        "distance": 0.6401128427105331,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0006",
+        "rank": 33
+      },
+      {
+        "distance": 0.6411717743531069,
+        "message_id": "decipher_message_1:1194",
+        "query_id": "q0006",
+        "rank": 34
+      },
+      {
+        "distance": 0.6415760033159355,
+        "message_id": "decipher_message_1:5342",
+        "query_id": "q0006",
+        "rank": 35
+      },
+      {
+        "distance": 0.6431702462651309,
+        "message_id": "decipher_export_19:763",
+        "query_id": "q0006",
+        "rank": 36
+      },
+      {
+        "distance": 0.6433776941191034,
+        "message_id": "decipher_message_1:4366",
+        "query_id": "q0006",
+        "rank": 37
+      },
+      {
+        "distance": 0.645859435170332,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0006",
+        "rank": 38
+      },
+      {
+        "distance": 0.6468630111150249,
+        "message_id": "decipher_message_1:5490",
+        "query_id": "q0006",
+        "rank": 39
+      },
+      {
+        "distance": 0.6480270559842816,
+        "message_id": "decipher_message_1:1319",
+        "query_id": "q0006",
+        "rank": 40
+      },
+      {
+        "distance": 0.6485542035961827,
+        "message_id": "decipher_message_1:2433",
+        "query_id": "q0006",
+        "rank": 41
+      },
+      {
+        "distance": 0.6495734224393388,
+        "message_id": "decipher_message_1:2185",
+        "query_id": "q0006",
+        "rank": 42
+      },
+      {
+        "distance": 0.6528530647813763,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0006",
+        "rank": 43
+      },
+      {
+        "distance": 0.6531512837514472,
+        "message_id": "decipher_message_1:2128",
+        "query_id": "q0006",
+        "rank": 44
+      },
+      {
+        "distance": 0.6561352170993567,
+        "message_id": "decipher_message_1:4766",
+        "query_id": "q0006",
+        "rank": 45
+      },
+      {
+        "distance": 0.6563538728471388,
+        "message_id": "decipher_message_1:3023",
+        "query_id": "q0006",
+        "rank": 46
+      },
+      {
+        "distance": 0.6565458782307976,
+        "message_id": "decipher_export_19:740",
+        "query_id": "q0006",
+        "rank": 47
+      },
+      {
+        "distance": 0.6577153656592468,
+        "message_id": "decipher_message_1:1867",
+        "query_id": "q0006",
+        "rank": 48
+      },
+      {
+        "distance": 0.6577977166579806,
+        "message_id": "decipher_message_1:787",
+        "query_id": "q0006",
+        "rank": 49
+      },
+      {
+        "distance": 0.6584854786552607,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0006",
+        "rank": 50
+      },
+      {
+        "distance": 0.6595648831058571,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0006",
+        "rank": 51
+      },
+      {
+        "distance": 0.6595987021815533,
+        "message_id": "decipher_message_1:5061",
+        "query_id": "q0006",
+        "rank": 52
+      },
+      {
+        "distance": 0.6607443366947405,
+        "message_id": "decipher_message_1:3715",
+        "query_id": "q0006",
+        "rank": 53
+      },
+      {
+        "distance": 0.6621250239040676,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0006",
+        "rank": 54
+      },
+      {
+        "distance": 0.6622815499693673,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0006",
+        "rank": 55
+      },
+      {
+        "distance": 0.6632178079447342,
+        "message_id": "decipher_message_1:3708",
+        "query_id": "q0006",
+        "rank": 56
+      },
+      {
+        "distance": 0.6638078481380025,
+        "message_id": "decipher_message_1:4013",
+        "query_id": "q0006",
+        "rank": 57
+      },
+      {
+        "distance": 0.6656190338214093,
+        "message_id": "decipher_export_19:94",
+        "query_id": "q0006",
+        "rank": 58
+      },
+      {
+        "distance": 0.6662741412225378,
+        "message_id": "decipher_export_19:4447",
+        "query_id": "q0006",
+        "rank": 59
+      },
+      {
+        "distance": 0.6663869684676043,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0006",
+        "rank": 60
+      },
+      {
+        "distance": 0.6664879494004972,
+        "message_id": "decipher_message_1:1641",
+        "query_id": "q0006",
+        "rank": 61
+      },
+      {
+        "distance": 0.6693898974760124,
+        "message_id": "decipher_message_1:1329",
+        "query_id": "q0006",
+        "rank": 62
+      },
+      {
+        "distance": 0.6696710202176626,
+        "message_id": "decipher_export_19:3374",
+        "query_id": "q0006",
+        "rank": 63
+      },
+      {
+        "distance": 0.6701790755815353,
+        "message_id": "decipher_message_1:6565",
+        "query_id": "q0006",
+        "rank": 64
+      },
+      {
+        "distance": 0.6702684188007046,
+        "message_id": "decipher_export_19:3349",
+        "query_id": "q0006",
+        "rank": 65
+      },
+      {
+        "distance": 0.671718930857164,
+        "message_id": "decipher_message_1:1302",
+        "query_id": "q0006",
+        "rank": 66
+      },
+      {
+        "distance": 0.6717580261327605,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0006",
+        "rank": 67
+      },
+      {
+        "distance": 0.6754467693988497,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0006",
+        "rank": 68
+      },
+      {
+        "distance": 0.6763526244618359,
+        "message_id": "decipher_message_1:2137",
+        "query_id": "q0006",
+        "rank": 69
+      },
+      {
+        "distance": 0.6764419180564019,
+        "message_id": "decipher_message_1:1771",
+        "query_id": "q0006",
+        "rank": 70
+      },
+      {
+        "distance": 0.6771476512280534,
+        "message_id": "decipher_message_1:5443",
+        "query_id": "q0006",
+        "rank": 71
+      },
+      {
+        "distance": 0.6793660045292708,
+        "message_id": "decipher_message_1:2432",
+        "query_id": "q0006",
+        "rank": 72
+      },
+      {
+        "distance": 0.680383462685396,
+        "message_id": "decipher_message_1:1719",
+        "query_id": "q0006",
+        "rank": 73
+      },
+      {
+        "distance": 0.6810510723480644,
+        "message_id": "decipher_message_1:7162",
+        "query_id": "q0006",
+        "rank": 74
+      },
+      {
+        "distance": 0.6811882803571231,
+        "message_id": "decipher_export_19:4745",
+        "query_id": "q0006",
+        "rank": 75
+      },
+      {
+        "distance": 0.6813646731886637,
+        "message_id": "decipher_message_1:2162",
+        "query_id": "q0006",
+        "rank": 76
+      },
+      {
+        "distance": 0.6817459256426495,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0006",
+        "rank": 77
+      },
+      {
+        "distance": 0.6827402479296352,
+        "message_id": "decipher_message_1:4669",
+        "query_id": "q0006",
+        "rank": 78
+      },
+      {
+        "distance": 0.6830073932000166,
+        "message_id": "decipher_message_1:978",
+        "query_id": "q0006",
+        "rank": 79
+      },
+      {
+        "distance": 0.6836226656358154,
+        "message_id": "decipher_message_1:1069",
+        "query_id": "q0006",
+        "rank": 80
+      },
+      {
+        "distance": 0.6844256279042749,
+        "message_id": "decipher_message_1:1790",
+        "query_id": "q0006",
+        "rank": 81
+      },
+      {
+        "distance": 0.684577944447033,
+        "message_id": "decipher_message_1:1282",
+        "query_id": "q0006",
+        "rank": 82
+      },
+      {
+        "distance": 0.6857363878871305,
+        "message_id": "decipher_message_1:3650",
+        "query_id": "q0006",
+        "rank": 83
+      },
+      {
+        "distance": 0.685746030833132,
+        "message_id": "decipher_export_19:583",
+        "query_id": "q0006",
+        "rank": 84
+      },
+      {
+        "distance": 0.6857929913564531,
+        "message_id": "decipher_message_1:4917",
+        "query_id": "q0006",
+        "rank": 85
+      },
+      {
+        "distance": 0.6863793981239157,
+        "message_id": "decipher_message_1:7164",
+        "query_id": "q0006",
+        "rank": 86
+      },
+      {
+        "distance": 0.6868741870472417,
+        "message_id": "decipher_message_1:5690",
+        "query_id": "q0006",
+        "rank": 87
+      },
+      {
+        "distance": 0.6872180262853089,
+        "message_id": "decipher_message_1:4132",
+        "query_id": "q0006",
+        "rank": 88
+      },
+      {
+        "distance": 0.6879872753762794,
+        "message_id": "decipher_message_1:6761",
+        "query_id": "q0006",
+        "rank": 89
+      },
+      {
+        "distance": 0.6884371985433646,
+        "message_id": "decipher_message_1:962",
+        "query_id": "q0006",
+        "rank": 90
+      },
+      {
+        "distance": 0.6886136252635848,
+        "message_id": "decipher_message_1:3791",
+        "query_id": "q0006",
+        "rank": 91
+      },
+      {
+        "distance": 0.6894867914564641,
+        "message_id": "decipher_message_1:3847",
+        "query_id": "q0006",
+        "rank": 92
+      },
+      {
+        "distance": 0.689665269831041,
+        "message_id": "decipher_message_1:2110",
+        "query_id": "q0006",
+        "rank": 93
+      },
+      {
+        "distance": 0.6899621462058234,
+        "message_id": "decipher_message_1:1473",
+        "query_id": "q0006",
+        "rank": 94
+      },
+      {
+        "distance": 0.6901073994319271,
+        "message_id": "decipher_message_1:544",
+        "query_id": "q0006",
+        "rank": 95
+      },
+      {
+        "distance": 0.6905118579571342,
+        "message_id": "decipher_message_1:4871",
+        "query_id": "q0006",
+        "rank": 96
+      },
+      {
+        "distance": 0.6914376672521261,
+        "message_id": "decipher_message_1:2190",
+        "query_id": "q0006",
+        "rank": 97
+      },
+      {
+        "distance": 0.6918715418762125,
+        "message_id": "decipher_message_1:738",
+        "query_id": "q0006",
+        "rank": 98
+      },
+      {
+        "distance": 0.6921377346673541,
+        "message_id": "decipher_message_1:1595",
+        "query_id": "q0006",
+        "rank": 99
+      },
+      {
+        "distance": 0.6922700516872218,
+        "message_id": "decipher_message_1:976",
+        "query_id": "q0006",
+        "rank": 100
+      },
+      {
+        "distance": 0.5020857001203414,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0007",
+        "rank": 1
+      },
+      {
+        "distance": 0.5040541614985582,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0007",
+        "rank": 2
+      },
+      {
+        "distance": 0.5165004598980985,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0007",
+        "rank": 3
+      },
+      {
+        "distance": 0.5230266334495945,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0007",
+        "rank": 4
+      },
+      {
+        "distance": 0.5246380933870519,
+        "message_id": "decipher_export_19:600",
+        "query_id": "q0007",
+        "rank": 5
+      },
+      {
+        "distance": 0.5308877442999667,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0007",
+        "rank": 6
+      },
+      {
+        "distance": 0.5413599456910496,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0007",
+        "rank": 7
+      },
+      {
+        "distance": 0.5494758410564239,
+        "message_id": "decipher_export_19:2689",
+        "query_id": "q0007",
+        "rank": 8
+      },
+      {
+        "distance": 0.5633732808913579,
+        "message_id": "decipher_message_1:1719",
+        "query_id": "q0007",
+        "rank": 9
+      },
+      {
+        "distance": 0.5692963518428467,
+        "message_id": "decipher_export_19:3396",
+        "query_id": "q0007",
+        "rank": 10
+      },
+      {
+        "distance": 0.5716877323555147,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0007",
+        "rank": 11
+      },
+      {
+        "distance": 0.5751176895743362,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0007",
+        "rank": 12
+      },
+      {
+        "distance": 0.5789076716818105,
+        "message_id": "decipher_message_1:1772",
+        "query_id": "q0007",
+        "rank": 13
+      },
+      {
+        "distance": 0.5884303631347729,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0007",
+        "rank": 14
+      },
+      {
+        "distance": 0.5914255711842986,
+        "message_id": "decipher_message_1:2026",
+        "query_id": "q0007",
+        "rank": 15
+      },
+      {
+        "distance": 0.5924710104804263,
+        "message_id": "decipher_export_5:139",
+        "query_id": "q0007",
+        "rank": 16
+      },
+      {
+        "distance": 0.59283194124787,
+        "message_id": "decipher_message_1:7170",
+        "query_id": "q0007",
+        "rank": 17
+      },
+      {
+        "distance": 0.5947516038998457,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0007",
+        "rank": 18
+      },
+      {
+        "distance": 0.594870553710062,
+        "message_id": "decipher_message_1:1640",
+        "query_id": "q0007",
+        "rank": 19
+      },
+      {
+        "distance": 0.5982913881804308,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0007",
+        "rank": 20
+      },
+      {
+        "distance": 0.6035855702758821,
+        "message_id": "decipher_message_1:1728",
+        "query_id": "q0007",
+        "rank": 21
+      },
+      {
+        "distance": 0.6043288657647574,
+        "message_id": "decipher_export_19:3378",
+        "query_id": "q0007",
+        "rank": 22
+      },
+      {
+        "distance": 0.6066673538548184,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0007",
+        "rank": 23
+      },
+      {
+        "distance": 0.6073386549916805,
+        "message_id": "decipher_export_5:140",
+        "query_id": "q0007",
+        "rank": 24
+      },
+      {
+        "distance": 0.6132266012055649,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0007",
+        "rank": 25
+      },
+      {
+        "distance": 0.6133008158823929,
+        "message_id": "decipher_message_1:1765",
+        "query_id": "q0007",
+        "rank": 26
+      },
+      {
+        "distance": 0.6138706889299292,
+        "message_id": "decipher_export_19:2532",
+        "query_id": "q0007",
+        "rank": 27
+      },
+      {
+        "distance": 0.6158674539958984,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0007",
+        "rank": 28
+      },
+      {
+        "distance": 0.6177965598579915,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0007",
+        "rank": 29
+      },
+      {
+        "distance": 0.6184566390611049,
+        "message_id": "decipher_message_1:1976",
+        "query_id": "q0007",
+        "rank": 30
+      },
+      {
+        "distance": 0.6185059483591699,
+        "message_id": "decipher_export_5:137",
+        "query_id": "q0007",
+        "rank": 31
+      },
+      {
+        "distance": 0.6257424018798459,
+        "message_id": "decipher_export_19:1899",
+        "query_id": "q0007",
+        "rank": 32
+      },
+      {
+        "distance": 0.6257794793654454,
+        "message_id": "decipher_message_1:2110",
+        "query_id": "q0007",
+        "rank": 33
+      },
+      {
+        "distance": 0.6261402117481902,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0007",
+        "rank": 34
+      },
+      {
+        "distance": 0.6263631988155381,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0007",
+        "rank": 35
+      },
+      {
+        "distance": 0.6299849943763383,
+        "message_id": "decipher_message_1:1960",
+        "query_id": "q0007",
+        "rank": 36
+      },
+      {
+        "distance": 0.630045761013357,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0007",
+        "rank": 37
+      },
+      {
+        "distance": 0.6330120372953463,
+        "message_id": "decipher_message_1:1167",
+        "query_id": "q0007",
+        "rank": 38
+      },
+      {
+        "distance": 0.6334770523374458,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0007",
+        "rank": 39
+      },
+      {
+        "distance": 0.633941949773695,
+        "message_id": "decipher_message_1:931",
+        "query_id": "q0007",
+        "rank": 40
+      },
+      {
+        "distance": 0.6340646038500121,
+        "message_id": "decipher_message_1:1808",
+        "query_id": "q0007",
+        "rank": 41
+      },
+      {
+        "distance": 0.6342824061773862,
+        "message_id": "decipher_message_1:2282",
+        "query_id": "q0007",
+        "rank": 42
+      },
+      {
+        "distance": 0.634691154398835,
+        "message_id": "decipher_message_1:587",
+        "query_id": "q0007",
+        "rank": 43
+      },
+      {
+        "distance": 0.637062144170353,
+        "message_id": "decipher_export_19:602",
+        "query_id": "q0007",
+        "rank": 44
+      },
+      {
+        "distance": 0.6378533539604223,
+        "message_id": "decipher_export_19:587",
+        "query_id": "q0007",
+        "rank": 45
+      },
+      {
+        "distance": 0.640599048898902,
+        "message_id": "decipher_message_1:978",
+        "query_id": "q0007",
+        "rank": 46
+      },
+      {
+        "distance": 0.6416763460014168,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0007",
+        "rank": 47
+      },
+      {
+        "distance": 0.6418641312527146,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0007",
+        "rank": 48
+      },
+      {
+        "distance": 0.6420908924550038,
+        "message_id": "decipher_message_1:3847",
+        "query_id": "q0007",
+        "rank": 49
+      },
+      {
+        "distance": 0.642857579055941,
+        "message_id": "decipher_message_1:1269",
+        "query_id": "q0007",
+        "rank": 50
+      },
+      {
+        "distance": 0.6441657201823705,
+        "message_id": "decipher_message_1:2138",
+        "query_id": "q0007",
+        "rank": 51
+      },
+      {
+        "distance": 0.6444017434168214,
+        "message_id": "decipher_message_1:876",
+        "query_id": "q0007",
+        "rank": 52
+      },
+      {
+        "distance": 0.6446772399525061,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0007",
+        "rank": 53
+      },
+      {
+        "distance": 0.644961442551909,
+        "message_id": "decipher_message_1:1489",
+        "query_id": "q0007",
+        "rank": 54
+      },
+      {
+        "distance": 0.6459153257457215,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0007",
+        "rank": 55
+      },
+      {
+        "distance": 0.6462311430693461,
+        "message_id": "decipher_message_1:1757",
+        "query_id": "q0007",
+        "rank": 56
+      },
+      {
+        "distance": 0.6485127456107957,
+        "message_id": "decipher_message_1:2137",
+        "query_id": "q0007",
+        "rank": 57
+      },
+      {
+        "distance": 0.6506041546961261,
+        "message_id": "decipher_message_1:5797",
+        "query_id": "q0007",
+        "rank": 58
+      },
+      {
+        "distance": 0.6508141254450832,
+        "message_id": "decipher_message_1:1641",
+        "query_id": "q0007",
+        "rank": 59
+      },
+      {
+        "distance": 0.6515717394505967,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0007",
+        "rank": 60
+      },
+      {
+        "distance": 0.6521074385446601,
+        "message_id": "decipher_message_1:3520",
+        "query_id": "q0007",
+        "rank": 61
+      },
+      {
+        "distance": 0.6528303037085728,
+        "message_id": "decipher_message_1:7172",
+        "query_id": "q0007",
+        "rank": 62
+      },
+      {
+        "distance": 0.6529342288202826,
+        "message_id": "decipher_message_1:6602",
+        "query_id": "q0007",
+        "rank": 63
+      },
+      {
+        "distance": 0.6533544980922038,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0007",
+        "rank": 64
+      },
+      {
+        "distance": 0.6534170749576477,
+        "message_id": "decipher_message_1:377",
+        "query_id": "q0007",
+        "rank": 65
+      },
+      {
+        "distance": 0.6547130700803863,
+        "message_id": "decipher_message_1:5802",
+        "query_id": "q0007",
+        "rank": 66
+      },
+      {
+        "distance": 0.6551044163648021,
+        "message_id": "decipher_message_1:5690",
+        "query_id": "q0007",
+        "rank": 67
+      },
+      {
+        "distance": 0.655148214803029,
+        "message_id": "decipher_message_1:1599",
+        "query_id": "q0007",
+        "rank": 68
+      },
+      {
+        "distance": 0.6560954090955082,
+        "message_id": "decipher_export_5:142",
+        "query_id": "q0007",
+        "rank": 69
+      },
+      {
+        "distance": 0.6566261518367282,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0007",
+        "rank": 70
+      },
+      {
+        "distance": 0.6571778798117514,
+        "message_id": "decipher_message_1:1813",
+        "query_id": "q0007",
+        "rank": 71
+      },
+      {
+        "distance": 0.6571826497149177,
+        "message_id": "decipher_message_1:3708",
+        "query_id": "q0007",
+        "rank": 72
+      },
+      {
+        "distance": 0.657897904306413,
+        "message_id": "decipher_message_1:3273",
+        "query_id": "q0007",
+        "rank": 73
+      },
+      {
+        "distance": 0.6584871585192699,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0007",
+        "rank": 74
+      },
+      {
+        "distance": 0.6587634188883449,
+        "message_id": "decipher_message_1:6520",
+        "query_id": "q0007",
+        "rank": 75
+      },
+      {
+        "distance": 0.6589342965410716,
+        "message_id": "decipher_message_1:6567",
+        "query_id": "q0007",
+        "rank": 76
+      },
+      {
+        "distance": 0.660499314194315,
+        "message_id": "decipher_message_1:3525",
+        "query_id": "q0007",
+        "rank": 77
+      },
+      {
+        "distance": 0.6617806498266121,
+        "message_id": "decipher_message_1:4015",
+        "query_id": "q0007",
+        "rank": 78
+      },
+      {
+        "distance": 0.6620723911503739,
+        "message_id": "decipher_message_1:5200",
+        "query_id": "q0007",
+        "rank": 79
+      },
+      {
+        "distance": 0.6622285541749784,
+        "message_id": "decipher_export_19:1901",
+        "query_id": "q0007",
+        "rank": 80
+      },
+      {
+        "distance": 0.6630635459296704,
+        "message_id": "decipher_message_1:2108",
+        "query_id": "q0007",
+        "rank": 81
+      },
+      {
+        "distance": 0.6638151211218627,
+        "message_id": "decipher_message_1:6763",
+        "query_id": "q0007",
+        "rank": 82
+      },
+      {
+        "distance": 0.6652270353129917,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0007",
+        "rank": 83
+      },
+      {
+        "distance": 0.6653236971520157,
+        "message_id": "decipher_message_1:1114",
+        "query_id": "q0007",
+        "rank": 84
+      },
+      {
+        "distance": 0.667949842313234,
+        "message_id": "decipher_export_19:1889",
+        "query_id": "q0007",
+        "rank": 85
+      },
+      {
+        "distance": 0.6679670742925263,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0007",
+        "rank": 86
+      },
+      {
+        "distance": 0.6688814024766998,
+        "message_id": "decipher_message_1:5073",
+        "query_id": "q0007",
+        "rank": 87
+      },
+      {
+        "distance": 0.6689963738785785,
+        "message_id": "decipher_message_1:249",
+        "query_id": "q0007",
+        "rank": 88
+      },
+      {
+        "distance": 0.6693713545756289,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0007",
+        "rank": 89
+      },
+      {
+        "distance": 0.6697636194844007,
+        "message_id": "decipher_message_1:6560",
+        "query_id": "q0007",
+        "rank": 90
+      },
+      {
+        "distance": 0.6705696592300825,
+        "message_id": "decipher_message_1:1413",
+        "query_id": "q0007",
+        "rank": 91
+      },
+      {
+        "distance": 0.6712145186323348,
+        "message_id": "decipher_export_19:1069",
+        "query_id": "q0007",
+        "rank": 92
+      },
+      {
+        "distance": 0.6712866936961877,
+        "message_id": "decipher_message_1:2279",
+        "query_id": "q0007",
+        "rank": 93
+      },
+      {
+        "distance": 0.671442654978767,
+        "message_id": "decipher_message_1:375",
+        "query_id": "q0007",
+        "rank": 94
+      },
+      {
+        "distance": 0.6714434404352485,
+        "message_id": "decipher_message_1:5745",
+        "query_id": "q0007",
+        "rank": 95
+      },
+      {
+        "distance": 0.6715591298497989,
+        "message_id": "decipher_message_1:3034",
+        "query_id": "q0007",
+        "rank": 96
+      },
+      {
+        "distance": 0.6723189069818405,
+        "message_id": "decipher_export_19:586",
+        "query_id": "q0007",
+        "rank": 97
+      },
+      {
+        "distance": 0.672521710330292,
+        "message_id": "decipher_message_1:2107",
+        "query_id": "q0007",
+        "rank": 98
+      },
+      {
+        "distance": 0.6726952212679735,
+        "message_id": "decipher_message_1:4412",
+        "query_id": "q0007",
+        "rank": 99
+      },
+      {
+        "distance": 0.6729046243265427,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0007",
+        "rank": 100
+      },
+      {
+        "distance": 0.45787539664125554,
+        "message_id": "decipher_export_19:3382",
+        "query_id": "q0008",
+        "rank": 1
+      },
+      {
+        "distance": 0.5104946062760796,
+        "message_id": "decipher_message_1:2024",
+        "query_id": "q0008",
+        "rank": 2
+      },
+      {
+        "distance": 0.5170268302029128,
+        "message_id": "decipher_message_1:3529",
+        "query_id": "q0008",
+        "rank": 3
+      },
+      {
+        "distance": 0.5330202585636676,
+        "message_id": "decipher_message_1:6573",
+        "query_id": "q0008",
+        "rank": 4
+      },
+      {
+        "distance": 0.5345501651250815,
+        "message_id": "decipher_export_19:3396",
+        "query_id": "q0008",
+        "rank": 5
+      },
+      {
+        "distance": 0.5449509252965818,
+        "message_id": "decipher_message_1:2026",
+        "query_id": "q0008",
+        "rank": 6
+      },
+      {
+        "distance": 0.5493990530344173,
+        "message_id": "decipher_message_1:2136",
+        "query_id": "q0008",
+        "rank": 7
+      },
+      {
+        "distance": 0.5542900751629956,
+        "message_id": "decipher_message_1:1966",
+        "query_id": "q0008",
+        "rank": 8
+      },
+      {
+        "distance": 0.5559253753204239,
+        "message_id": "decipher_message_1:5352",
+        "query_id": "q0008",
+        "rank": 9
+      },
+      {
+        "distance": 0.5613291953031938,
+        "message_id": "decipher_export_19:3392",
+        "query_id": "q0008",
+        "rank": 10
+      },
+      {
+        "distance": 0.5835775956707661,
+        "message_id": "decipher_message_1:1817",
+        "query_id": "q0008",
+        "rank": 11
+      },
+      {
+        "distance": 0.5865023237185446,
+        "message_id": "decipher_message_1:970",
+        "query_id": "q0008",
+        "rank": 12
+      },
+      {
+        "distance": 0.5923386430769976,
+        "message_id": "decipher_message_1:7170",
+        "query_id": "q0008",
+        "rank": 13
+      },
+      {
+        "distance": 0.5960824645274767,
+        "message_id": "decipher_message_1:3023",
+        "query_id": "q0008",
+        "rank": 14
+      },
+      {
+        "distance": 0.5990851964357633,
+        "message_id": "decipher_message_1:6742",
+        "query_id": "q0008",
+        "rank": 15
+      },
+      {
+        "distance": 0.6075921662559687,
+        "message_id": "decipher_export_19:3397",
+        "query_id": "q0008",
+        "rank": 16
+      },
+      {
+        "distance": 0.6077222046482562,
+        "message_id": "decipher_message_1:5790",
+        "query_id": "q0008",
+        "rank": 17
+      },
+      {
+        "distance": 0.6094292474837735,
+        "message_id": "decipher_message_1:1956",
+        "query_id": "q0008",
+        "rank": 18
+      },
+      {
+        "distance": 0.6132001774464908,
+        "message_id": "decipher_message_1:1194",
+        "query_id": "q0008",
+        "rank": 19
+      },
+      {
+        "distance": 0.6139208958132354,
+        "message_id": "decipher_export_5:131",
+        "query_id": "q0008",
+        "rank": 20
+      },
+      {
+        "distance": 0.6152148925506113,
+        "message_id": "decipher_export_19:600",
+        "query_id": "q0008",
+        "rank": 21
+      },
+      {
+        "distance": 0.6158128544856605,
+        "message_id": "decipher_message_1:6770",
+        "query_id": "q0008",
+        "rank": 22
+      },
+      {
+        "distance": 0.6166999866693648,
+        "message_id": "decipher_message_1:1892",
+        "query_id": "q0008",
+        "rank": 23
+      },
+      {
+        "distance": 0.6183750485098862,
+        "message_id": "decipher_message_1:1002",
+        "query_id": "q0008",
+        "rank": 24
+      },
+      {
+        "distance": 0.6255173214291061,
+        "message_id": "decipher_message_1:1623",
+        "query_id": "q0008",
+        "rank": 25
+      },
+      {
+        "distance": 0.6298446765271684,
+        "message_id": "decipher_message_1:5140",
+        "query_id": "q0008",
+        "rank": 26
+      },
+      {
+        "distance": 0.6307425244960119,
+        "message_id": "decipher_message_1:4370",
+        "query_id": "q0008",
+        "rank": 27
+      },
+      {
+        "distance": 0.6312784824510065,
+        "message_id": "decipher_message_1:2282",
+        "query_id": "q0008",
+        "rank": 28
+      },
+      {
+        "distance": 0.6316290223238561,
+        "message_id": "decipher_message_1:7278",
+        "query_id": "q0008",
+        "rank": 29
+      },
+      {
+        "distance": 0.6405841879183374,
+        "message_id": "decipher_message_1:2626",
+        "query_id": "q0008",
+        "rank": 30
+      },
+      {
+        "distance": 0.6407792525593232,
+        "message_id": "decipher_message_1:2108",
+        "query_id": "q0008",
+        "rank": 31
+      },
+      {
+        "distance": 0.6419768678374155,
+        "message_id": "decipher_message_1:1772",
+        "query_id": "q0008",
+        "rank": 32
+      },
+      {
+        "distance": 0.642708279082294,
+        "message_id": "decipher_message_1:997",
+        "query_id": "q0008",
+        "rank": 33
+      },
+      {
+        "distance": 0.6432756295959694,
+        "message_id": "decipher_message_1:3265",
+        "query_id": "q0008",
+        "rank": 34
+      },
+      {
+        "distance": 0.6441651778780877,
+        "message_id": "decipher_message_1:600",
+        "query_id": "q0008",
+        "rank": 35
+      },
+      {
+        "distance": 0.6461151769780931,
+        "message_id": "decipher_message_1:2138",
+        "query_id": "q0008",
+        "rank": 36
+      },
+      {
+        "distance": 0.6461616460076217,
+        "message_id": "decipher_export_19:1847",
+        "query_id": "q0008",
+        "rank": 37
+      },
+      {
+        "distance": 0.648021473386658,
+        "message_id": "decipher_message_1:6520",
+        "query_id": "q0008",
+        "rank": 38
+      },
+      {
+        "distance": 0.6488850733275002,
+        "message_id": "decipher_message_1:3526",
+        "query_id": "q0008",
+        "rank": 39
+      },
+      {
+        "distance": 0.651916859737868,
+        "message_id": "decipher_message_1:7173",
+        "query_id": "q0008",
+        "rank": 40
+      },
+      {
+        "distance": 0.6526095704498607,
+        "message_id": "decipher_message_1:5700",
+        "query_id": "q0008",
+        "rank": 41
+      },
+      {
+        "distance": 0.6535251791039937,
+        "message_id": "decipher_message_1:1581",
+        "query_id": "q0008",
+        "rank": 42
+      },
+      {
+        "distance": 0.6537506691404933,
+        "message_id": "decipher_message_1:5797",
+        "query_id": "q0008",
+        "rank": 43
+      },
+      {
+        "distance": 0.6566502021278859,
+        "message_id": "decipher_message_1:1867",
+        "query_id": "q0008",
+        "rank": 44
+      },
+      {
+        "distance": 0.6570113593708337,
+        "message_id": "decipher_message_1:2117",
+        "query_id": "q0008",
+        "rank": 45
+      },
+      {
+        "distance": 0.657326931663845,
+        "message_id": "decipher_message_1:19",
+        "query_id": "q0008",
+        "rank": 46
+      },
+      {
+        "distance": 0.6579194067089262,
+        "message_id": "decipher_message_1:4908",
+        "query_id": "q0008",
+        "rank": 47
+      },
+      {
+        "distance": 0.6589504953190513,
+        "message_id": "decipher_message_1:1765",
+        "query_id": "q0008",
+        "rank": 48
+      },
+      {
+        "distance": 0.6593259343453539,
+        "message_id": "decipher_message_1:6728",
+        "query_id": "q0008",
+        "rank": 49
+      },
+      {
+        "distance": 0.6593780971795782,
+        "message_id": "decipher_message_1:2096",
+        "query_id": "q0008",
+        "rank": 50
+      },
+      {
+        "distance": 0.6594713044594873,
+        "message_id": "decipher_message_1:679",
+        "query_id": "q0008",
+        "rank": 51
+      },
+      {
+        "distance": 0.6608032432008089,
+        "message_id": "decipher_message_1:6602",
+        "query_id": "q0008",
+        "rank": 52
+      },
+      {
+        "distance": 0.6616920593879574,
+        "message_id": "decipher_export_19:3380",
+        "query_id": "q0008",
+        "rank": 53
+      },
+      {
+        "distance": 0.6617932035115568,
+        "message_id": "decipher_message_1:2635",
+        "query_id": "q0008",
+        "rank": 54
+      },
+      {
+        "distance": 0.6624827710711256,
+        "message_id": "decipher_message_1:2137",
+        "query_id": "q0008",
+        "rank": 55
+      },
+      {
+        "distance": 0.6630012005317258,
+        "message_id": "decipher_message_1:1840",
+        "query_id": "q0008",
+        "rank": 56
+      },
+      {
+        "distance": 0.6659787902641348,
+        "message_id": "decipher_message_1:2105",
+        "query_id": "q0008",
+        "rank": 57
+      },
+      {
+        "distance": 0.6660319334606026,
+        "message_id": "decipher_message_1:2140",
+        "query_id": "q0008",
+        "rank": 58
+      },
+      {
+        "distance": 0.6666417688184212,
+        "message_id": "decipher_message_1:931",
+        "query_id": "q0008",
+        "rank": 59
+      },
+      {
+        "distance": 0.6673953735033312,
+        "message_id": "decipher_message_1:5694",
+        "query_id": "q0008",
+        "rank": 60
+      },
+      {
+        "distance": 0.667820296918362,
+        "message_id": "decipher_message_1:1780",
+        "query_id": "q0008",
+        "rank": 61
+      },
+      {
+        "distance": 0.6682257748292677,
+        "message_id": "decipher_export_19:4635",
+        "query_id": "q0008",
+        "rank": 62
+      },
+      {
+        "distance": 0.6690671261461322,
+        "message_id": "decipher_export_19:587",
+        "query_id": "q0008",
+        "rank": 63
+      },
+      {
+        "distance": 0.6698839548357933,
+        "message_id": "decipher_message_1:1324",
+        "query_id": "q0008",
+        "rank": 64
+      },
+      {
+        "distance": 0.6702018567158562,
+        "message_id": "decipher_message_1:7162",
+        "query_id": "q0008",
+        "rank": 65
+      },
+      {
+        "distance": 0.6702521585898321,
+        "message_id": "decipher_message_1:2148",
+        "query_id": "q0008",
+        "rank": 66
+      },
+      {
+        "distance": 0.6708521570117137,
+        "message_id": "decipher_message_1:5490",
+        "query_id": "q0008",
+        "rank": 67
+      },
+      {
+        "distance": 0.6708547231083046,
+        "message_id": "decipher_message_1:1269",
+        "query_id": "q0008",
+        "rank": 68
+      },
+      {
+        "distance": 0.6711471270273157,
+        "message_id": "decipher_message_1:3650",
+        "query_id": "q0008",
+        "rank": 69
+      },
+      {
+        "distance": 0.6729036226978117,
+        "message_id": "decipher_message_1:1167",
+        "query_id": "q0008",
+        "rank": 70
+      },
+      {
+        "distance": 0.6733177653823744,
+        "message_id": "decipher_export_19:4639",
+        "query_id": "q0008",
+        "rank": 71
+      },
+      {
+        "distance": 0.6739445752880707,
+        "message_id": "decipher_message_1:5802",
+        "query_id": "q0008",
+        "rank": 72
+      },
+      {
+        "distance": 0.6746504189387057,
+        "message_id": "decipher_export_19:3463",
+        "query_id": "q0008",
+        "rank": 73
+      },
+      {
+        "distance": 0.675156610829792,
+        "message_id": "decipher_export_19:1069",
+        "query_id": "q0008",
+        "rank": 74
+      },
+      {
+        "distance": 0.6759903950471334,
+        "message_id": "decipher_message_1:860",
+        "query_id": "q0008",
+        "rank": 75
+      },
+      {
+        "distance": 0.676671076260963,
+        "message_id": "decipher_message_1:6554",
+        "query_id": "q0008",
+        "rank": 76
+      },
+      {
+        "distance": 0.6769124312963194,
+        "message_id": "decipher_message_1:1843",
+        "query_id": "q0008",
+        "rank": 77
+      },
+      {
+        "distance": 0.6775443273161864,
+        "message_id": "decipher_export_19:581",
+        "query_id": "q0008",
+        "rank": 78
+      },
+      {
+        "distance": 0.6779736868585738,
+        "message_id": "decipher_message_1:5690",
+        "query_id": "q0008",
+        "rank": 79
+      },
+      {
+        "distance": 0.6781651580456698,
+        "message_id": "decipher_message_1:3525",
+        "query_id": "q0008",
+        "rank": 80
+      },
+      {
+        "distance": 0.6798501695327697,
+        "message_id": "decipher_message_1:1114",
+        "query_id": "q0008",
+        "rank": 81
+      },
+      {
+        "distance": 0.6798962951688398,
+        "message_id": "decipher_message_1:1761",
+        "query_id": "q0008",
+        "rank": 82
+      },
+      {
+        "distance": 0.6817140712410861,
+        "message_id": "decipher_message_1:6763",
+        "query_id": "q0008",
+        "rank": 83
+      },
+      {
+        "distance": 0.6826317266514572,
+        "message_id": "decipher_message_1:2185",
+        "query_id": "q0008",
+        "rank": 84
+      },
+      {
+        "distance": 0.6831971025149297,
+        "message_id": "decipher_message_1:3531",
+        "query_id": "q0008",
+        "rank": 85
+      },
+      {
+        "distance": 0.6841718900445412,
+        "message_id": "decipher_message_1:1384",
+        "query_id": "q0008",
+        "rank": 86
+      },
+      {
+        "distance": 0.6846801328814835,
+        "message_id": "decipher_message_1:978",
+        "query_id": "q0008",
+        "rank": 87
+      },
+      {
+        "distance": 0.6848942079408902,
+        "message_id": "decipher_message_1:3530",
+        "query_id": "q0008",
+        "rank": 88
+      },
+      {
+        "distance": 0.6849115186529735,
+        "message_id": "decipher_export_19:1899",
+        "query_id": "q0008",
+        "rank": 89
+      },
+      {
+        "distance": 0.6849763784464766,
+        "message_id": "decipher_message_1:1960",
+        "query_id": "q0008",
+        "rank": 90
+      },
+      {
+        "distance": 0.6851036424143826,
+        "message_id": "decipher_export_19:788",
+        "query_id": "q0008",
+        "rank": 91
+      },
+      {
+        "distance": 0.6858717259177447,
+        "message_id": "decipher_message_1:1641",
+        "query_id": "q0008",
+        "rank": 92
+      },
+      {
+        "distance": 0.6864656068961155,
+        "message_id": "decipher_message_1:864",
+        "query_id": "q0008",
+        "rank": 93
+      },
+      {
+        "distance": 0.6865196261360744,
+        "message_id": "decipher_message_1:1808",
+        "query_id": "q0008",
+        "rank": 94
+      },
+      {
+        "distance": 0.6877412406328072,
+        "message_id": "decipher_message_1:3708",
+        "query_id": "q0008",
+        "rank": 95
+      },
+      {
+        "distance": 0.6882895286965853,
+        "message_id": "decipher_message_1:1473",
+        "query_id": "q0008",
+        "rank": 96
+      },
+      {
+        "distance": 0.6883409256396514,
+        "message_id": "decipher_export_19:3332",
+        "query_id": "q0008",
+        "rank": 97
+      },
+      {
+        "distance": 0.6887329890928067,
+        "message_id": "decipher_message_1:1199",
+        "query_id": "q0008",
+        "rank": 98
+      },
+      {
+        "distance": 0.6887633909274247,
+        "message_id": "decipher_message_1:1644",
+        "query_id": "q0008",
+        "rank": 99
+      },
+      {
+        "distance": 0.6887665825573965,
+        "message_id": "decipher_message_1:7172",
+        "query_id": "q0008",
+        "rank": 100
+      }
+    ],
+    "plan_config_version": 65,
+    "retrieval_queries": [
+      {
+        "query_id": "q0001",
+        "text": "arguments about school"
+      },
+      {
+        "query_id": "q0002",
+        "text": "disputes involving school"
+      },
+      {
+        "query_id": "q0003",
+        "text": "conflicts over school policies or decisions"
+      },
+      {
+        "query_id": "q0004",
+        "text": "fights at school"
+      },
+      {
+        "query_id": "q0005",
+        "text": "disagreements about school staff or students"
+      },
+      {
+        "query_id": "q0006",
+        "text": "altercations related to school events or activities"
+      },
+      {
+        "query_id": "q0007",
+        "text": "tensions over school discipline or grades"
+      },
+      {
+        "query_id": "q0008",
+        "text": "confrontations about school administration"
+      }
+    ],
+    "search_policy": {
+      "fusion_method": "reciprocal_rank_fusion",
+      "maximum_prompt_suggestion_messages": 40,
+      "mode": "semantic_ranges",
+      "rrf_constant": 60,
+      "top_k_per_query": 100
+    }
+  },
+  "analysis_plan_id": "348f5526-58a0-4914-8a0b-5928492aeec4",
+  "question": "Show me fights about school.",
+  "request_id": "39110a1a-b65b-42fb-bcf8-0f25d702ba1d",
+  "scope_id": "question-planned-analysis-revision-4",
+  "working_corpus_message_count": 12402,
+  "working_corpus_messages_omitted_from_artifact": true,
+  "working_corpus_revision_id": 4
+}

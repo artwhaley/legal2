@@ -1,0 +1,124 @@
+{
+  "analysis_plan": {
+    "analysis_question": "Show me fights about school.",
+    "answer_objective": "Identify and present evidence of disputes, arguments, conflicts, or physical altercations in which a school is a subject, location, context, or stake of the disagreement.",
+    "answer_requirements": [
+      "Identify each piece of evidence showing a conflict or dispute connected to school",
+      "For each, note the participants, the school connection, and the nature of the conflict",
+      "Distinguish direct evidence of a fight or argument from inferred tension or hostility",
+      "Preserve uncertainty where the school connection or adversarial nature is ambiguous"
+    ],
+    "concepts": [
+      {
+        "definition": "Disagreements, arguments, verbal conflicts, physical altercations, or hostile exchanges between people.",
+        "label": "fights",
+        "manifestations": [
+          "verbal arguments or heated discussions",
+          "physical altercations or scuffles",
+          "written disputes such as angry messages or emails",
+          "passive-aggressive conflicts expressed indirectly",
+          "escalating tensions described by participants or observers",
+          "accusatory or confrontational exchanges",
+          "defensive or hostile reactions to school-related decisions or policies"
+        ]
+      },
+      {
+        "definition": "An educational institution or the activities, policies, personnel, students, events, administration, or environment associated with it.",
+        "label": "school",
+        "manifestations": [
+          "a physical school building or campus",
+          "school administration or staff as parties to a dispute",
+          "students as parties to a dispute",
+          "school policies, rules, or decisions as the subject of conflict",
+          "school events, assignments, grades, admissions, or disciplinary actions as triggers of conflict",
+          "school-related logistics such as busing, scheduling, enrollment, or funding as sources of disagreement",
+          "a school named or referenced as the setting or reason for a conflict"
+        ]
+      }
+    ],
+    "exclusion_criteria": [
+      "Mere mentions of school without any conflict, dispute, or adversarial element",
+      "Routine school-related discussions that are cooperative or neutral in tone",
+      "General complaints about school without an identifiable dispute or opposing party",
+      "References to 'school' in non-educational contexts unrelated to disputes"
+    ],
+    "inclusion_criteria": [
+      "Evidence involving a verbal, written, or physical conflict, argument, or dispute",
+      "Evidence where the conflict is connected to a school as a location, subject, context, or stake",
+      "Evidence where participants frame an exchange as adversarial, hostile, or contentious",
+      "Evidence referencing school-related topics such as policies, personnel, students, events, administration, grades, discipline, or enrollment within a conflict"
+    ],
+    "interpretive_assumptions": [
+      "'Fights' includes both physical altercations and verbal or written disputes, not only physical ones",
+      "'About school' includes conflicts occurring at a school, involving school parties, or concerning school-related subjects",
+      "Indirect or passive expressions of hostility may qualify if they materially indicate a dispute"
+    ]
+  },
+  "analysis_plan_id": "a276b4fe-62b1-4c1c-ada3-d636dd68de57",
+  "compatibility_fingerprint": "7a58f92b8e155876af6120f3d3eee39c48ffbb998681ee106e8607c49cd2bdee",
+  "config_version": 60,
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "request_id": "2d9b488f-7be6-4460-bb0e-1d2b2c7b5b8b",
+  "retrieval_queries": [
+    {
+      "query_id": "q0001",
+      "text": "argument about school"
+    },
+    {
+      "query_id": "q0002",
+      "text": "fight at school"
+    },
+    {
+      "query_id": "q0003",
+      "text": "dispute over school policy"
+    },
+    {
+      "query_id": "q0004",
+      "text": "conflict with school administration"
+    },
+    {
+      "query_id": "q0005",
+      "text": "school-related altercation"
+    },
+    {
+      "query_id": "q0006",
+      "text": "heated discussion about school"
+    },
+    {
+      "query_id": "q0007",
+      "text": "confrontation regarding school"
+    },
+    {
+      "query_id": "q0008",
+      "text": "disagreement about school decisions"
+    },
+    {
+      "query_id": "q0009",
+      "text": "school staff argument"
+    },
+    {
+      "query_id": "q0010",
+      "text": "student fight at school"
+    }
+  ],
+  "search_policy": {
+    "fusion_method": "reciprocal_rank_fusion",
+    "maximum_prompt_suggestion_messages": 40,
+    "mode": "semantic_ranges",
+    "rrf_constant": 60,
+    "top_k_per_query": 100
+  },
+  "usage": {
+    "cost_complete": false,
+    "currency": "USD",
+    "estimated_cost": null,
+    "input_tokens": 341,
+    "output_tokens": 592,
+    "source": "provider_reported"
+  }
+}

@@ -1,0 +1,574 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "metrics": {
+        "coverage": null,
+        "final_range_inventory": [],
+        "final_ranges_outside_suggestions": null,
+        "final_ranges_overlapping_suggestions": null,
+        "ledger_processing": {},
+        "mode_projection": {
+          "active_config_version": 44,
+          "configuration_fingerprint": "528f5df615349dfa90fb90f99f813e72093376c401c7e18ebad4a19ebc01afd6",
+          "mode_independent_configuration_fingerprint": "e2cb1e84d57ca1f1849d7d1ebbf7f57fc9d627b5707d65c1d92ff9b02cd42877",
+          "retrieval_assistance_mode": "semantic_ranges"
+        },
+        "partial": true,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 0,
+          "found": [],
+          "total": 7
+        },
+        "selected_suggestion_message_ids": [
+          "decipher_export_19:4092",
+          "decipher_message_1:4287",
+          "decipher_message_1:636",
+          "decipher_message_1:5252",
+          "decipher_message_1:3204",
+          "decipher_message_1:5015",
+          "decipher_message_1:7052",
+          "decipher_message_1:6878",
+          "decipher_message_1:6073",
+          "decipher_message_1:6015",
+          "decipher_message_1:4959",
+          "decipher_message_1:5135",
+          "decipher_message_1:4504",
+          "decipher_message_1:4101",
+          "decipher_message_1:4088",
+          "decipher_message_1:1479",
+          "decipher_message_1:3973",
+          "decipher_message_1:3951",
+          "decipher_message_1:3942",
+          "decipher_message_1:3933",
+          "decipher_export_19:2955",
+          "decipher_message_1:3907",
+          "decipher_message_1:3796",
+          "decipher_message_1:3767",
+          "decipher_message_1:3706",
+          "decipher_message_1:6344",
+          "decipher_message_1:3482",
+          "decipher_message_1:3383",
+          "decipher_message_1:3249",
+          "decipher_message_1:3247",
+          "decipher_message_1:3106",
+          "decipher_message_1:57",
+          "decipher_message_1:2721",
+          "decipher_message_1:2465",
+          "decipher_message_1:2232",
+          "decipher_message_1:5392",
+          "decipher_message_1:1683",
+          "decipher_export_19:111",
+          "decipher_message_1:2411",
+          "decipher_export_19:205"
+        ],
+        "strategy": null,
+        "suggestions_without_final_evidence": null,
+        "terminal_event": "failed",
+        "usage": null,
+        "used_ranges_outside_suggestions": null,
+        "used_ranges_overlapping_suggestions": null,
+        "wall_time_ms": 107258.1640999997,
+        "window_count": 2,
+        "window_durations_ms": [],
+        "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+      },
+      "mode": "semantic_ranges",
+      "request_artifact": "censored-semantic-request.json",
+      "result_artifact": "censored-semantic-result.json"
+    },
+    "full-semantic": {
+      "metrics": {
+        "coverage": {
+          "evidence_range_count": 0,
+          "message_count": 12402,
+          "window_count": 2
+        },
+        "final_range_inventory": [],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 0,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 668,
+          "synthesis_usable_input_tokens": 982118
+        },
+        "mode_projection": {
+          "active_config_version": 43,
+          "configuration_fingerprint": "687a1df8a40b04a5bbab3c1e0141597580c03f554d3b88e9ca45ba5815ebc400",
+          "mode_independent_configuration_fingerprint": "e2cb1e84d57ca1f1849d7d1ebbf7f57fc9d627b5707d65c1d92ff9b02cd42877",
+          "retrieval_assistance_mode": "semantic_ranges"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 0,
+          "found": [],
+          "total": 7
+        },
+        "selected_suggestion_message_ids": [
+          "decipher_export_19:4092",
+          "decipher_message_1:4287",
+          "decipher_message_1:636",
+          "decipher_message_1:5252",
+          "decipher_message_1:3204",
+          "decipher_message_1:5015",
+          "decipher_message_1:7052",
+          "decipher_message_1:6878",
+          "decipher_message_1:6073",
+          "decipher_message_1:6015",
+          "decipher_message_1:5135",
+          "decipher_message_1:4959",
+          "decipher_message_1:4504",
+          "decipher_message_1:4101",
+          "decipher_message_1:4088",
+          "decipher_message_1:1479",
+          "decipher_message_1:3973",
+          "decipher_message_1:3951",
+          "decipher_message_1:3942",
+          "decipher_message_1:3933",
+          "decipher_message_1:3907",
+          "decipher_export_19:2955",
+          "decipher_message_1:3796",
+          "decipher_message_1:3767",
+          "decipher_message_1:3706",
+          "decipher_message_1:6344",
+          "decipher_message_1:3482",
+          "decipher_message_1:3383",
+          "decipher_message_1:3249",
+          "decipher_message_1:3247",
+          "decipher_message_1:3106",
+          "decipher_message_1:57",
+          "decipher_message_1:2721",
+          "decipher_message_1:2465",
+          "decipher_message_1:2232",
+          "decipher_message_1:1683",
+          "decipher_message_1:5392",
+          "decipher_export_19:111",
+          "decipher_export_19:205",
+          "decipher_message_1:2411"
+        ],
+        "strategy": "multi_window_ledger",
+        "suggestions_without_final_evidence": 40,
+        "terminal_event": "completed",
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 1131118,
+          "output_tokens": 430,
+          "source": "provider_reported"
+        },
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 0,
+        "wall_time_ms": 132359.33359999943,
+        "window_count": 2,
+        "window_durations_ms": [
+          60073.18902015686,
+          61363.121032714844
+        ],
+        "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+      },
+      "mode": "semantic_ranges",
+      "request_artifact": "full-semantic-request.json",
+      "result_artifact": "full-semantic-result.json"
+    },
+    "terms-only": {
+      "metrics": {
+        "coverage": {
+          "evidence_range_count": 0,
+          "message_count": 12402,
+          "window_count": 2
+        },
+        "final_range_inventory": [],
+        "final_ranges_outside_suggestions": 0,
+        "final_ranges_overlapping_suggestions": 0,
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0,
+          "direct_synthesis_input_tokens": 668,
+          "synthesis_usable_input_tokens": 982118
+        },
+        "mode_projection": {
+          "active_config_version": 42,
+          "configuration_fingerprint": "7d6dacb5e48d90db714a8fd09b2cd69e390d6d25270a8c40294162d4b58b7327",
+          "mode_independent_configuration_fingerprint": "e2cb1e84d57ca1f1849d7d1ebbf7f57fc9d627b5707d65c1d92ff9b02cd42877",
+          "retrieval_assistance_mode": "terms_only"
+        },
+        "partial": false,
+        "provider_retry_or_queue_events": 0,
+        "provisional_gold_recall": {
+          "count": 0,
+          "found": [],
+          "total": 7
+        },
+        "selected_suggestion_message_ids": [],
+        "strategy": "multi_window_ledger",
+        "suggestions_without_final_evidence": 0,
+        "terminal_event": "completed",
+        "usage": {
+          "cost_complete": false,
+          "currency": "USD",
+          "estimated_cost": null,
+          "input_tokens": 1127921,
+          "output_tokens": 607,
+          "source": "provider_reported"
+        },
+        "used_ranges_outside_suggestions": 0,
+        "used_ranges_overlapping_suggestions": 0,
+        "wall_time_ms": 130774.3859000002,
+        "window_count": 2,
+        "window_durations_ms": [
+          57501.1100769043,
+          61680.253982543945
+        ],
+        "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+      },
+      "mode": "terms_only",
+      "request_artifact": "terms-only-request.json",
+      "result_artifact": "terms-only-result.json"
+    }
+  },
+  "artifact_hashes": {
+    "censored-candidates.json": "3d922f33289d5136a1cb774fdcbcbfc21f748abef3bcbdf03b02b3e0b23ae6f7",
+    "censored-selected-suggestions.json": "4672b16cbd7a49a987fdf6ff0c75bd2c30e2212281806561754ef905c7227084",
+    "censored-semantic-request.json": "93c4ef9219c910c3425a1355d1aa6564aa9ebce1789711e934aacbc230161111",
+    "censored-semantic-result.json": "b80dbf9d47ade261454f6d22237a3c3628dee16630461a70812368549cd4dfd2",
+    "comparison.json": "fbb1564400dc90a6e0a303a4ddd22b82b8d1cea7472e5237b088483addc48b53",
+    "comparison.md": "706aa8d97b6592daaa82ce91ff50b93be775aa7ee27a137748db47c89a3b4a95",
+    "full-selected-suggestions.json": "bb2d4fba9bb855cc7dc93583f8885a2789624bd3cb9885fa120c9ea9b21b22dd",
+    "full-semantic-request.json": "40953e14a173fffe8a1e4001e8b121c3c0fe54c2c9ca0cf99bff6a55642d0275",
+    "full-semantic-result.json": "b09d2334f0ef5d96fbe2be248fc2da3ada9a313b46228d3542673de356e233f8",
+    "provisional-gold.json": "230739c41061cd3a7371e5bc422e9262e82f471e817ccdea50a338276fa1b521",
+    "query-embedding-metadata.json": "c933963db95ec718ce47f18340d14655df2da06d1fa01f6ffe1e5d614c86f9d2",
+    "raw-candidates.json": "1e7888fa9566b3d7a1aad8ee5da3dbb02ce5bc6cc0fd9a4c05a34fb87d77839a",
+    "raw-gold-overlap.json": "b59e1def773a1b8c95ab2fc37c9753641fe4f13e85660fa8818e3392dc0fdb2d",
+    "retrieval-plan.json": "e0a47c6f30426fd419655f720f5ef04b52c2faac802dc188b955213bb12a7641",
+    "terms-only-request.json": "926815440f105887cc6fa4272eb2ed11ca4d4a860829e47a803fdb82efe7fb07",
+    "terms-only-result.json": "6d5e883a6f94c1cfda714d5dfddeaaeab76928800bf7ecdd218d53c597d58de8"
+  },
+  "capture": {
+    "final_debug_status": {
+      "active": false,
+      "active_session_id": null,
+      "active_started_at": null,
+      "bound_requests": 0,
+      "pending_records": 0,
+      "sessions": [
+        {
+          "bound_requests": 0,
+          "bytes": 27713413,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T014931Z-04339cced113.jsonl",
+          "session_id": "20260730T014931Z-04339cced113",
+          "started_at": "2026-07-30T01:49:31.003826Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 16092189,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013734Z-10c795bd94b9.jsonl",
+          "session_id": "20260730T013734Z-10c795bd94b9",
+          "started_at": "2026-07-30T01:45:31.192678Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 10039733,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013346Z-6250c608d501.jsonl",
+          "session_id": "20260730T013346Z-6250c608d501",
+          "started_at": "2026-07-30T01:36:57.402172Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29385968,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T010423Z-b75d5baec026.jsonl",
+          "session_id": "20260730T010423Z-b75d5baec026",
+          "started_at": "2026-07-30T01:24:46.195241Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29878385,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T002011Z-7cc97e5aa5ed.jsonl",
+          "session_id": "20260730T002011Z-7cc97e5aa5ed",
+          "started_at": "2026-07-30T00:46:41.906593Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 37537,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001924Z-3f336c06cb08.jsonl",
+          "session_id": "20260730T001924Z-3f336c06cb08",
+          "started_at": "2026-07-30T00:20:07.307229Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9110,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001900Z-37b9cbe8d1f4.jsonl",
+          "session_id": "20260730T001900Z-37b9cbe8d1f4",
+          "started_at": "2026-07-30T00:19:20.682056Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 6144,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T231844Z-dd491fdafa9f.jsonl",
+          "session_id": "20260729T231844Z-dd491fdafa9f",
+          "started_at": "2026-07-29T23:18:45.399319Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9589513,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T205715Z-33682bd12835.jsonl",
+          "session_id": "20260729T205715Z-33682bd12835",
+          "started_at": "2026-07-29T21:06:05.715369Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9879797,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T211045Z-b8a7a56de30c.jsonl",
+          "session_id": "20260728T211045Z-b8a7a56de30c",
+          "started_at": "2026-07-28T21:23:03.093374Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 5012195,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T210612Z-a46a0035349d.jsonl",
+          "session_id": "20260728T210612Z-a46a0035349d",
+          "started_at": "2026-07-28T21:09:55.491286Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 4984670,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T182240Z-2b36ad29f6e0.jsonl",
+          "session_id": "20260728T182240Z-2b36ad29f6e0",
+          "started_at": "2026-07-28T18:28:34.610249Z",
+          "subject_account_id": null
+        }
+      ],
+      "subject_account_id": null,
+      "writer_failure": null
+    },
+    "session_id": "20260730T014931Z-04339cced113",
+    "started_by_runner": true,
+    "stopped": true
+  },
+  "capture_session_id": "20260730T014931Z-04339cced113",
+  "capture_started_projection": {
+    "active_config_version": 39,
+    "configuration_fingerprint": "90b261e2544faed9b04d0ffc0e41ef47ea389c0321dbd7501b15e9667ddbe4f0",
+    "debug_status": {
+      "active": true,
+      "active_session_id": "20260730T014931Z-04339cced113",
+      "active_started_at": "2026-07-30T01:49:31.003826Z",
+      "bound_requests": 0,
+      "pending_records": 0,
+      "sessions": [
+        {
+          "bound_requests": 0,
+          "bytes": 167,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T014931Z-04339cced113.jsonl",
+          "session_id": "20260730T014931Z-04339cced113",
+          "started_at": "2026-07-30T01:49:31.003826Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 16092189,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013734Z-10c795bd94b9.jsonl",
+          "session_id": "20260730T013734Z-10c795bd94b9",
+          "started_at": "2026-07-30T01:45:31.192678Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 10039733,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T013346Z-6250c608d501.jsonl",
+          "session_id": "20260730T013346Z-6250c608d501",
+          "started_at": "2026-07-30T01:36:57.402172Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29385968,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T010423Z-b75d5baec026.jsonl",
+          "session_id": "20260730T010423Z-b75d5baec026",
+          "started_at": "2026-07-30T01:24:46.195241Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 29878385,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T002011Z-7cc97e5aa5ed.jsonl",
+          "session_id": "20260730T002011Z-7cc97e5aa5ed",
+          "started_at": "2026-07-30T00:46:41.906593Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 37537,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001924Z-3f336c06cb08.jsonl",
+          "session_id": "20260730T001924Z-3f336c06cb08",
+          "started_at": "2026-07-30T00:20:07.307229Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9110,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T001900Z-37b9cbe8d1f4.jsonl",
+          "session_id": "20260730T001900Z-37b9cbe8d1f4",
+          "started_at": "2026-07-30T00:19:20.682056Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 6144,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T231844Z-dd491fdafa9f.jsonl",
+          "session_id": "20260729T231844Z-dd491fdafa9f",
+          "started_at": "2026-07-29T23:18:45.399319Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9589513,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260729T205715Z-33682bd12835.jsonl",
+          "session_id": "20260729T205715Z-33682bd12835",
+          "started_at": "2026-07-29T21:06:05.715369Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 9879797,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T211045Z-b8a7a56de30c.jsonl",
+          "session_id": "20260728T211045Z-b8a7a56de30c",
+          "started_at": "2026-07-28T21:23:03.093374Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 5012195,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T210612Z-a46a0035349d.jsonl",
+          "session_id": "20260728T210612Z-a46a0035349d",
+          "started_at": "2026-07-28T21:09:55.491286Z",
+          "subject_account_id": null
+        },
+        {
+          "bound_requests": 0,
+          "bytes": 4984670,
+          "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260728T182240Z-2b36ad29f6e0.jsonl",
+          "session_id": "20260728T182240Z-2b36ad29f6e0",
+          "started_at": "2026-07-28T18:28:34.610249Z",
+          "subject_account_id": null
+        }
+      ],
+      "subject_account_id": null,
+      "writer_failure": null
+    },
+    "events": [
+      {
+        "config_version": null,
+        "event": "debug_capture_started",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T01:49:31.005285Z"
+      },
+      {
+        "config_version": 39,
+        "event": "config_save",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T01:49:31.025369Z"
+      },
+      {
+        "config_version": 39,
+        "event": "config_validate",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T01:49:31.038450Z"
+      },
+      {
+        "config_version": 39,
+        "event": "config_activate",
+        "internal_operation": null,
+        "product_endpoint": null,
+        "request_id": null,
+        "severity": "INFO",
+        "timestamp": "2026-07-30T01:49:31.238352Z"
+      }
+    ],
+    "mode_independent_configuration_fingerprint": "98fdf347ec6ac5dd7612c45bd5ab661fc0467232310a89fce1f6f9f19f15d18e",
+    "retrieval_assistance_mode": "semantic_ranges"
+  },
+  "comparison_artifacts": [
+    "comparison.json",
+    "comparison.md"
+  ],
+  "evw": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\sfv1-fixture-multicorpus-v15.evw",
+  "output_dir": "C:\\Users\\artwh\\OneDrive\\Documents\\legal2\\.tmp\\retrieval-hint-experiment\\20260730T014930Z-nemotron3-super",
+  "plan_id": "a3d9447d-53d7-44f1-9013-1f7692de77cb",
+  "plan_identity": {
+    "compatibility_fingerprint": "681ac77bb1d34bf4ab0eb6a104867ed6434547e3f758a18c4ed7919a4cd597be",
+    "config_version": 39,
+    "embedding": {
+      "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+      "dimensions": 384,
+      "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+      "normalization": "unit_l2"
+    },
+    "queries": [
+      {
+        "query_id": "q0001",
+        "text": "When"
+      },
+      {
+        "query_id": "q0002",
+        "text": "did"
+      },
+      {
+        "query_id": "q0003",
+        "text": "we"
+      },
+      {
+        "query_id": "q0004",
+        "text": "fight"
+      },
+      {
+        "query_id": "q0005",
+        "text": "about"
+      },
+      {
+        "query_id": "q0006",
+        "text": "school"
+      }
+    ],
+    "retrieval_plan_id": "a3d9447d-53d7-44f1-9013-1f7692de77cb",
+    "search_policy": {
+      "fusion_method": "reciprocal_rank_fusion",
+      "maximum_prompt_suggestion_messages": 40,
+      "rrf_constant": 60,
+      "top_k_per_query": 100
+    }
+  },
+  "prepared_at": "2026-07-30T01:49:39.878175Z",
+  "question": "When did we fight about school?",
+  "runner": "RAUC1-800",
+  "server_url": "http://127.0.0.1:8710",
+  "small_revision_id": 3,
+  "small_revision_message_count": 1387,
+  "working_corpus_message_count": 12402,
+  "working_corpus_revision_id": 4
+}

@@ -1,0 +1,62 @@
+{
+  "arms": {
+    "censored-semantic": {
+      "ledger_processing": {},
+      "outside_suggestion_ranges": null,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": null,
+      "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+    },
+    "full-semantic": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 668,
+        "synthesis_usable_input_tokens": 982118
+      },
+      "outside_suggestion_ranges": 0,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+    },
+    "terms-only": {
+      "ledger_processing": {
+        "compaction_applied": false,
+        "compaction_group_calls": 0,
+        "compaction_levels": 0,
+        "direct_synthesis_input_tokens": 668,
+        "synthesis_usable_input_tokens": 982118
+      },
+      "outside_suggestion_ranges": 0,
+      "recall": {
+        "count": 0,
+        "found": [],
+        "total": 7
+      },
+      "strategy": "multi_window_ledger",
+      "window_plan_hash": "370300a8ca88338cd2745d9022c005f5930234616b796361f1b9c344adfab05d"
+    }
+  },
+  "compatibility_fingerprint": "681ac77bb1d34bf4ab0eb6a104867ed6434547e3f758a18c4ed7919a4cd597be",
+  "embedding": {
+    "artifact_fingerprint": "85f6a26a03b4d22a2f886b0832be21f7f2fd421bed80cbb5011fc1ae51078827",
+    "dimensions": 384,
+    "embedding_profile_id": "emb-sha256:e1f5f21c247738330d6a86056f86e1403b185dee936ba70e298d1d58e716f626",
+    "normalization": "unit_l2"
+  },
+  "plan_id": "a3d9447d-53d7-44f1-9013-1f7692de77cb",
+  "question": "When did we fight about school?",
+  "reasons": [
+    "censored-semantic returned a partial or failed result"
+  ],
+  "valid_apples_to_apples_quality_comparison": false
+}

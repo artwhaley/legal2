@@ -1,0 +1,162 @@
+{
+  "events": [
+    {
+      "data": {
+        "window_count": 1,
+        "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "event": "window_plan_created",
+      "sequence": 1,
+      "timestamp": "2026-01-01T00:00:00Z"
+    },
+    {
+      "event": "completed",
+      "result": {
+        "answer_source": "structured_synthesis",
+        "completion_status": "complete",
+        "coverage": {
+          "evidence_range_count": 1,
+          "message_count": 1,
+          "planned_window_count": 1,
+          "unavailable_window_count": 0,
+          "usable_window_count": 1
+        },
+        "evidence_ledger": [
+          {
+            "end_message_id": "m1",
+            "normalizations": [],
+            "range_id": "r000001",
+            "relevance": "direct",
+            "source_range_index": 0,
+            "start_message_id": "m1",
+            "summary": "school conflict",
+            "thread_id": "t1",
+            "window_id": "w0001"
+          }
+        ],
+        "evidence_validation": {
+          "accepted_range_count": 1,
+          "normalized_range_count": 0,
+          "planned_window_count": 1,
+          "rejected_range_count": 0,
+          "rejected_ranges": [],
+          "status": "complete",
+          "unavailable_window_count": 0,
+          "unavailable_windows": [],
+          "usable_window_count": 1,
+          "warnings": []
+        },
+        "ledger_processing": {
+          "compaction_applied": false,
+          "compaction_group_calls": 0,
+          "compaction_levels": 0
+        },
+        "overview": "Answer",
+        "raw_answer": null,
+        "results": [
+          {
+            "citation_status": "verified",
+            "classification_status": "model_classified",
+            "probability": "high_probability",
+            "reported_range_ids": [
+              "r000001"
+            ],
+            "statement": "Answer",
+            "uncertainty": null,
+            "unverified_range_ids": [],
+            "verified_range_ids": [
+              "r000001"
+            ],
+            "warnings": []
+          }
+        ],
+        "retrieval_diagnostics": {
+          "answer_relevant_ranges_outside_suggestions": 0,
+          "answer_relevant_ranges_overlapping_suggestions": 1,
+          "final_ranges_outside_suggestions": 0,
+          "final_ranges_overlapping_suggestions": 1,
+          "mode": "semantic_ranges",
+          "query_count": 1,
+          "raw_hit_count": 1,
+          "selected_suggestion_message_count": 1,
+          "suggestion_range_count": 1,
+          "suggestions_without_final_evidence": 0,
+          "unique_candidate_message_count": 1
+        },
+        "strategy": "single_window_ledger",
+        "synthesis_validation": {
+          "raw_output_preserved": false,
+          "status": "conformant",
+          "warnings": []
+        },
+        "uncertainties": [],
+        "unclassified_evidence": [],
+        "unverified_model_statements": [],
+        "usage": {
+          "input_tokens": 1
+        }
+      },
+      "sequence": 2,
+      "timestamp": "2026-01-01T00:00:01Z"
+    }
+  ],
+  "metrics": {
+    "answer_ranges_outside_suggestions": 0,
+    "answer_ranges_overlapping_suggestions": 1,
+    "coverage": {
+      "evidence_range_count": 1,
+      "message_count": 1,
+      "planned_window_count": 1,
+      "unavailable_window_count": 0,
+      "usable_window_count": 1
+    },
+    "final_range_inventory": [
+      {
+        "end_message_id": "m1",
+        "normalizations": [],
+        "range_id": "r000001",
+        "relevance": "direct",
+        "source_range_index": 0,
+        "start_message_id": "m1",
+        "summary": "school conflict",
+        "thread_id": "t1",
+        "window_id": "w0001"
+      }
+    ],
+    "final_ranges_outside_suggestions": 0,
+    "final_ranges_overlapping_suggestions": 1,
+    "ledger_processing": {
+      "compaction_applied": false,
+      "compaction_group_calls": 0,
+      "compaction_levels": 0
+    },
+    "mode_projection": {
+      "active_config_version": 1,
+      "configuration_fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "mode_independent_configuration_fingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "retrieval_assistance_mode": "semantic_ranges"
+    },
+    "partial": false,
+    "provider_retry_or_queue_events": 0,
+    "provisional_gold_recall": {
+      "count": 1,
+      "found": [
+        0
+      ],
+      "total": 1
+    },
+    "selected_suggestion_message_ids": [
+      "m1"
+    ],
+    "strategy": "single_window_ledger",
+    "suggestions_without_final_evidence": 0,
+    "terminal_event": "completed",
+    "usage": {
+      "input_tokens": 1
+    },
+    "wall_time_ms": 0.0031999952625483274,
+    "window_count": 1,
+    "window_durations_ms": [],
+    "window_plan_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  }
+}

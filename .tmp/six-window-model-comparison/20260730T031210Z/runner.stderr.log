@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.tmp\run_six_window_model_comparison.py", line 583, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.tmp\run_six_window_model_comparison.py", line 359, in main
+    raise RuntimeError("output directory must be empty")
+RuntimeError: output directory must be empty

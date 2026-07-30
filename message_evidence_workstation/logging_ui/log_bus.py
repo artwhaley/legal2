@@ -1,4 +1,4 @@
-"""In-process log event bus for UI subscription."""
+"""In-process diagnostic event bus for UI subscription."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from PySide6.QtCore import QObject, Signal
 
 
 class LogBus(QObject):
-    """Qt signal bus for live process log entries."""
+    """Qt signal bus for live diagnostic event entries."""
 
     entry_added = Signal(dict)
 

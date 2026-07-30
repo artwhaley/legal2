@@ -1,0 +1,105 @@
+INFO:     Started server process [41284]
+INFO:     Waiting for application startup.
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 12181.06it/s]
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8710 (Press CTRL+C to quit)
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 416, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\applications.py", line 90, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\app.py", line 87, in __call__
+    if scope.get("type") != "http" or path not in {
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\routing.py", line 660, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\routing.py", line 2685, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\routing.py", line 1267, in handle
+    await super().handle(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\routing.py", line 276, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\routing.py", line 151, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\routing.py", line 137, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\routing.py", line 691, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\.venv\Lib\site-packages\fastapi\routing.py", line 345, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\admin.py", line 748, in admin_page
+    if active
+       ^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\admin.py", line 716, in page
+    self.csrf_tokens.add(token)
+              ~~~~~~~~~~^^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\admin.py", line 643, in context
+    "message_count": 2,
+                      ^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\admin.py", line 634, in _draft
+    
+    
+    ...<3 lines>...
+        second = _sample_message("synthetic-message-2", "I can attend the meeting.")
+        ^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\config_service.py", line 81, in store_call
+    return await loop.run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self._executor, lambda: method(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\config_service.py", line 82, in <lambda>
+    self._executor, lambda: method(*args, **kwargs)
+                            ~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\config_store.py", line 420, in ensure_draft
+    if unknown:
+    
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\config_store.py", line 342, in draft
+    quick = self.conn.execute("PRAGMA quick_check").fetchone()[0]
+                                                             ^^^^
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\config_store.py", line 316, in _row_config
+    )
+    
+  File "C:\Users\artwh\OneDrive\Documents\legal2\server\config.py", line 241, in from_dict
+    @dataclass(frozen=True, slots=True)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: Unknown server configuration fields: config_schema_version, model_profiles, operation_assignments, provider_accounts

@@ -1,0 +1,547 @@
+# Six-window frozen-plan model comparison
+
+This is an extraction comparison, not a synthesis comparison. All three
+models received the same six captured windows, original IDs, retrieval
+suggestions, system prompt plus frozen analysis plan, temperature 0.1,
+maximum output tokens, and structured-output mode. Only `model` changed.
+Calls were sequential with no retries and no fallback.
+
+- Shared non-model payload hash: `b812bac5a4a42bab8ee98d85ce21ff0af68a18d5367bdf3d5fca3ffcd80fd14b`
+- Total messages: 12402
+- Window message counts: 2200, 2136, 2056, 2145, 2128, 1737
+
+## Summary
+
+| Model | Completed windows | Strict-valid | Normalized-valid | Repairs | Ranges | Gold overlap | Input tokens | Output tokens | Time |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| GLM 5.2 | 6/6 | 6/6 | 6/6 | 0 | 41 | 7/7 | 951718 | 10891 | 501.4s |
+| Nemotron 3 Ultra | 6/6 | 6/6 | 6/6 | 0 | 20 | 6/7 | 1135175 | 34909 | 738.7s |
+| MiniMax M3 | 5/6 | 4/6 | 4/6 | 0 | 5 accepted (partial) | 1/7 | 779246 | 1849 | 1126.3s |
+
+## Engineering interpretation
+
+- **GLM changed materially with the frozen plan.** The historical no-plan run produced 19 ranges and found 5/7 provisional positives; this run produced 41 ranges and found 7/7. The recall gain came with substantial over-collection: window 1 alone produced 12 mostly cooperative or negative school passages.
+- **Nemotron was the cleanest strict run.** It completed and validated all six calls, returned 20 ranges, correctly returned no evidence for window 1, and found 6/7 provisional positives. It missed 2024-06-26.
+- **MiniMax did not complete a usable six-window run.** Window 3 timed out at 900.7 seconds. Window 6 returned four plausible-looking ranges but fabricated one message-ID prefix/value, so the complete window response was rejected. Four valid windows contributed five accepted ranges and 1/7 accepted recall; raw diagnostic output overlapped 3/7.
+- Provider-reported token totals differ because each model/provider tokenizes and accounts differently. The serialized non-model request payloads were byte-identical, as proven by the shared hash above.
+- No synthesis call was made. A synthesis comparison cannot use the same input because each extraction model produced a different ledger; this run isolates the model behavior on identical analysis inputs.
+
+
+## GLM 5.2
+
+- Model ID: `z-ai/glm-5.2`
+- Gold overlap: 7/7
+- Missing provisional-positive dates: none
+- Strict-valid windows: 6/6
+- Deterministically normalized windows: 6/6
+- Repairs: 0
+
+### Complete accepted evidence ledger
+
+#### r000001 · w000001
+
+- IDs: `decipher_message_1:6780` through `decipher_message_1:6727`
+- Thread: `julie_kramer`
+- Summary: Julie asks Art if he has heard of Wildflower Acton Academy and shares a link. Art responds that he hasn't, but suggests a Montessori in Norman that Ben's girls attend. Julie says the daily drive to Norman would be too far. They discuss Wildflower being Montessori-like, Julie shares an article about Acton Academy, and Julie asks Art to attend an open house. Art says he may be too busy for the next one but encourages Julie to go ahead. This is a cooperative discussion about school options with no disagreement or tension.
+- Relevance: This passage is about school selection but is cooperative, not a fight. It provides context for the school decision but does not show conflict between the participants.
+
+#### r000002 · w000001
+
+- IDs: `decipher_message_1:6765` through `decipher_message_1:6743`
+- Thread: `julie_kramer`
+- Summary: Julie reports visiting Wildflower and both she and Olivia loved it. She describes the school in detail (ages 4-11, two studios, not religious, Taekwondo on Wednesdays). Art says he'll make time to visit. Julie notes they need to apply soon as the school is only taking 1-2 more students. Art says he doesn't want to miss another one and mentions the Norman school as the only other he'd consider, but acknowledges the drive is impractical. Julie lists other schools that aren't options (Crème, Goddard, Keystone all unavailable). They agree on criteria: private, Montessori/Acton, not religious. Art says if it doesn't meet those, 'there's no reason not to just send her to Deer Creek schools.' Julie agrees. They also discuss Heritage Hall and Primrose as alternatives. Throughout, both are cooperative and aligned.
+- Relevance: This is a detailed school-selection discussion but remains cooperative throughout. No fight or disagreement is present. It establishes the shared criteria and options being considered.
+
+#### r000003 · w000001
+
+- IDs: `decipher_message_1:6609` through `decipher_message_1:6520`
+- Thread: `julie_kramer`
+- Summary: Julie is filling out the Wildflower application and asks Art for help with several questions: 'What did we like about the child's previous school?' (Art suggests 'animals and open structure'), 'What fears do you have about your child's school experience?' (Art says he worries about conflict since she's an only child), 'When do you see your child experience stress?' (Art: 'when other kids aren't behaving and when she doesn't know what's expected'), 'How do you motivate your child?' (Julie says bribery, Art laughs), 'Share a time when your child struggled at school or home' (Julie jokes she can't answer how she wants), 'Does the past predict the future.' They also discuss submitting 2-3 projects, making a family video, and timeline pressure before the 24th open house. The tone is collaborative and humorous throughout.
+- Relevance: This is a cooperative joint effort to complete a school application. No disagreement or conflict is present. It shows both parents working together on the school decision.
+
+#### r000004 · w000001
+
+- IDs: `decipher_message_1:5907` through `decipher_message_1:5854`
+- Thread: `julie_kramer`
+- Summary: Julie reports Olivia has reached step 5 (final round) of the Wildflower application. The school asks about availability Aug 1-3 for an interview. Julie and Art coordinate scheduling—Art says Tuesday morning works best since he'll be in town. Julie confirms Wednesday at 10:30. They discuss whether Olivia goes back with Art after the interview. Julie mentions insurance lapse and needing to be careful. No disagreement; purely logistical coordination.
+- Relevance: Cooperative scheduling for a school interview. No fight or disagreement.
+
+#### r000005 · w000001
+
+- IDs: `decipher_message_1:5807` through `decipher_message_1:5778`
+- Thread: `julie_kramer`
+- Summary: Julie receives a 'check the mail' notification from Wildflower and worries it could be a rejection. Art also worries: 'I worry that a check the mail is a no!' and 'I'm going to be PISSED if we have to tell her we didn't get in. She has her heart set on it.' Julie says she'll be pissed too. They wait anxiously. Julie then reports Olivia was accepted: 'Our little smartie pants is in!!' Art asks if Olivia was excited. They share relief and excitement. No disagreement between them; shared anxiety and shared joy.
+- Relevance: This shows shared emotional investment in school acceptance but no conflict between the participants. The tension is with the school's decision, not between the parents.
+
+#### r000006 · w000001
+
+- IDs: `decipher_message_1:5746` through `decipher_message_1:5744`
+- Thread: `julie_kramer`
+- Summary: Julie says she is glad Olivia's school doesn't start until September 6, and that she paid the first $5,000 of tuition and plans to pay the remaining $5,000 next month. She says 'Can't believe kindergarten is so much' but thinks it's '100% worth it.' Art does not respond to this specific message in the supplied window.
+- Relevance: Julie unilaterally reports paying $10,000 in tuition. No disagreement is shown, but Art's response is not visible. This is educational cost information without evidence of conflict.
+
+#### r000007 · w000001
+
+- IDs: `decipher_message_1:5709` through `decipher_message_1:5682`
+- Thread: `julie_kramer`
+- Summary: Julie and Art discuss a scheduling conflict: the Wildflower back-to-school night on Aug 25 overlaps with a county fair dog show Art wanted Olivia to attend. Julie says the back-to-school event may be mandatory and that Olivia was excited to meet other kids with both parents there. Art says 'school's more important' but is sad about missing the dog show. Julie tells Olivia, who says 'okay' with missing the dog show as long as she can go to the fair another day. Art suggests not telling her about the watermelon event Thursday. They also discuss a doctor appointment in Seminole on Aug 22. The exchange is cooperative—both prioritize school, though Art expresses disappointment about the fair.
+- Relevance: This shows a minor scheduling tension between a school event and a non-school activity, but both parents agree school takes priority. It is not a fight between them.
+
+#### r000008 · w000001
+
+- IDs: `decipher_message_1:5549` through `decipher_message_1:5489`
+- Thread: `julie_kramer`
+- Summary: On Aug 25, Julie and Art discuss whether to attend the Wildflower back-to-school night. Julie's dad tested positive for Covid, Olivia has a low-grade fever (99.5), and Julie has a sore throat. They scramble to find costumes for the Candy Land-themed event. Art asks repeatedly whether they're going. Julie is uncertain, says 'I want to go but I don't think it's a good idea.' Olivia says 'I feel like I'm gonna give my whole class the covid.' Julie ultimately emails the school saying they won't attend and tests positive for Covid herself. Art is supportive throughout, offering to pick up Olivia regardless. No disagreement between the parents; the tension is about illness, not about school itself.
+- Relevance: This shows a school-related event being missed due to Covid, with cooperative decision-making. No fight between the participants about school.
+
+#### r000009 · w000001
+
+- IDs: `decipher_message_1:5456` through `decipher_message_1:5433`
+- Thread: `julie_kramer`
+- Summary: Art asks how Olivia's first day of school went. Julie reports she was excited, picked her outfit, was initially leery but two sweet older girls 'adopted' her. Julie signed her up for Tae Kwon Do trips on Wednesdays. Art is supportive and proud. Julie says Olivia reported 'Best school ever' and made 5 friends. They discuss class size (12 kids in her studio, 10 in the other). Cooperative and positive throughout.
+- Relevance: This is a positive report on Olivia starting school. No conflict or disagreement.
+
+#### r000010 · w000001
+
+- IDs: `decipher_message_1:5418` through `decipher_message_1:5403`
+- Thread: `julie_kramer`
+- Summary: Julie proposes keeping Olivia through the weekend to maintain school-morning consistency, noting Olivia has had a hard time adjusting to the 7am wake-up schedule. Art agrees, saying he was planning to grab her but doesn't want to get her sick. They discuss bedtime struggles—Julie says Olivia still falls asleep at 10:30/11pm despite starting wind-down at 8:30. Art asks about melatonin. Julie says she'll get some. They discuss the difficulty of the new school schedule. No disagreement; cooperative problem-solving.
+- Relevance: This shows cooperative discussion about school schedule adjustment. No fight between the participants.
+
+#### r000011 · w000001
+
+- IDs: `decipher_message_1:5353` through `decipher_message_1:5350`
+- Thread: `julie_kramer`
+- Summary: Julie gives Art detailed instructions for school pickup: arrive at 3:05-3:10, don't leave gaps, don't get out of the car, don't block the driveway. Art responds 'lol. alright.' Julie asks if he cleaned his car. The exchange is logistical and cooperative, though Julie is giving detailed directives.
+- Relevance: This is school pickup logistics with no disagreement. Art complies without objection.
+
+#### r000012 · w000001
+
+- IDs: `decipher_message_1:5250` through `decipher_message_1:5242`
+- Thread: `julie_kramer`
+- Summary: Julie expresses frustration about only having 4-5 hours with Olivia after school: 'It's so weird to only have like 4-5 hours and then time to get ready for bed. I know that's what everyone does but I happen to really like my child and I think most parents don't.' Art agrees and says 'I totally get why people want to home school though. I hate that they get her more waking hours than we do now!' They also discuss Olivia being extra clingy, possibly due to the adjustment. No disagreement between them; shared frustration about the school schedule reducing their time.
+- Relevance: Both parents express frustration about the school schedule reducing their time with Olivia, but they agree with each other. This is a shared sentiment about school's impact, not a fight between them.
+
+#### r000013 · w000002
+
+- IDs: `decipher_message_1:4900` through `decipher_message_1:4891`
+- Thread: `julie_kramer`
+- Summary: On Oct 27, 2022, Julie shares school evaluation materials from Wildflower Montessori ahead of the next day's 'journey meeting' (parent-teacher conference). Art critiques the school's assessment: he wishes they pushed Olivia more on reading, says her math was already 'significant' before she started, and questions the teacher's characterization of Olivia as passive/quiet, saying 'Passive and quiet are not words I'd describe her with!' Julie agrees the comments were 'a little weird' and says Brooke said Olivia is 'absolutely thriving' but she felt the comments were odd. The exchange shows a shared disagreement with the school's evaluation of Olivia's academic progress and classroom behavior.
+- Relevance: Directly relevant: Art and Julie express criticism of the school's academic assessment of Olivia—specifically reading, math, and behavioral characterization—constituting a disagreement about school/educational progress, though the disagreement is with the school rather than between the two parents.
+
+#### r000014 · w000002
+
+- IDs: `decipher_message_1:3572` through `decipher_message_1:3514`
+- Thread: `julie_kramer`
+- Summary: On Mar 28, 2023, Art and Julie have a tense, extended disagreement about parenting time during Olivia's two-week spring break, which escalates into a broader conflict about financial responsibility, school choice, and educational philosophy. Julie insists on keeping Olivia for the full week ('No school doesnt automatically mean farm time'), says school days leave her almost no time with Olivia, and raises that she bears 100% of financial responsibility including school tuition and medical bills. Art counters that many dads see their kids half time, that Julie's financial pressure isn't solely from parenting, and that Olivia expected two weeks at the farm. The argument then shifts to education: Julie says she signed the commitment letter for Wildflower next year but is 'willing to look at' other schools; Art says 'I wish there was more push on the core skills' and 'I wish there was more pressure on reading and math'; Julie agrees ('I wish there was more focus on core skills too'). They discuss Olivia's refusal to move from pre-reading to the actual reading curriculum, Miss Chris not forcing her, and Art's frustration with the 'she'll do it when she wants to' philosophy. Art also mentions public school options in small towns. The exchange is a sustained argument combining custody/scheduling, school choice, educational quality, and financial responsibility.
+- Relevance: Directly relevant: This is a sustained fight between the participants that materially involves school/education—school choice (Wildflower vs. public vs. other private), educational philosophy and curriculum concerns (reading, math, core skills), school tuition as part of the financial-responsibility dispute, and the intersection of parenting time with school schedules. Education is a material part of the disagreement throughout.
+
+#### r000015 · w000003
+
+- IDs: `decipher_message_1:2720` through `decipher_message_1:2707`
+- Thread: `julie_kramer`
+- Summary: On July 22, 2023, Julie confronts Art about a comment he made refusing to pull garbage cans up, which she interpreted as conditioning help on sex. She expands into a broader accusation that he doesn't financially support their child's education: 'I don't think you realize the expense… Private school, gymnastics, voice lessons, insurance…' and says 'I. Pay. For. Everything.' She argues he should spend 30% of his income on their child as she does. Art apologizes, says the trash comment was a joke about 'boyfriend behavior,' and says he won't suggest sleeping together again. Julie clarifies she was upset because 'you said i was useless if i didn't' and 'because you wouldn't do a 5 minute task that i really needed help with.'
+- Relevance: This is a direct argument between the participants in which private school and educational expenses are a material part of the disagreement about financial responsibility and parental contribution. Julie explicitly lists 'Private school' among the expenses she bears alone and ties it to her complaint that Art does not contribute proportionally.
+
+#### r000016 · w000003
+
+- IDs: `decipher_message_1:2671` through `decipher_message_1:2657`
+- Thread: `julie_kramer`
+- Summary: On July 25, 2023, Julie and Art disagree about whether Olivia should have been given a second chance to choose where to stay after her birthday party. Julie says 'I don't think we should do that' and argues Olivia 'didn't need to be given the option to change her mind. that's too much stress for a tired little girl after a birthday party.' Art responds 'I don't think letting her have a choice in her plans is the wrong call.' Julie then mentions she spent '$4000 on her birthday party' and was 'ready to hear about her favorite parts and spend time with her afterwards.' The exchange then shifts to school: Julie says 'wildflower is kinda up in flames right now' and 'a lot of the parents don't like the heinigers.' She states 'I Dont want Olivia at wildflower if miss Chris isn't there' and that she, Maria, and Miss Chris may form a new school. Art asks questions about the new school and whether Miss Chris has credentials. They discuss the Heinigers not paying teachers enough and Julie's concern about a former youth pastor involved.
+- Relevance: This passage contains a tense exchange about parenting decisions (whether to give Olivia a second choice about plans) that Julie frames as a mistake, and then transitions into a substantive discussion about Olivia's school situation at Wildflower, including disagreements about the school's new ownership, teacher pay, and whether Olivia should stay. The school discussion is largely cooperative but follows directly from the tense parenting disagreement.
+
+#### r000017 · w000003
+
+- IDs: `decipher_message_1:2137` through `decipher_message_1:2056`
+- Thread: `julie_kramer`
+- Summary: On September 22, 2023, Julie sends a long series of messages about the collapse of the homeschool co-op ('Spark') and the need to rebuild. She lists non-negotiable educational requirements for Olivia including 'Reading is an EVERY day subject,' weekly education reports, and that 'child led learning does NOT mean allowing kids to choose less time spent on reading, math, science.' She says 'I want READING ffs.' She describes Jami as wanting 'a glorified daycare and not be held accountable.' Art agrees: 'Yes on all of that, of course. I agree on the academics parts for sure.' He also suggests 'Maybe miss Chris could figure out a homework system.' Julie describes touring 13 schools and rejecting Christian schools for their discipline policies. Art asks whether the homeschool collective affects Olivia's ability to move to other schools later and suggests they could homeschool her at the farm: 'Dave and Ruth and I have the time to Home School her here if we needed to.'
+- Relevance: This is a sustained, intense exchange about Olivia's education, including Julie's strong demands about curriculum and accountability, the failure of the current school arrangement, and competing proposals for what to do next. While Julie and Art are largely aligned, Julie's tone is confrontational toward the school situation and she is making unilateral demands about educational standards. Art's proposal to homeschool at the farm is a competing idea about where Olivia should be educated.
+
+#### r000018 · w000003
+
+- IDs: `decipher_message_1:1851` through `decipher_message_1:1733`
+- Thread: `julie_kramer`
+- Summary: On September 29, 2023, Julie announces she 'fired Chris & Emily' as teachers, saying 'They are not qualified' and 'I was holding them accountable. And then they didn't want to do it. And flaked out.' Art asks 'So... Who's doing it now?' and 'Huh. Jami is still a cunt though right?' They then have an extended discussion about school options. Art suggests Epic Charter Schools, Deer Creek public schools, or the school Lyla attends in Norman, saying 'I just want to make sure she's got some stability soon.' Julie discusses Keystone, Westminster, Casady, Back to Earth, and others. Art says 'I... really can just Home School her. I've got the time.' Julie says she doesn't want Olivia 'alone' for socialization. They discuss Casady's cost ($18,885/year) and Julie says '10,000 was about as much as I can handle.' Art mentions scholarships but doubts a 50% one exists. Julie says 'Even if I got her magically accepted at Westminster she would struggle with first grade because Chris didn't teach her or anyone in the class to read.' Art responds 'Yeah, I already thought they were too slow on that, but I was buying the wildflower self paced thing... but... no, seriously, it's time to read.' They discuss education.com, Back to Earth ('they are gonna smoke pot while the kids feed the chickens'), and Rivers & Roads ('kids are allowed to do absolutely anything they want all day'). Julie says 'I want a weekly assessment and proof she's learning.'
+- Relevance: This is a prolonged, substantive disagreement-laden exchange about Olivia's education: where she should go to school, whether the teachers were qualified, whether to homeschool, concerns about reading progress, cost of private schools, and competing evaluations of multiple school options. While not a screaming fight, it contains competing proposals, frustration, and tension about educational decisions and responsibility.
+
+#### r000019 · w000003
+
+- IDs: `decipher_message_1:1168` through `decipher_message_1:1161`
+- Thread: `julie_kramer`
+- Summary: On October 27, 2023, Art and Julie briefly disagree about whether Sully (a pre-K child) should be part of the homeschool co-op. Art says 'I mean... I'm pretty anti sully too' and 'Frankly I think Addy is too far behind o, let alone sully.' Julie pushes back: 'Yes but normal teachers handle 20 - 28 kids. 4 kids. At any level. Is fine.' Art concedes 'Yes... It would just be better without. But again...I get the financial side.' Julie explains they need Sully for economic reasons and if they lose him they lose Addy. Art acknowledges the financial necessity but repeats his preference against.
+- Relevance: This is a direct disagreement between the participants about the composition of the homeschool group, which is an educational decision. Art objects to including Sully on academic grounds (too far behind), while Julie argues it's fine and economically necessary. The exchange shows competing positions about the school arrangement.
+
+#### r000020 · w000004
+
+- IDs: `decipher_message_1:986` through `decipher_message_1:969`
+- Thread: `julie_kramer`
+- Summary: On Nov 13, 2023, Art suggests he could 'take over home school' and says 'Don't kill yourself trying to make it make sense' about the micro-school, calling it a 'sunk cost fallacy.' Julie pushes back strongly: 'definitely not going to throw it all out and homeschool at home now,' citing solid schedule, teachers, lesson plans, academic progress tracking, WiFi, and cameras. Art persists ('It needs to get stable'), references prior homeschooling ('She loved her days of home school here'), and notes Olivia is 'too far ahead of Addy.' Julie counters that the hard/expensive setup is done and the daily schedule, teachers, curriculum, location, and school days won't change. Art ultimately agrees.
+- Relevance: Direct disagreement about whether to continue the micro-school vs. switch to homeschooling at home. Education (school format, curriculum, academic progress, cost) is the core of the dispute. Art raises sunk-cost and stability concerns; Julie defends the school's infrastructure and progress. The exchange is tense but resolves toward Julie's position.
+
+#### r000021 · w000004
+
+- IDs: `decipher_message_1:148` through `decipher_message_1:110`
+- Thread: `julie_kramer`
+- Summary: On Feb 23, 2024, a sustained argument erupts over pre-competition logistics. Julie insists Olivia come home Friday night or Saturday morning so Julie can do her competition hair and maintain their getting-ready ritual, citing illness and energy limits. Art proposes alternatives (Ruth curls hair, meet at Grace's house at 4pm, cousins ride together). Julie refuses. Art says 'we're perfectly capable of getting her ready for a competition, too' and 'things I've planned for her are equally important.' Julie itemizes $9,132+/year in gymnastics costs and notes 'You don't help pay for anything.' Art responds: 'you think her hairdo is more important than time with her father' and 'time with her family is what is most important,' invoking Julie's own gymnastics abuse history. Julie clarifies the issue is the agreed-upon plan and the bonding ritual, not hair vs. father time. Art says 'I'm not arguing with you about bringing her back' but remains upset about the attitude.
+- Relevance: Direct, heated conflict combining school/educational activity (competitive gymnastics), parenting time, financial responsibility for the activity, and pre-competition routine. Education-adjacent activity is material to the disagreement. Both sides accuse the other of prioritizing wrongly. The fight spans competing proposals, accusations, defensiveness, and financial claims.
+
+#### r000022 · w000004
+
+- IDs: `decipher_export_19:583` through `decipher_export_19:603`
+- Thread: `julie_kramer`
+- Summary: On Jun 26, 2024, Art questions the proposed September schedule that combines morning gymnastics with reduced school days: 'I wish it was more than 2 and a half days of school?' and 'are you and Weston really sure you can run a school with twins?' Julie explains it's the same gym hours, just shifted, and that 1st-4th grade homeschool recommendation is 12-15 hours. Art says '4 days a week of individual instruction was better than 5 of a classroom. More kids and less time is a lot less education' and 'As long as it's the fluff getting cut out... Not the academics.' Julie says the second-grade curriculum 'looks kinda too easy for O' and plans to buy 3rd-grade materials too.
+- Relevance: Direct disagreement about the academic schedule and educational quality of the homeschool/micro-school. Art challenges whether reduced school time and running a school with newborn twins will compromise academics. Julie defends the plan. The exchange involves competing positions on educational adequacy, curriculum, and school scheduling.
+
+#### r000023 · w000004
+
+- IDs: `decipher_export_19:770` through `decipher_export_19:793`
+- Thread: `julie_kramer`
+- Summary: On Jul 10-11, 2024, Art and Julie discuss whether Olivia can attend Art's theater arts camp (9am-5pm, professional artists, culminating in an art show and theater performance). Julie raises concerns: Olivia would miss an entire week of morning gymnastics (expensive, new coach, new group, first month of training), her mom visits the 17th-22nd, there's a gym party on the 18th, and she's overwhelmed by large groups (120 kids). Art says 'she needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school,' and 'I really thought we had this cleared a long time ago.' Julie says Olivia doesn't want to miss morning gym, the gym party, or Momo's visit, and worries about germs before the birthday party. Art says going only 2-3 days is 'pointless' since she won't finish anything. Julie suggests finding another theater arts camp in August instead.
+- Relevance: Direct disagreement about educational/activity scheduling and socialization. Art frames the theater camp as important for group participation skills and implicitly critiques 'not real school.' Julie prioritizes gymnastics continuity, the child's preference, and health concerns. Both present competing positions about what educational activity matters most. The exchange involves tension but is less heated than the Feb 23 fight.
+
+#### r000024 · w000005
+
+- IDs: `decipher_export_19:1181` through `decipher_export_19:1182`
+- Thread: `julie_kramer`
+- Summary: Julie mentions Olivia will need to do her school curriculum on Friday but can take it with her to the farm. Art responds that he's fine with her doing as much of it as she wants at the farm, noting things might be 'a little crazy and unstructured for a few weeks.' This is a cooperative exchange about homeschool logistics with no disagreement.
+- Relevance: Shows early cooperative discussion about homeschool curriculum during custody transitions; no conflict present, but establishes context for later school-related discussions.
+
+#### r000025 · w000005
+
+- IDs: `decipher_export_19:1231` through `decipher_export_19:1231`
+- Thread: `julie_kramer`
+- Summary: Julie mentions Olivia is 'doing school right now' in passing while updating Art on baby transfer logistics.
+- Relevance: Brief neutral reference to homeschool; no disagreement.
+
+#### r000026 · w000005
+
+- IDs: `decipher_export_19:1273` through `decipher_export_19:1273`
+- Thread: `julie_kramer`
+- Summary: Julie shares that Olivia is 'on chapter 7 of her first chapter book,' indicating reading progress.
+- Relevance: Neutral academic progress update; no disagreement.
+
+#### r000027 · w000005
+
+- IDs: `decipher_export_19:1391` through `decipher_export_19:1456`
+- Thread: `julie_kramer`
+- Summary: Julie lays out a detailed weekly schedule including homeschool after gymnastics on multiple days and asks Art to come stay during the week to help drive Olivia and help with homeschool. Julie says Olivia has been 'lacking on her homeschool' and that it's been 'rough with adjusting to the babies,' and thinks if Art were there she would get more homeschool done. Art offers that Olivia could come out to the farm more, saying 'I know that would require adjusting gymnastics schedule, but if she needs to start coming out Tuesday-Friday or something so she can focus on school...' Julie responds that Olivia 'definitely needs to start taking a few books to the farm on the weekend, especially if she doesn't do as much as she needs to during the week.' Art agrees to come Wednesday through Monday. This is a cooperative but substantive discussion about homeschool progress, responsibility, and scheduling, with Julie expressing concern about Olivia falling behind and both parents proposing solutions.
+- Relevance: Materially relevant to school/education: shows Julie's concern about Olivia's homeschool progress, both parents' proposals for addressing it, and the intersection of homeschool with custody/gymnastics scheduling. The exchange is cooperative rather than adversarial but involves competing proposals (Art suggests more farm time for school focus; Julie suggests Art stay at her house to help with homeschool).
+
+#### r000028 · w000005
+
+- IDs: `decipher_export_19:1607` through `decipher_export_19:1613`
+- Thread: `julie_kramer`
+- Summary: Julie asks if Olivia took any school books to the farm, noting Olivia is 'done lots in brainquest' but 'needs to switch gears to some of her electives too.' Art admits 'we forgot her homework books' and says they'll do 'some academics.' Julie then details specific subject areas: 'She's doing good on math and phonics. Handwriting, science and history — been slacking. She's only done 5-6 pages in her cursive writing handbook. Reading — she is excelling in books she wants to read. But she also needs to do her actual phonics and reading workbooks.' This exchange shows Julie monitoring and reporting on homeschool subject-by-subject progress and Art acknowledging they forgot materials.
+- Relevance: Directly relevant to homeschool academic progress and responsibility. Julie identifies specific areas of slacking and Art acknowledges forgetting homework books. The tone is informational rather than accusatory, but Julie's detailed accounting of what Olivia has and hasn't done suggests an underlying concern about Art's follow-through on homeschool at the farm.
+
+#### r000029 · w000005
+
+- IDs: `decipher_export_19:1633` through `decipher_export_19:1633`
+- Thread: `julie_kramer`
+- Summary: Art reports Olivia 'had a good social studies day today' at the Chickasaw cultural center, describing educational activities. Julie responds positively.
+- Relevance: Shows Art providing educational experiences at the farm; cooperative, no disagreement.
+
+#### r000030 · w000005
+
+- IDs: `decipher_export_19:1645` through `decipher_export_19:1648`
+- Thread: `julie_kramer`
+- Summary: Julie asks if Olivia has her school books. Art says she has 'brainquest and math' and asks where to leave them. Julie says either location is fine. This is a neutral logistics exchange about transferring school materials at gymnastics pickup.
+- Relevance: Neutral school logistics; no disagreement.
+
+#### r000031 · w000005
+
+- IDs: `decipher_export_19:1889` through `decipher_export_19:1907`
+- Thread: `julie_kramer`
+- Summary: Julie reports Olivia is 'almost halfway done with 2nd grade on education.com' and that they did it every day that week. Art asks if she brought books, says they've been doing it every day at the farm too. Julie says she took books out of her backpack because they carry backpacks at meets. Art suggests she read to dogs at the shelter, saying 'so that's academic.' Julie says 'It's okay, she's worked hard all week.' Julie then discusses switching to education.com because Olivia was 'getting bored with regular books,' mentions common core standards, and notes Olivia finished 2nd grade reading. Art shares a link to time4learning.com, suggesting it will 'space out the lessons' so Olivia can't 'just plow through it.' Julie says she'll check it out. This is a substantive cooperative discussion about homeschool curriculum choices, platforms, and pacing.
+- Relevance: Materially relevant to homeschool curriculum and academic progress. Both parents are engaged in evaluating and selecting homeschool platforms and discussing Olivia's pacing. The exchange is cooperative but involves Art introducing a competing curriculum proposal (time4learning.com) and Julie explaining her rationale for switching to education.com.
+
+#### r000032 · w000005
+
+- IDs: `decipher_export_19:1921` through `decipher_export_19:1921`
+- Thread: `julie_kramer`
+- Summary: Julie reports Olivia 'finished 2nd grade reading with education.com' and only has '2 more math goals,' after which they will go back to IXL (which Deer Creek uses). This is a progress update with no disagreement.
+- Relevance: Neutral homeschool progress update; mentions alignment with Deer Creek school standards.
+
+#### r000033 · w000005
+
+- IDs: `decipher_export_19:2121` through `decipher_export_19:2123`
+- Thread: `julie_kramer`
+- Summary: Julie asks 'Hopefully she's doing some in her school books?' and Art confirms 'she is doing school most days!' This brief exchange shows Julie checking on homeschool at the farm and Art confirming it's happening.
+- Relevance: Shows Julie monitoring homeschool during farm time; mild concern implied by the question but no disagreement.
+
+#### r000034 · w000005
+
+- IDs: `decipher_export_19:2532` through `decipher_export_19:2538`
+- Thread: `julie_kramer`
+- Summary: Julie provides a detailed homeschool progress report: 'I feel great with her reading. Handwriting — also improving tons. And working on cursive. Math — she can do all requirements for 2nd grade... But I think more practice would be good. And getting used to having time limits and learning fast math. She's been working on spreadsheets and starting graphs this week which is like 7-9th grade material. My only concern right now that she's not ahead or equal to her peers is in history and science. There's tons that I want to do. But just haven't had time to devote to those subjects.' She suggests time4learning is great and if Art wants to subscribe to that one too, 'I think it's a great idea.' Art responds that he wants to 'keep up low intensity school through the summer to try to catch up a little,' acknowledges 'during gymnastics season that's been less predictable and we've all let it slip,' and says 'I'm worried about getting her caught up and in the habit of success at it.' Julie agrees and notes 'public school + college didn't help you in that department' regarding routines. This is a substantive, cooperative but candid discussion about homeschool gaps, shared responsibility for slippage, and plans to catch up.
+- Relevance: Directly relevant to homeschool academic quality, progress, and shared responsibility. Both parents acknowledge the homeschool has slipped during gymnastics season. Art explicitly worries about getting Olivia 'caught up' and 'in the habit of success.' Julie identifies specific subject gaps (history and science). The exchange is cooperative but contains mutual acknowledgment of a problem, which could be characterized as a shared concern rather than a fight.
+
+#### r000035 · w000005
+
+- IDs: `decipher_export_19:2539` through `decipher_export_19:2546`
+- Thread: `julie_kramer`
+- Summary: Julie raises the possibility of getting Olivia evaluated for ADHD, describing her own diagnosis history, the signs she sees in Olivia, and her ambivalence about medication. She says 'There's no doubt she has it' but is conflicted about evaluation and medication. Art responds: 'Getting her evaluated doesn't mean having to treat it yet. Hopefully we can find someone who will be interested in minimum treatment options.' Julie agrees: 'Yeah i guess it's worth getting a professional opinion. It's not like we have to agree to whatever treatment options they offer.' Art later adds 'she's struggling some days with it.' This is a cooperative discussion about educational/behavioral evaluation and potential intervention, with both parents in agreement.
+- Relevance: Relevant to educational decisions about potential ADHD evaluation and its impact on schooling. Both parents are in agreement and there is no disagreement, but the discussion is materially about Olivia's learning profile and educational needs.
+
+#### r000036 · w000005
+
+- IDs: `decipher_export_19:2684` through `decipher_export_19:2689`
+- Thread: `julie_kramer`
+- Summary: Art sets up a time4learning.com account for Olivia, sharing login credentials with Julie. He reports 'She said it was super fun the first day... then... harder to motivate the second day, but... that's ADHD for ya.' Julie asks if it has science/history or typing. Art says no typing but it does have science and social studies, suggesting 'even if we just focus THOSE mostly from it, it would be good.' Art describes the platform's scheduling feature that divides lessons across a calendar. This is a cooperative exchange about implementing a shared homeschool curriculum platform.
+- Relevance: Directly relevant to homeschool curriculum and shared educational responsibility. Art is actively implementing a curriculum tool and coordinating with Julie. No disagreement.
+
+#### r000037 · w000005
+
+- IDs: `decipher_export_19:2910` through `decipher_export_19:2918`
+- Thread: `julie_kramer`
+- Summary: Julie informs Art of Olivia's new gymnastics practice schedule and associated costs: '$450/month, $800/coaches fees, $600/leotard, $200/warm-up, $300/team registration fee.' She states 'I've paid everything for the last 4 years myself' and asks 'Can you start splitting some of this with me? At least for awhile until I'm able to start working more.' Art responds two days later: 'I'll look at it and figure out how I can help. I'm kinda putting everything I make into adding onto the house out here right now so don't have a lot free. But I'll see what I can do and we'll talk about it.' This exchange involves a direct financial request from Julie and a non-committal response from Art, touching on the intersection of gymnastics costs and educational/activity expenses.
+- Relevance: Relevant to the intersection of educational/activity costs and financial responsibility. Julie's request for cost-sharing and Art's deferral could be characterized as a mild disagreement or at least a point of tension about financial responsibility for Olivia's gymnastics, which is her primary educational/developmental activity. The exchange is polite but contains competing positions: Julie asks for splitting costs; Art says he doesn't have much free money.
+
+#### r000038 · w000006
+
+- IDs: `decipher_export_19:3370` through `decipher_export_19:3397`
+- Thread: `julie_kramer`
+- Summary: On July 16, 2025, Art and Julie have a sustained disagreement about Olivia's education and gymnastics. Art states Olivia should be 'OUT of gymnastics until her education is on track,' says she came back from two-week gymnastics stretches having done 'zero school,' and that she'd be on 'academic probation from activities' in a real school. Julie counters that Olivia 'is on track with her education,' that Julie has paid tuition 35 of 36 months, and that Olivia told Julie the farm schoolwork was 'way too easy, like pre-school stuff' and she hated it. Art acknowledges the curriculum was too easy and proposes adjusting grade levels. Julie defends homeschooling over public school, says school never stopped being a priority, and argues gymnastics teaches life skills. Art says he doesn't think she needs private school but 'needs to do her lessons with as much regularity as she does gymnastics.' Julie provides links and arguments against the public school system. Art says 'I'm not trying to pick a fight about it' but wants education prioritized. The exchange also covers financial contributions to gymnastics and Art's limited income.
+- Relevance: This is a direct disagreement between the conversation participants about whether Olivia's education is on track, whether homeschooling is adequate, whether gymnastics should be deprioritized until academics improve, and who is responsible for educational progress. Education is a material part of the conflict throughout.
+
+#### r000039 · w000006
+
+- IDs: `decipher_export_19:3451` through `decipher_export_19:3456`
+- Thread: `julie_kramer`
+- Summary: On August 4, 2025, Julie raises concerns about voice lessons being scheduled in Ada every Friday, noting Olivia is with Julie some weekends and with Art others. Art responds, 'If she's only doing school work here she needs to get here as often as possible anyway this year,' implying Julie's home is not where school happens. Julie pushes back: 'She's not only doing school work there? She does lots of school work here.' Julie acknowledges a gap in September/October and December but says Olivia 'does school almost at least 3-4 days a week.' Art suggests letting Olivia try the first class or two before committing. The exchange is tense but relatively brief.
+- Relevance: This exchange involves a competing-position disagreement about where Olivia does school, how much school happens at each parent's home, and whether Art's claim that school only happens at his house is accurate. Education is a material part of the tension, though the primary topic is voice lesson scheduling.
+
+#### r000040 · w000006
+
+- IDs: `decipher_export_19:4631` through `decipher_export_19:4640`
+- Thread: `julie_kramer`
+- Summary: On December 23, 2025, during a broader custody dispute, Art and Julie argue about Olivia's education. Art says, 'I've taken over paying for her education when you started neglecting it,' and 'You neglected school entirely for almost the full semester. Gymnastics is all that's important to you.' Julie responds that she does school work with Olivia, that Art 'didn't know she had skipped half of the lessons until I told you,' and that they were doing 'about 8 lessons per DAY the month prior.' Art says he told Julie 'when you got pregnant that you couldn't home school her if you were due in September.' Julie says the only time she didn't monitor school was during the twins' birth/NICU and her hospitalization. Art says Olivia has been doing over an hour every day lately.
+- Relevance: This is a direct argument about educational responsibility and neglect accusations, with both parties accusing the other of failing to properly oversee Olivia's schooling. Education is a material and explicit part of this fight.
+
+#### r000041 · w000006
+
+- IDs: `decipher_export_5:131` through `decipher_export_5:142`
+- Thread: `julie_kramer`
+- Summary: On July 1, 2026, Art states he will not agree to any settlement where he doesn't have 'final say about activities and education,' accusing Julie of 'neglecting her education again' and saying he 'worked my ass off to remedy the damage you'd done there.' Julie strongly disputes being neglectful, detailing her extensive involvement in Olivia's education: paying for private school, doing curriculum books in 2nd grade, spending hours on repetitive schoolwork, and benchmark testing where Olivia scored above grade level. Julie criticizes Art's choice of an online curriculum (Time for Learning) that he didn't properly set up, saying Olivia was skipping chapters with no continuity. Julie says Art paid ~$350/year for a subscription while she has paid over $30,000 for education and spent hundreds of hours planning. Art says he only knows what Olivia tells him. Julie challenges Art to produce end-of-year benchmark tests to prove he has been educating her properly.
+- Relevance: This is a direct, sustained argument about educational responsibility, curriculum quality, who has been properly educating Olivia, and who should have decision-making authority over education. Education is the central material issue in this portion of the exchange.
+
+
+## Nemotron 3 Ultra
+
+- Model ID: `nvidia/nemotron-3-ultra-550b-a55b`
+- Gold overlap: 6/7
+- Missing provisional-positive dates: 2024-06-26
+- Strict-valid windows: 6/6
+- Deterministically normalized windows: 6/6
+- Repairs: 0
+
+### Complete accepted evidence ledger
+
+#### r000001 · w000002
+
+- IDs: `decipher_message_1:3572` through `decipher_message_1:3530`
+- Thread: `julie_kramer`
+- Summary: Sustained argument about allocation of school break time, child support norms, financial responsibility for education/medical costs, and educational philosophy. Julie states she bears 100% financial responsibility for Olivia's medical bills ($3500 in 2 months), tuition, activities, and wants more no-school days with Olivia. Art counters about gender roles in parenting, suggests Julie's financial pressure stems from lifestyle choices (new truck, cosmetic surgeries), and criticizes Wildflower's self-directed approach wanting more structured reading/math pressure. Both express frustration about time with Olivia during school breaks vs. school days.
+- Relevance: This is the most substantial fight about school in the window. It directly addresses school break scheduling, educational philosophy/curriculum (Wildflower's approach vs. traditional academics), financial responsibility for school-related costs, and parenting time conflicts centered on school schedule.
+
+#### r000002 · w000002
+
+- IDs: `decipher_message_1:3146` through `decipher_message_1:3130`
+- Thread: `julie_kramer`
+- Summary: Disagreement over school break scheduling for Julie's birthday. Art had planned a Silver Dollar City trip during the week off school; Julie wanted Olivia for birthday pedicures/spa day Friday. Julie expresses frustration about potentially spending birthday alone waiting for Olivia's return. Art agrees to cancel trip and stay in town, bringing Olivia back Friday morning.
+- Relevance: Direct conflict about how to allocate a school break week (no school Monday-Friday), combining parenting time, birthday plans, and a proposed trip. Education/school schedule is the material basis for the disagreement.
+
+#### r000003 · w000002
+
+- IDs: `decipher_message_1:4362` through `decipher_message_1:4352`
+- Thread: `julie_kramer`
+- Summary: Disagreement about Art attending school exhibition while recovering from flu. Julie advises Art not to attend to avoid infecting other children; Art initially plans to try to attend. Julie decides to attend wearing a mask, noting 'All the other kids infected my kid. Who then infected me.'
+- Relevance: Conflict about attending a school event (exhibition) while ill, with competing proposals about infection risk and parental presence at school activities.
+
+#### r000004 · w000003
+
+- IDs: `decipher_message_1:2720` through `decipher_message_1:2700`
+- Thread: `julie_kramer`
+- Summary: Julie confronts Art about bearing all financial and logistical responsibility for Olivia's education (private school tuition, gymnastics, voice lessons, medical expenses, birthday parties) while Art does 'fun dad' stuff without responsibility; triggered by Art's 'trash cans' comment about 'boyfriend behavior'; Art apologizes, clarifies it was a joke about boyfriend behavior, not a refusal to help.
+- Relevance: Direct fight between co-parents about school/activity costs, parental responsibility, and financial burden. Julie explicitly lists private school, gymnastics, voice lessons, insurance, medical emergencies, birthday parties as expenses she covers alone.
+
+#### r000005 · w000003
+
+- IDs: `decipher_message_1:2667` through `decipher_message_1:2660`
+- Thread: `julie_kramer`
+- Summary: Julie explains Olivia made plans with school friend Kaidence with Art's approval, then Art gave Olivia the option to change her mind at end of birthday party causing stress; Art acknowledges 'she didn't need a second chance to choose' and that it won't come up often.
+- Relevance: Disagreement about parenting coordination around school friend scheduling and decision-making authority. Julie feels Art undermined the plan by offering Olivia a second choice after she'd already committed.
+
+#### r000006 · w000003
+
+- IDs: `decipher_message_1:2159` through `decipher_message_1:2070`
+- Thread: `julie_kramer`
+- Summary: Julie informs Art she fired teachers Chris and Emily for not meeting educational standards (reading daily, weekly reports, core skills priority, accountability); Art asks 'Who's doing it now?' and suggests homeschooling; they discuss Keystone, Back to Earth, Epic Charter Schools as alternatives.
+- Relevance: Qualifying passage: shows a school crisis (teacher firing over educational quality) but Julie and Art are aligned on standards and collaboratively problem-solving, not fighting with each other. Included to show context of school instability they jointly navigate.
+
+#### r000007 · w000003
+
+- IDs: `decipher_message_1:1222` through `decipher_message_1:1200`
+- Thread: `julie_kramer`
+- Summary: Teacher Andy's schedule changes, can't continue; Julie interviews Brylee for Tue/Wed; Art acknowledges 'Olivia is so stressed about the lack of routine'; they agree on need for consistent schedule.
+- Relevance: Qualifying passage: shows tension about school instability affecting Olivia, but Julie and Art are collaborative, not in conflict. Art validates Julie's stress about routine.
+
+#### r000008 · w000004
+
+- IDs: `decipher_message_1:986` through `decipher_message_1:970`
+- Thread: `julie_kramer`
+- Summary: Art suggests taking over homeschooling at home to relieve Julie's burden with the microschool, calling it a 'sunk cost fallacy' and saying 'It CAN work if it needs to.' Julie firmly rejects this, detailing the completed setup (schedule, teachers, curriculum, progress tracking, cameras) and stating 'definitely not going to throw it all out and homeschool at home now. She would hate that.' Art acknowledges the hard part is done but maintains homeschooling is viable; Julie insists the current structure will not change.
+- Relevance: Direct disagreement about educational approach: Art pushes for homeschooling at home; Julie defends the microschool she built and funded. Core conflict about school format, responsibility, and investment.
+
+#### r000009 · w000004
+
+- IDs: `decipher_message_1:125` through `decipher_message_1:110`
+- Thread: `julie_kramer`
+- Summary: Julie itemizes gymnastics costs ($9,132/year + $2,000 fees) and notes Art pays nothing. Art responds that family time (father, cousins, farm) is 'MORE IMPORTANT than gymnastics, yes. No matter how much money you waste on it.' He accuses Julie of projecting her own gymnastics trauma: 'choosing gymnastics was IMPORTANT TO YOU... this is her following in your footsteps which is about you.' Julie defends the pre-meet 'getting ready routine' as a special mother-daughter bonding ritual she didn't have with her own mother.
+- Relevance: Major fight combining educational/extracurricular investment (gymnastics as part of Olivia's activity ecosystem), financial responsibility, parenting time allocation, and Julie's past abuse in gymnastics. Art explicitly frames it as 'time with her family is what is most important' vs Julie's 'huge investment.'
+
+#### r000010 · w000004
+
+- IDs: `decipher_export_19:772` through `decipher_export_19:793`
+- Thread: `julie_kramer`
+- Summary: Julie explains Olivia would miss a week of morning gymnastics for theater arts camp (9am-5pm). Art says he thought it was 'cleared a long time ago' and argues the camp is 'professional artists teaching big stuff... a bigger deal than just arts and crafts,' adding 'she needs to learn to exist and participate in groups in a safe and fun way. That's one of my biggest worries with her in not real school.' Julie agrees but cites the 'big jump' from 3-6 kids to 120, Olivia's preference for her gymnastics group, germ exposure before her birthday party, and Olivia's own wish not to miss gym. Julie decides Olivia will skip camp.
+- Relevance: Disagreement about educational enrichment (theater arts camp) vs established gymnastics schedule and microschool socialization. Art frames camp as addressing a deficit in 'not real school'; Julie prioritizes Olivia's current group cohesion, health, and autonomy.
+
+#### r000011 · w000004
+
+- IDs: `decipher_export_19:1069` through `decipher_export_19:1077`
+- Thread: `julie_kramer`
+- Summary: Art asks 'She said it's all home school this semester?' Julie confirms she and Olivia decided to homeschool this semester because she 'cannot commit to getting her to gym-school-home this semester' and 'cannot be the one running it or funding it this year.' She cites 4 boys at Lumos that Olivia hates, Friday farm time, cost savings, and reduced stress. She will provide curriculum (Horizons grade 2, etc.) and Olivia can take unfinished work to the farm. Julie says other parents and Weston will handle recruitment; she will be 'completely hands off.'
+- Relevance: Unilateral (mother-daughter) decision to abandon the microschool for homeschooling this semester, citing financial and logistical burden on Julie. Art's question suggests surprise or lack of prior consultation. Material shift in educational responsibility and format.
+
+#### r000012 · w000005
+
+- IDs: `decipher_export_19:1445` through `decipher_export_19:1456`
+- Thread: `julie_kramer`
+- Summary: Julie states Olivia has been 'lacking on her homeschool' and 'back slid' after missed days; she suggests Art's presence would help Olivia get more homeschool done. Art responds by proposing Olivia come to the farm Tuesday–Friday to focus on school, and later confirms he can stay Wednesday through Monday.
+- Relevance: Julie criticizes homeschool progress and implies Art's absence contributes; Art counters with a schedule change proposal. Shows disagreement over responsibility for academic progress.
+
+#### r000013 · w000005
+
+- IDs: `decipher_export_19:1607` through `decipher_export_19:1613`
+- Thread: `julie_kramer`
+- Summary: Julie asks if Olivia took school books to the farm, then details specific deficits: handwriting, science, history 'slacking,' only 5–6 cursive pages done, reading excels but phonics/reading workbooks neglected. Art admits they forgot the homework books.
+- Relevance: Julie enumerates academic shortcomings; Art acknowledges the lapse. Direct criticism of educational follow-through.
+
+#### r000014 · w000005
+
+- IDs: `decipher_export_19:2120` through `decipher_export_19:2122`
+- Thread: `julie_kramer`
+- Summary: Julie asks what Olivia is doing after her private lesson and adds 'Hopefully she's doing some in her school books?' Art replies defensively: 'She is doing school most days!' and outlines the next gymnastics pickup plan.
+- Relevance: Julie's pointed question implies doubt about daily schoolwork; Art's terse response shows defensiveness. Brief tense exchange about academic consistency.
+
+#### r000015 · w000005
+
+- IDs: `decipher_export_19:2532` through `decipher_export_19:2547`
+- Thread: `julie_kramer`
+- Summary: Extended discussion: Julie outlines Olivia's strengths (reading, handwriting, math) and gaps (history, science). Art proposes low-intensity summer catch-up, admits 'we've all let it slip' during gymnastics season. Julie then gives a lengthy account of her own ADHD diagnosis, medication history, and ambivalence about evaluating/medicating Olivia. Art suggests evaluation doesn't mandate treatment; Julie agrees to seek a professional opinion.
+- Relevance: Most sustained exchange about educational approach. Julie expresses frustration over missed subjects; Art acknowledges shared lapse. Competing views on ADHD evaluation surface. Core disagreement about how to address academic gaps and whether to pursue clinical evaluation.
+
+#### r000016 · w000005
+
+- IDs: `decipher_export_19:2912` through `decipher_export_19:2918`
+- Thread: `julie_kramer`
+- Summary: Julie sends the new Level 4 gymnastics schedule and itemizes costs ($450/mo tuition, $800 coaches fees, $600 leotard, $200 warm-up, $300 registration). She notes she has paid everything for four years and asks Art to start splitting costs. Art replies he will look at it but has little free cash due to house expansion.
+- Relevance: Financial conflict over extracurricular/educational activity costs. Julie frames it as unfair burden; Art cites competing financial priority. Though gymnastics-focused, it bears on educational budgeting and shared responsibility.
+
+#### r000017 · w000006
+
+- IDs: `decipher_export_19:3370` through `decipher_export_19:3397`
+- Thread: `julie_kramer`
+- Summary: Art Whaley argues Olivia should pause gymnastics until education is on track, citing weeks of zero schoolwork; Julie Kramer defends homeschooling flexibility, claims Olivia is on track, and debates public vs. homeschool philosophy.
+- Relevance: Direct argument about academic priorities, homeschooling adequacy, and whether gymnastics should be conditional on school progress.
+
+#### r000018 · w000006
+
+- IDs: `decipher_export_19:3451` through `decipher_export_19:3456`
+- Thread: `julie_kramer`
+- Summary: Disagreement over scheduling voice lessons versus schoolwork; Art insists Olivia needs to be at farm more often for school, Julie asserts she does school 3-4 days a week at home and wants flexibility for weekends with Audrey.
+- Relevance: Conflict about educational time allocation and scheduling priorities.
+
+#### r000019 · w000006
+
+- IDs: `decipher_export_19:4634` through `decipher_export_19:4638`
+- Thread: `julie_kramer`
+- Summary: Art accuses Julie of neglecting school for almost the full semester; Julie counters she did schoolwork all year but didn't monitor reports until recently, blames Art for not setting up curriculum properly.
+- Relevance: Accusations of educational neglect and responsibility for curriculum management during custody dispute.
+
+#### r000020 · w000006
+
+- IDs: `decipher_export_5:135` through `decipher_export_5:142`
+- Thread: `julie_kramer`
+- Summary: Extended argument about gymnastics, bullying, and education; Julie details her involvement in curriculum (Time4Learning), accuses Art of neglecting setup; Art relies on Olivia's reports; Julie cites test scores and financial investment.
+- Relevance: Comprehensive fight over homeschool curriculum choices, academic progress, parental responsibility, and allegations of educational neglect.
+
+
+## MiniMax M3
+
+- Model ID: `minimaxai/minimax-m3`
+- Gold overlap: 1/7
+- Missing provisional-positive dates: 2023-11-13, 2024-06-26, 2024-07-10, 2025-07-16, 2025-08-04, 2026-07-01
+- Strict-valid windows: 4/6
+- Deterministically normalized windows: 4/6
+- Repairs: 0
+
+### Accepted evidence from valid windows (partial run)
+
+#### r000001 · w000002
+
+- IDs: `decipher_message_1:3572` through `decipher_message_1:3548`
+- Thread: `julie_kramer`
+- Summary: Extended disagreement about how Olivia's non-school days should be divided between the farm and Julie's house, including criticism of Julie's spending, accusations about financial responsibility, and explicit statements that they are fighting. The exchange also includes a substantive debate about Olivia's schooling (private vs. public, Wildflower commitment, reading/math curriculum concerns).
+- Relevance: This is the clearest 'fight about school' exchange in the window. It combines a custody/time dispute with a direct disagreement over Olivia's education (school choice, academic push, reading instruction), and both participants explicitly acknowledge they are arguing.
+
+#### r000002 · w000002
+
+- IDs: `decipher_message_1:3518` through `decipher_message_1:3514`
+- Thread: `julie_kramer`
+- Summary: Discussion of Olivia's reading progress at school: Art pushes for more pressure on reading and math, Julie agrees she also wishes there was more focus on core skills, and they discuss Olivia refusing to move into the actual reading curriculum because she prefers coloring pages.
+- Relevance: Captures the school-focused portion of the larger argument, showing the specific educational disagreement (reading instruction, curriculum push) that is part of the fight.
+
+#### r000003 · w000002
+
+- IDs: `decipher_message_1:3529` through `decipher_message_1:3522`
+- Thread: `julie_kramer`
+- Summary: Exchange about school quality: Art argues private schools guarantee kids with parents who care about education and suggests small-town public schools; Julie counters that Deer Creek (public) has the best ratings but has grown too fast, and explains why she chose Wildflower over public school.
+- Relevance: Direct disagreement about school choice and educational philosophy that is part of the broader fight.
+
+#### r000004 · w000002
+
+- IDs: `decipher_message_1:4899` through `decipher_message_1:4891`
+- Thread: `julie_kramer`
+- Summary: Discussion of Olivia's school progress report and teacher comments. Art criticizes the school for not pushing Olivia more on reading and questions the 'passive and quiet' characterization; Julie agrees the comments were weird but defends the school and Olivia's teacher. They also discuss Olivia's attitude toward leadership.
+- Relevance: A meaningful disagreement about the school's evaluation of Olivia and the school's approach to pushing her academically, which qualifies as a school-related conflict even though it does not escalate into a full argument.
+
+#### r000005 · w000002
+
+- IDs: `decipher_message_1:3274` through `decipher_message_1:3267`
+- Thread: `julie_kramer`
+- Summary: Discussion about homeschooling vs. current school: Art jokes about homeschooling Olivia because she's so smart, Julie firmly rejects homeschooling, and they discuss her math homework and ADHD-related focus issues at school.
+- Relevance: Captures a lighter but substantive disagreement about Olivia's schooling and academic needs, including Julie's stated inability to homeschool.
+
+### Invalid windows
+
+- `w000003`: ReadTimeout after 900.7s — The read operation timed out
+- `w000006`: HTTP 200; schema-valid=True; ledger rejected — evidence range references an unknown or blank value
+  Raw response proposed 4 ranges. They are diagnostic only and were not accepted:
+  - `decipher_export_19:3370` through `decipher_export_19:3397` — Art raises concerns that Olivia has gone weeks without doing school at Julie's house and argues she should be out of gymnastics until her education is on track; Julie pushes back, saying she has paid tuition 35 of 36 months, that Olivia is on track, and that Art's farm lessons were too easy. Art says he only knows what she tells him about school; Julie says Olivia told her she hated the farm school but was scared to tell Art. They then argue about homeschooling vs public/private school, with Julie defending homeschooling and Art saying she just needs regular lessons.
+  - `decipher_export_19:3451` through `decipher_export_19:3456` — Julie asks about voice lessons on weekends she's with her; Art says if she's only doing school work at his place she needs to be there as often as possible. Julie pushes back that she does school 3-4 days a week and doesn't want Olivia committed to Ada every Friday.
+  - `decipher_export_19:4635` through `decipher_export_19:4641` — During the broader custody fight, Art accuses Julie of neglecting school for almost a full semester and says gymnastics is all that's important to her. Julie counters that she did school with Olivia all year and only stopped monitoring reports because she trusted Art had set up the online program correctly, which he had not.
+  - `decipher_export_19:5131` through `decipher_export_19:5141` — Art says he won't agree to any settlement where he doesn't have final say about activities and education, accusing Julie of torturing Olivia by sending her back to be bullied, not letting her quit gymnastics, and neglecting her education. Julie denies forcing gymnastics and details her own extensive involvement in Olivia's schooling, contrasting it with Art's minimal contribution.
+
+### Diagnostic raw-output recall
+
+Rejected output is not evidence and is not eligible for synthesis. For model diagnosis only, all raw responses collectively overlapped 3/7 provisional-positive dates.
+
+
+## Historical GLM baseline
+
+The prior GLM semantic-ranges run using these six windows but without
+the frozen analysis plan produced 19 evidence ranges and overlapped
+5 of 7 provisional-positive dates. That historical result is the
+baseline for assessing how the plan changes GLM.

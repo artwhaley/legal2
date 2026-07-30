@@ -1,65 +1,57 @@
-# Message Evidence Workstation
+# Message Evidence Workstation — Server-First V1
 
-Python desktop MVP for legal message evidence review: load normalized message data, search (FTS, keyword expansion, embeddings), curate workstation conversations in categories, conversational NIM search, and HTML output preview.
+The FastAPI server owns provider calls, prompts, model selection, accounting,
+conversation orchestration, evidence-ledger synthesis, embedding batching,
+retries, concurrency, usage accounting, and operational visibility. The
+temporary Python client owns the local EVW, working-corpus scope, FTS5,
+sqlite-vec, streamed progress, and local history.
 
-## Requirements
+## Start the server
 
-- Python 3.11+
-- NVIDIA NIM API key for LLM features (keyword expansion, conversational planner/synthesis, range suggestion)
-- Optional: local embedding model via `sentence-transformers` for vector search
-
-## Setup
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
-pip install -e ".[dev]"
+```powershell
+.\.venv\Scripts\python.exe -m server
 ```
 
-Configure NIM in the app under **Setup / Settings**, or set `MEW_NIM_API_KEY` in the environment.
+Open [http://127.0.0.1:8710/admin/](http://127.0.0.1:8710/admin/) to complete
+the loopback bootstrap configuration. Until a valid version is activated,
+the four product routes return `CONFIGURATION_REQUIRED`.
 
-## Run
+Product routes:
 
-```bash
-python -m message_evidence_workstation.app
+- `POST /v1/keyword-expansion`
+- `POST /v1/conversational-plan`
+- `POST /v1/conversational-analysis`
+- `POST /v1/embeddings`
+
+FastAPI docs/OpenAPI and the old v2/capabilities/internal product routes are
+disabled. The server stores only encrypted provider secrets, immutable
+configuration/audit records, and append-only content-free usage records.
+
+## Start the temporary Python EVW harness
+
+```powershell
+.\.venv\Scripts\python.exe -m message_evidence_workstation.app `
+  --db C:\path\to\workspace.evw
 ```
 
-Reload dataset from configured default path:
+Do not pass `--dataset` when opening an existing V15 EVW; that option imports
+a normalized source dataset and builds a new working corpus.
 
-```bash
-python -m message_evidence_workstation.app --reload-dataset
-```
+For question-planned conversational analysis, the client requests one
+server-generated analysis plan, embeds its returned retrieval queries through
+the server in one workload, performs local EVW vector lookup, and submits the
+complete scoped conversation plus candidate IDs/ranks/distances. It consumes
+the server's NDJSON analysis stream and never chooses provider models,
+prompts, windows, retries, RRF policy, or server batch sizes.
 
-## Test dataset layout
+Flutter server integration and further EVW schema changes are excluded from
+this server-first phase; the existing read-only Flutter V15 viewer remains the
+compatibility proof. Earlier transformation folders are historical evidence.
+For question planning, unified extraction/ledger/synthesis, partial range
+validation, and ledger compaction, the authoritative execution packet is
+`docs/transformation/question_planned_analysis_v1/`.
 
-```
-my_dataset/
-  dataset.json
-  source_threads.jsonl
-  messages.jsonl
-```
-
-Sample fixture: `tests/fixtures/sample_dataset/`
-
-## Test
-
-```bash
-pytest
-```
-
-## Documentation
-
-- MVP spec: `00_source_spec/message_evidence_workstation_mvp_spec.md`
-- Build plan: `01_build_plan.md`
-- Ticket index: `02_ticket_index.md`
-- Manual smoke checklist: `docs/smoke_test_checklist.md`
-- Known limitations: `docs/known_limitations.md`
-
-## Terminology
-
-- **SourceThread** — raw platform thread (may span years)
-- **Message** — one normalized message
-- **WorkstationConversation** — curated topic/exhibit-sized passage
-- **Category** — user bucket containing workstation conversations
-- **Hit** — message that triggered retrieval
+The earlier visual acceptance sequence is in
+`docs/transformation/server_first_v1/manual_test.md`. Dependency installation,
+automated tests, release builds, and native probes are executor work, not user
+test steps.

@@ -1,660 +1,125 @@
-"""Evidence block persistence APIs."""
+"""Exact message-ID evidence-block persistence for EVW v15."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
-from typing import Any
+from typing import Iterable
 
-from message_evidence_workstation.domain.constants import (
-    CREATED_BY_CONVERSATIONAL_ANSWER,
-    CREATED_BY_MANUAL,
-    CREATED_BY_SIMPLE_SEARCH,
-    UNCATEGORIZED_CATEGORY_NAME,
-)
-from message_evidence_workstation.domain.models import Category, EvidenceBlock
-from message_evidence_workstation.domain.slots import (
-    default_slots_for_hit_index,
-    hit_index_for_message,
-    slots_from_message_boundary_ids,
-    validate_slot_bounds,
-)
-from message_evidence_workstation.logging_ui.process_log import ProcessLogger, utc_now_iso
-from message_evidence_workstation.db.repositories import message_ordinal, thread_message_count
+from message_evidence_workstation.domain.models import EvidenceBlock
+from message_evidence_workstation.domain.search_scope import WorkingCorpusScope
+from message_evidence_workstation.logging_ui.diagnostic_logger import utc_now_iso
 
 
-def _row_to_evidence_block(row: sqlite3.Row, highlights: frozenset[str]) -> EvidenceBlock:
+class EvidenceBlockError(RuntimeError):
+    pass
+
+
+def _message_hash(row: sqlite3.Row) -> str:
+    payload = json.dumps([str(row["message_id"]), str(row["timestamp"]), str(row["sender_display"]), str(row["body"])], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _row_to_block(conn: sqlite3.Connection, row: sqlite3.Row) -> EvidenceBlock:
+    messages = conn.execute("SELECT ebm.message_id,ebm.section FROM evidence_block_message ebm WHERE ebm.evidence_block_id=? ORDER BY ebm.ordinal", (row["evidence_block_id"],)).fetchall()
+    highlights = frozenset(str(r[0]) for r in conn.execute("SELECT message_id FROM evidence_block_highlight WHERE evidence_block_id=?", (row["evidence_block_id"],)))
     return EvidenceBlock(
-        evidence_block_id=int(row["evidence_block_id"]),
-        dataset_id=int(row["dataset_id"]),
-        category_id=int(row["category_id"]),
-        source_thread_id=str(row["source_thread_id"]),
-        title=str(row["title"]),
-        summary=str(row["summary"]),
-        core_hit_message_id=str(row["core_hit_message_id"]),
-        context_start_slot=int(row["context_start_slot"]),
-        relevant_start_slot=int(row["relevant_start_slot"]),
-        relevant_end_slot=int(row["relevant_end_slot"]),
-        context_end_slot=int(row["context_end_slot"]),
-        highlighted_message_ids=highlights,
-        created_by=str(row["created_by"]),
-        created_at=str(row["created_at"]),
-        updated_at=str(row["updated_at"]),
+        evidence_block_id=int(row["evidence_block_id"]), dataset_id=int(row["dataset_id"]), category_id=int(row["category_id"]), source_thread_id=str(row["source_thread_id"]), title=str(row["title"]), summary=str(row["summary"]),
+        context_start_message_id=str(row["context_start_message_id"]), relevant_start_message_id=str(row["relevant_start_message_id"]), core_message_id=str(row["core_message_id"]), relevant_end_message_id=str(row["relevant_end_message_id"]), context_end_message_id=str(row["context_end_message_id"]),
+        origin_kind=str(row["origin_kind"]), origin_working_corpus_revision_id=int(row["origin_working_corpus_revision_id"]) if row["origin_working_corpus_revision_id"] is not None else None, origin_scope_hash=row["origin_scope_hash"],
+        message_ids=tuple(str(r[0]) for r in messages), sections=tuple(str(r[1]) for r in messages), highlighted_message_ids=highlights,
+        created_by=str(row["created_by"]), created_at=str(row["created_at"]), updated_at=str(row["updated_at"]),
     )
 
 
-_HIGHLIGHT_IN_CHUNK_SIZE = 500
+def _ordered_range(conn: sqlite3.Connection, scope: WorkingCorpusScope, source_thread_id: str, boundary_ids: tuple[str, str, str, str, str]) -> tuple[list[sqlite3.Row], tuple[int, int, int, int, int]]:
+    rows = conn.execute("SELECT m.message_id,m.timestamp,m.sender_display,m.body,wcrm.ordinal FROM working_corpus_revision_message wcrm JOIN message m ON m.message_id=wcrm.message_id WHERE wcrm.working_corpus_revision_id=? AND wcrm.source_thread_id=? ORDER BY wcrm.ordinal", (scope.working_corpus_revision_id, source_thread_id)).fetchall()
+    positions = {str(row["message_id"]): index for index, row in enumerate(rows)}
+    if any(message_id not in positions for message_id in boundary_ids):
+        missing = [m for m in boundary_ids if m not in positions]
+        raise EvidenceBlockError(f"Evidence boundary messages are not in the captured revision: {missing}")
+    indexes = tuple(positions[m] for m in boundary_ids)
+    if not (indexes[0] <= indexes[1] <= indexes[2] <= indexes[3] <= indexes[4]):
+        raise EvidenceBlockError("Evidence boundaries are out of source-thread order")
+    if indexes[0] == indexes[4] or indexes[1] > indexes[3]:
+        raise EvidenceBlockError("Evidence context and relevant ranges must be nonempty")
+    if not (indexes[1] <= indexes[2] <= indexes[3]):
+        raise EvidenceBlockError("Core message must be inside the relevant range")
+    return rows[indexes[0] : indexes[4] + 1], indexes
 
 
-def _load_highlights(conn: sqlite3.Connection, evidence_block_id: int) -> frozenset[str]:
-    return fetch_highlights_for_blocks(conn, [evidence_block_id]).get(
-        evidence_block_id,
-        frozenset(),
-    )
+def _insert_block_rows(conn: sqlite3.Connection, block_id: int, rows: list[sqlite3.Row], indexes: tuple[int, int, int, int, int], highlights: Iterable[str]) -> None:
+    context_start, relevant_start, _core, relevant_end, context_end = indexes
+    for offset, row in enumerate(rows):
+        absolute = context_start + offset
+        section = "leading_context" if absolute < relevant_start else "relevant" if absolute <= relevant_end else "trailing_context"
+        conn.execute("INSERT INTO evidence_block_message(evidence_block_id,message_id,ordinal,section,message_content_hash) VALUES (?,?,?,?,?)", (block_id, row["message_id"], offset, section, _message_hash(row)))
+    valid = {str(row["message_id"]) for row in rows}
+    for message_id in highlights:
+        if message_id not in valid:
+            raise EvidenceBlockError(f"Highlight message {message_id} is outside the exact evidence range")
+        conn.execute("INSERT INTO evidence_block_highlight(evidence_block_id,message_id) VALUES (?,?)", (block_id, message_id))
 
 
-def fetch_highlights_for_blocks(
-    conn: sqlite3.Connection,
-    block_ids: list[int],
-) -> dict[int, frozenset[str]]:
-    """Return highlight message IDs keyed by evidence_block_id."""
-    if not block_ids:
-        return {}
-    unique_ids = list(dict.fromkeys(block_ids))
-    highlights: dict[int, set[str]] = {block_id: set() for block_id in unique_ids}
-    for start in range(0, len(unique_ids), _HIGHLIGHT_IN_CHUNK_SIZE):
-        chunk = unique_ids[start : start + _HIGHLIGHT_IN_CHUNK_SIZE]
-        placeholders = ",".join("?" * len(chunk))
-        rows = conn.execute(
-            f"""
-            SELECT evidence_block_id, message_id
-            FROM evidence_block_highlight
-            WHERE evidence_block_id IN ({placeholders})
-            """,
-            chunk,
-        ).fetchall()
-        for row in rows:
-            block_id = int(row["evidence_block_id"])
-            highlights[block_id].add(str(row["message_id"]))
-    return {block_id: frozenset(message_ids) for block_id, message_ids in highlights.items()}
-
-
-def ensure_uncategorized_category(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    dataset_id: int,
-) -> Category:
-    row = conn.execute(
-        """
-        SELECT category_id, dataset_id, name, description, color, is_collapsed,
-               created_at, updated_at
-        FROM category
-        WHERE dataset_id = ? AND name = ?
-        """,
-        (dataset_id, UNCATEGORIZED_CATEGORY_NAME),
-    ).fetchone()
-    if row is not None:
-        return Category(
-            category_id=int(row["category_id"]),
-            dataset_id=int(row["dataset_id"]),
-            name=str(row["name"]),
-            description=str(row["description"]),
-            color=str(row["color"]),
-            is_collapsed=bool(row["is_collapsed"]),
-            created_at=str(row["created_at"]),
-            updated_at=str(row["updated_at"]),
-            is_system=True,
-        )
+def create_evidence_block(*, conn: sqlite3.Connection, scope: WorkingCorpusScope, category_id: int, source_thread_id: str, title: str, summary: str, context_start_message_id: str, relevant_start_message_id: str, core_message_id: str, relevant_end_message_id: str, context_end_message_id: str, highlighted_message_ids: tuple[str, ...], created_by: str) -> EvidenceBlock:
+    boundary_ids = (context_start_message_id, relevant_start_message_id, core_message_id, relevant_end_message_id, context_end_message_id)
+    rows, indexes = _ordered_range(conn, scope, source_thread_id, boundary_ids)
     now = utc_now_iso()
-    cursor = conn.execute(
-        """
-        INSERT INTO category (
-            dataset_id, name, description, color, is_collapsed, created_at, updated_at
-        ) VALUES (?, ?, '', '', 0, ?, ?)
-        """,
-        (dataset_id, UNCATEGORIZED_CATEGORY_NAME, now, now),
-    )
-    conn.commit()
-    category_id = int(cursor.lastrowid)
-    logger.info(
-        component="db.evidence_blocks",
-        operation="uncategorized_category_created",
-        message="Created default Uncategorized category",
-        details={"category_id": category_id, "dataset_id": dataset_id},
-        dataset_id=dataset_id,
-    )
-    return Category(
-        category_id=category_id,
-        dataset_id=dataset_id,
-        name=UNCATEGORIZED_CATEGORY_NAME,
-        description="",
-        color="",
-        is_collapsed=False,
-        created_at=now,
-        updated_at=now,
-        is_system=True,
-    )
+    block_id = int(conn.execute("INSERT INTO evidence_block(dataset_id,category_id,source_thread_id,title,summary,context_start_message_id,relevant_start_message_id,core_message_id,relevant_end_message_id,context_end_message_id,origin_kind,origin_working_corpus_revision_id,origin_scope_hash,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (scope.dataset_id, category_id, source_thread_id, title, summary, *boundary_ids, "working_corpus_revision", scope.working_corpus_revision_id, scope.scope_hash, created_by, now, now)).lastrowid)
+    _insert_block_rows(conn, block_id, rows, indexes, highlighted_message_ids)
+    conn.execute("INSERT INTO working_corpus_revision_evidence_block(working_corpus_revision_id,evidence_block_id,associated_at) VALUES (?,?,?)", (scope.working_corpus_revision_id, block_id, now))
+    return get_evidence_block(conn, block_id)
 
 
-def get_uncategorized_category(
-    conn: sqlite3.Connection,
-    dataset_id: int,
-) -> Category | None:
-    row = conn.execute(
-        """
-        SELECT category_id, dataset_id, name, description, color, is_collapsed,
-               created_at, updated_at
-        FROM category
-        WHERE dataset_id = ? AND name = ?
-        """,
-        (dataset_id, UNCATEGORIZED_CATEGORY_NAME),
-    ).fetchone()
+def get_evidence_block(conn: sqlite3.Connection, evidence_block_id: int) -> EvidenceBlock:
+    row = conn.execute("SELECT * FROM evidence_block WHERE evidence_block_id=?", (evidence_block_id,)).fetchone()
     if row is None:
-        return None
-    return Category(
-        category_id=int(row["category_id"]),
-        dataset_id=int(row["dataset_id"]),
-        name=str(row["name"]),
-        description=str(row["description"]),
-        color=str(row["color"]),
-        is_collapsed=bool(row["is_collapsed"]),
-        created_at=str(row["created_at"]),
-        updated_at=str(row["updated_at"]),
-        is_system=True,
-    )
+        raise EvidenceBlockError(f"Evidence block {evidence_block_id} not found")
+    return _row_to_block(conn, row)
 
 
-def list_evidence_blocks(
-    conn: sqlite3.Connection,
-    dataset_id: int,
-    *,
-    category_id: int | None = None,
-    source_thread_id: str | None = None,
-) -> list[EvidenceBlock]:
-    query = """
-        SELECT evidence_block_id, dataset_id, category_id, source_thread_id,
-               title, summary, core_hit_message_id, context_start_slot,
-               relevant_start_slot, relevant_end_slot, context_end_slot,
-               created_by, created_at, updated_at
-        FROM evidence_block
-        WHERE dataset_id = ?
-    """
-    params: list[Any] = [dataset_id]
-    if category_id is not None:
-        query += " AND category_id = ?"
-        params.append(category_id)
-    if source_thread_id is not None:
-        query += " AND source_thread_id = ?"
-        params.append(source_thread_id)
-    query += " ORDER BY updated_at DESC, evidence_block_id DESC"
-    rows = conn.execute(query, params).fetchall()
-    block_ids = [int(row["evidence_block_id"]) for row in rows]
-    highlights_by_block = fetch_highlights_for_blocks(conn, block_ids)
-    return [
-        _row_to_evidence_block(
-            row,
-            highlights_by_block.get(int(row["evidence_block_id"]), frozenset()),
-        )
-        for row in rows
-    ]
-
-
-def get_evidence_block(conn: sqlite3.Connection, evidence_block_id: int) -> EvidenceBlock | None:
-    row = conn.execute(
-        """
-        SELECT evidence_block_id, dataset_id, category_id, source_thread_id,
-               title, summary, core_hit_message_id, context_start_slot,
-               relevant_start_slot, relevant_end_slot, context_end_slot,
-               created_by, created_at, updated_at
-        FROM evidence_block
-        WHERE evidence_block_id = ?
-        """,
-        (evidence_block_id,),
-    ).fetchone()
-    if row is None:
-        return None
-    return _row_to_evidence_block(row, _load_highlights(conn, evidence_block_id))
-
-
-def create_evidence_block(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    dataset_id: int,
-    category_id: int,
-    source_thread_id: str,
-    title: str,
-    core_hit_message_id: str,
-    ordered_message_ids: list[str] | None = None,
-    message_count: int | None = None,
-    summary: str = "",
-    context_start_slot: int | None = None,
-    relevant_start_slot: int | None = None,
-    relevant_end_slot: int | None = None,
-    context_end_slot: int | None = None,
-    highlighted_message_ids: list[str] | None = None,
-    created_by: str = CREATED_BY_MANUAL,
-) -> EvidenceBlock:
-    if message_count is None:
-        if ordered_message_ids is None:
-            raise ValueError("message_count or ordered_message_ids is required")
-        message_count = len(ordered_message_ids)
-    if (
-        context_start_slot is None
-        or relevant_start_slot is None
-        or relevant_end_slot is None
-        or context_end_slot is None
-    ):
-        if ordered_message_ids is None:
-            raise ValueError("ordered_message_ids is required when slots are not provided")
-        hit_index = hit_index_for_message(ordered_message_ids, core_hit_message_id)
-        context_start_slot, relevant_start_slot, relevant_end_slot, context_end_slot = (
-            default_slots_for_hit_index(message_count, hit_index)
-        )
-    validate_slot_bounds(
-        message_count,
-        context_start_slot,
-        relevant_start_slot,
-        relevant_end_slot,
-        context_end_slot,
-    )
-    now = utc_now_iso()
-    cursor = conn.execute(
-        """
-        INSERT INTO evidence_block (
-            dataset_id, category_id, source_thread_id, title, summary,
-            core_hit_message_id, context_start_slot, relevant_start_slot,
-            relevant_end_slot, context_end_slot, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            dataset_id,
-            category_id,
-            source_thread_id,
-            title,
-            summary,
-            core_hit_message_id,
-            context_start_slot,
-            relevant_start_slot,
-            relevant_end_slot,
-            context_end_slot,
-            created_by,
-            now,
-            now,
-        ),
-    )
-    evidence_block_id = int(cursor.lastrowid)
-    for message_id in highlighted_message_ids or []:
-        conn.execute(
-            """
-            INSERT INTO evidence_block_highlight (evidence_block_id, message_id)
-            VALUES (?, ?)
-            """,
-            (evidence_block_id, message_id),
-        )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_create",
-        message=f"Created evidence block '{title}'",
-        details={
-            "evidence_block_id": evidence_block_id,
-            "category_id": category_id,
-            "source_thread_id": source_thread_id,
-        },
-        dataset_id=dataset_id,
-    )
-    block = get_evidence_block(conn, evidence_block_id)
-    assert block is not None
-    return block
-
-
-def create_evidence_block_from_search(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    dataset_id: int,
-    source_thread_id: str,
-    primary_hit_message_id: str,
-    title: str,
-    ordered_message_ids: list[str] | None = None,
-    message_count: int | None = None,
-    category_id: int | None = None,
-    summary: str = "",
-) -> EvidenceBlock:
-    if category_id is None:
-        category_id = ensure_uncategorized_category(conn, logger, dataset_id).category_id
-    if message_count is None:
-        if ordered_message_ids is None:
-            message_count = thread_message_count(conn, dataset_id, source_thread_id)
-        else:
-            message_count = len(ordered_message_ids)
-    hit_index = (
-        hit_index_for_message(ordered_message_ids, primary_hit_message_id)
-        if ordered_message_ids is not None
-        else (message_ordinal(conn, dataset_id, source_thread_id, primary_hit_message_id) or 0)
-    )
-    context_start_slot, relevant_start_slot, relevant_end_slot, context_end_slot = (
-        default_slots_for_hit_index(message_count, hit_index)
-    )
-    return create_evidence_block(
-        conn,
-        logger,
-        dataset_id=dataset_id,
-        category_id=category_id,
-        source_thread_id=source_thread_id,
-        title=title,
-        core_hit_message_id=primary_hit_message_id,
-        message_count=message_count,
-        summary=summary,
-        context_start_slot=context_start_slot,
-        relevant_start_slot=relevant_start_slot,
-        relevant_end_slot=relevant_end_slot,
-        context_end_slot=context_end_slot,
-        created_by=CREATED_BY_SIMPLE_SEARCH,
-    )
-
-
-def create_evidence_block_from_conversational_candidate(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    dataset_id: int,
-    source_thread_id: str,
-    ordered_message_ids: list[str] | None = None,
-    title: str,
-    summary: str,
-    core_message_id: str,
-    leading_context_start_message_id: str,
-    relevant_start_message_id: str,
-    relevant_end_message_id: str,
-    trailing_context_end_message_id: str,
-    highlighted_message_ids: list[str] | None = None,
-    category_id: int | None = None,
-) -> EvidenceBlock:
-    if category_id is None:
-        category_id = ensure_uncategorized_category(conn, logger, dataset_id).category_id
-    if ordered_message_ids is not None:
-        context_start, relevant_start, relevant_end, context_end = slots_from_message_boundary_ids(
-            ordered_message_ids,
-            leading_context_start_message_id=leading_context_start_message_id,
-            relevant_start_message_id=relevant_start_message_id,
-            relevant_end_message_id=relevant_end_message_id,
-            trailing_context_end_message_id=trailing_context_end_message_id,
-        )
-        message_count = len(ordered_message_ids)
+def list_evidence_blocks(conn: sqlite3.Connection, *, revision_id: int | None = None) -> list[EvidenceBlock]:
+    if revision_id is None:
+        rows = conn.execute("SELECT * FROM evidence_block ORDER BY evidence_block_id").fetchall()
     else:
-        from message_evidence_workstation.domain.slots import slots_from_message_ordinals
-
-        message_count = thread_message_count(conn, dataset_id, source_thread_id)
-        context_start, relevant_start, relevant_end, context_end = slots_from_message_ordinals(
-            conn,
-            dataset_id,
-            source_thread_id,
-            leading_context_start_message_id=leading_context_start_message_id,
-            relevant_start_message_id=relevant_start_message_id,
-            relevant_end_message_id=relevant_end_message_id,
-            trailing_context_end_message_id=trailing_context_end_message_id,
-            message_count=message_count,
-        )
-    return create_evidence_block(
-        conn,
-        logger,
-        dataset_id=dataset_id,
-        category_id=category_id,
-        source_thread_id=source_thread_id,
-        title=title,
-        summary=summary,
-        core_hit_message_id=core_message_id,
-        message_count=message_count,
-        context_start_slot=context_start,
-        relevant_start_slot=relevant_start,
-        relevant_end_slot=relevant_end,
-        context_end_slot=context_end,
-        highlighted_message_ids=highlighted_message_ids,
-        created_by=CREATED_BY_CONVERSATIONAL_ANSWER,
-    )
+        rows = conn.execute("SELECT eb.* FROM evidence_block eb JOIN working_corpus_revision_evidence_block x ON x.evidence_block_id=eb.evidence_block_id WHERE x.working_corpus_revision_id=? ORDER BY eb.evidence_block_id", (revision_id,)).fetchall()
+    return [_row_to_block(conn, row) for row in rows]
 
 
-def update_evidence_block_anchor(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-    core_hit_message_id: str,
-) -> EvidenceBlock:
-    now = utc_now_iso()
-    conn.execute(
-        """
-        UPDATE evidence_block
-        SET core_hit_message_id = ?, updated_at = ?
-        WHERE evidence_block_id = ?
-        """,
-        (core_hit_message_id, now, evidence_block_id),
-    )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_anchor_update",
-        message="Updated evidence block anchor message",
-        details={
-            "evidence_block_id": evidence_block_id,
-            "core_hit_message_id": core_hit_message_id,
-        },
-    )
+def associate_evidence_block(*, conn: sqlite3.Connection, working_corpus_revision_id: int, evidence_block_id: int) -> None:
     block = get_evidence_block(conn, evidence_block_id)
-    assert block is not None
-    return block
+    members = {str(row[0]) for row in conn.execute("SELECT message_id FROM working_corpus_revision_message WHERE working_corpus_revision_id=?", (working_corpus_revision_id,))}
+    if not set(block.message_ids).issubset(members):
+        raise EvidenceBlockError("Evidence block cannot be associated: its exact message range is not fully in the revision")
+    conn.execute("INSERT INTO working_corpus_revision_evidence_block(working_corpus_revision_id,evidence_block_id,associated_at) VALUES (?,?,?)", (working_corpus_revision_id, evidence_block_id, utc_now_iso()))
 
 
-def update_evidence_block_slots(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-    message_count: int,
-    context_start_slot: int,
-    relevant_start_slot: int,
-    relevant_end_slot: int,
-    context_end_slot: int,
-) -> EvidenceBlock:
-    validate_slot_bounds(
-        message_count,
-        context_start_slot,
-        relevant_start_slot,
-        relevant_end_slot,
-        context_end_slot,
-    )
+def replace_evidence_block_range(*, conn: sqlite3.Connection, evidence_block_id: int, boundary_ids: tuple[str, str, str, str, str], highlighted_message_ids: tuple[str, ...], detach_revision_ids: frozenset[int]) -> EvidenceBlock:
+    current = get_evidence_block(conn, evidence_block_id)
+    associated = {int(row[0]) for row in conn.execute("SELECT working_corpus_revision_id FROM working_corpus_revision_evidence_block WHERE evidence_block_id=?", (evidence_block_id,))}
+    if not associated.issubset(detach_revision_ids):
+        raise EvidenceBlockError(f"Explicit detachment is required for all incompatible revision associations: {sorted(associated)}")
+    revision_id = current.origin_working_corpus_revision_id
+    if revision_id is None:
+        raise EvidenceBlockError("Cannot replace a legacy evidence block without an explicit revision")
+    scope_row = conn.execute("SELECT r.*,wc.dataset_id,i.index_generation FROM working_corpus_revision r JOIN working_corpus wc ON wc.working_corpus_id=r.working_corpus_id JOIN working_corpus_revision_index i ON i.working_corpus_revision_id=r.working_corpus_revision_id WHERE r.working_corpus_revision_id=? ORDER BY i.index_generation DESC LIMIT 1", (revision_id,)).fetchone()
+    from message_evidence_workstation.db.corpus_repository import WorkingCorpusRepository
+    scope = WorkingCorpusRepository(conn).require_ready_scope(working_corpus_revision_id=revision_id, dataset_id=int(scope_row["dataset_id"]))
+    rows, indexes = _ordered_range(conn, scope, current.source_thread_id, boundary_ids)
     now = utc_now_iso()
-    conn.execute(
-        """
-        UPDATE evidence_block
-        SET context_start_slot = ?, relevant_start_slot = ?, relevant_end_slot = ?,
-            context_end_slot = ?, updated_at = ?
-        WHERE evidence_block_id = ?
-        """,
-        (
-            context_start_slot,
-            relevant_start_slot,
-            relevant_end_slot,
-            context_end_slot,
-            now,
-            evidence_block_id,
-        ),
-    )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_slots_update",
-        message="Updated evidence block slot boundaries",
-        details={"evidence_block_id": evidence_block_id},
-    )
-    block = get_evidence_block(conn, evidence_block_id)
-    assert block is not None
-    return block
+    conn.execute("DELETE FROM evidence_block_message WHERE evidence_block_id=?", (evidence_block_id,))
+    conn.execute("DELETE FROM evidence_block_highlight WHERE evidence_block_id=?", (evidence_block_id,))
+    conn.execute("UPDATE evidence_block SET context_start_message_id=?,relevant_start_message_id=?,core_message_id=?,relevant_end_message_id=?,context_end_message_id=?,updated_at=? WHERE evidence_block_id=?", (*boundary_ids, now, evidence_block_id))
+    _insert_block_rows(conn, evidence_block_id, rows, indexes, highlighted_message_ids)
+    for revision in associated - detach_revision_ids:
+        conn.execute("DELETE FROM working_corpus_revision_evidence_block WHERE working_corpus_revision_id=? AND evidence_block_id=?", (revision, evidence_block_id))
+    return get_evidence_block(conn, evidence_block_id)
 
 
-def move_evidence_block_to_category(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-    category_id: int,
-) -> EvidenceBlock:
-    now = utc_now_iso()
-    conn.execute(
-        """
-        UPDATE evidence_block
-        SET category_id = ?, updated_at = ?
-        WHERE evidence_block_id = ?
-        """,
-        (category_id, now, evidence_block_id),
-    )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_move_category",
-        message="Moved evidence block to category",
-        details={"evidence_block_id": evidence_block_id, "category_id": category_id},
-    )
-    block = get_evidence_block(conn, evidence_block_id)
-    assert block is not None
-    return block
-
-
-def set_evidence_block_highlights(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-    highlighted_message_ids: list[str],
-) -> EvidenceBlock:
-    conn.execute(
-        "DELETE FROM evidence_block_highlight WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    for message_id in highlighted_message_ids:
-        conn.execute(
-            """
-            INSERT INTO evidence_block_highlight (evidence_block_id, message_id)
-            VALUES (?, ?)
-            """,
-            (evidence_block_id, message_id),
-        )
-    now = utc_now_iso()
-    conn.execute(
-        "UPDATE evidence_block SET updated_at = ? WHERE evidence_block_id = ?",
-        (now, evidence_block_id),
-    )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_highlights_update",
-        message="Updated evidence block highlights",
-        details={
-            "evidence_block_id": evidence_block_id,
-            "highlight_count": len(highlighted_message_ids),
-        },
-    )
-    block = get_evidence_block(conn, evidence_block_id)
-    assert block is not None
-    return block
-
-
-def update_evidence_block_metadata(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-    title: str | None = None,
-    summary: str | None = None,
-) -> EvidenceBlock:
-    updates: list[str] = []
-    params: list[Any] = []
-    if title is not None:
-        updates.append("title = ?")
-        params.append(title)
-    if summary is not None:
-        updates.append("summary = ?")
-        params.append(summary)
-    if not updates:
-        block = get_evidence_block(conn, evidence_block_id)
-        assert block is not None
-        return block
-    now = utc_now_iso()
-    updates.append("updated_at = ?")
-    params.append(now)
-    params.append(evidence_block_id)
-    conn.execute(
-        f"UPDATE evidence_block SET {', '.join(updates)} WHERE evidence_block_id = ?",
-        params,
-    )
-    conn.commit()
-    block = get_evidence_block(conn, evidence_block_id)
-    assert block is not None
-    return block
-
-
-def delete_evidence_block(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-) -> None:
-    row = conn.execute(
-        "SELECT evidence_block_id FROM evidence_block WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    ).fetchone()
-    if row is None:
-        return
-    conn.execute(
-        "DELETE FROM evidence_block_highlight WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    conn.execute(
-        "DELETE FROM printable_artifact_evidence_block WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    conn.execute(
-        "DELETE FROM evidence_block WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_delete",
-        message="Deleted evidence block",
-        details={"evidence_block_id": evidence_block_id},
-    )
-
-
-def delete_evidence_block(
-    conn: sqlite3.Connection,
-    logger: ProcessLogger,
-    *,
-    evidence_block_id: int,
-) -> None:
-    row = conn.execute(
-        "SELECT evidence_block_id FROM evidence_block WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    ).fetchone()
-    if row is None:
-        return
-    conn.execute(
-        "DELETE FROM evidence_block_highlight WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    conn.execute(
-        "DELETE FROM printable_artifact_evidence_block WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    conn.execute(
-        "DELETE FROM evidence_block WHERE evidence_block_id = ?",
-        (evidence_block_id,),
-    )
-    conn.commit()
-    logger.info(
-        component="db.evidence_blocks",
-        operation="evidence_block_delete",
-        message="Deleted evidence block",
-        details={"evidence_block_id": evidence_block_id},
-    )
+def assert_message_deletable(conn: sqlite3.Connection, message_id: str) -> None:
+    refs = {int(row[0]) for row in conn.execute("SELECT evidence_block_id FROM evidence_block_message WHERE message_id=?", (message_id,))}
+    refs.update(int(row[0]) for row in conn.execute("SELECT evidence_block_id FROM evidence_block WHERE context_start_message_id=? OR relevant_start_message_id=? OR core_message_id=? OR relevant_end_message_id=? OR context_end_message_id=?", (message_id,) * 5))
+    citations = {int(row[0]) for row in conn.execute("SELECT conversation_turn_id FROM conversation_citation WHERE message_id=?", (message_id,))}
+    if refs or citations:
+        raise EvidenceBlockError(f"Message {message_id} is referenced by evidence blocks {sorted(refs)} and citations {sorted(citations)}")

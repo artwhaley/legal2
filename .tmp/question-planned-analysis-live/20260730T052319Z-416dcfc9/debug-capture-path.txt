@@ -1,0 +1,5 @@
+{
+  "session_id": "20260730T052325Z-6666d201bdcd",
+  "path": "C:\\Users\\artwh\\.message_evidence_server\\debug-captures\\20260730T052325Z-6666d201bdcd.jsonl",
+  "stopped_and_flushed": true
+}

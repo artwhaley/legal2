@@ -1,0 +1,7 @@
+{"timestamp":"2026-07-22T21:24:23.016314Z","severity":"ERROR","event":"admin_action_failed","request_id":null,"config_version":null,"product_endpoint":null,"internal_operation":"test","error_code":"MODEL_OUTPUT_INVALID"}
+{"timestamp":"2026-07-22T21:24:34.897204Z","severity":"INFO","event":"config_test","request_id":null,"config_version":3,"product_endpoint":null,"internal_operation":"retrieval_terms","latency_ms":11855.117300001439}
+{"timestamp":"2026-07-22T21:24:35.043468Z","severity":"ERROR","event":"admin_action_failed","request_id":null,"config_version":null,"product_endpoint":null,"internal_operation":"test","error_code":"PROVIDER_UNAVAILABLE"}
+{"timestamp":"2026-07-22T21:24:52.939383Z","severity":"INFO","event":"config_test","request_id":null,"config_version":3,"product_endpoint":null,"internal_operation":"window_evidence_extraction","latency_ms":17887.113599979784}
+{"timestamp":"2026-07-22T21:25:15.166966Z","severity":"INFO","event":"config_test","request_id":null,"config_version":3,"product_endpoint":null,"internal_operation":"ledger_reduction","latency_ms":22194.452399970032}
+{"timestamp":"2026-07-22T21:25:42.514832Z","severity":"INFO","event":"config_test","request_id":null,"config_version":3,"product_endpoint":null,"internal_operation":"ledger_synthesis","latency_ms":27322.219200024847}
+{"timestamp":"2026-07-22T21:25:44.696560Z","severity":"INFO","event":"embedding_config_test","request_id":null,"config_version":3,"product_endpoint":null,"internal_operation":null,"model":"sentence-transformers/all-MiniLM-L6-v2"}

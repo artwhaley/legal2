@@ -1,0 +1,150 @@
+{
+  "per_window": [
+    {
+      "accepted_range_count": 2,
+      "estimated_cost": null,
+      "input_tokens": 106343,
+      "normalized_range_count": 0,
+      "output_tokens": 895,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000001",
+      "window_index": 0
+    },
+    {
+      "accepted_range_count": 4,
+      "estimated_cost": null,
+      "input_tokens": 106112,
+      "normalized_range_count": 0,
+      "output_tokens": 899,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000002",
+      "window_index": 1
+    },
+    {
+      "accepted_range_count": 2,
+      "estimated_cost": null,
+      "input_tokens": 106029,
+      "normalized_range_count": 0,
+      "output_tokens": 798,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000003",
+      "window_index": 2
+    },
+    {
+      "accepted_range_count": 3,
+      "estimated_cost": null,
+      "input_tokens": 107329,
+      "normalized_range_count": 0,
+      "output_tokens": 1242,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000004",
+      "window_index": 3
+    },
+    {
+      "accepted_range_count": 3,
+      "estimated_cost": null,
+      "input_tokens": 106338,
+      "normalized_range_count": 0,
+      "output_tokens": 1025,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000005",
+      "window_index": 4
+    },
+    {
+      "accepted_range_count": 3,
+      "estimated_cost": null,
+      "input_tokens": 106158,
+      "normalized_range_count": 0,
+      "output_tokens": 1197,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000006",
+      "window_index": 5
+    },
+    {
+      "accepted_range_count": 0,
+      "estimated_cost": null,
+      "input_tokens": 105977,
+      "normalized_range_count": 0,
+      "output_tokens": 191,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000007",
+      "window_index": 6
+    },
+    {
+      "accepted_range_count": 1,
+      "estimated_cost": null,
+      "input_tokens": 106457,
+      "normalized_range_count": 0,
+      "output_tokens": 500,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000008",
+      "window_index": 7
+    },
+    {
+      "accepted_range_count": 3,
+      "estimated_cost": null,
+      "input_tokens": 106394,
+      "normalized_range_count": 0,
+      "output_tokens": 796,
+      "rejected_range_count": 0,
+      "usage_source": "provider_reported",
+      "validation_status": "complete",
+      "window_count": 9,
+      "window_id": "w000009",
+      "window_index": 8
+    }
+  ],
+  "preflight": [
+    {
+      "direct_fit": true,
+      "evidence_message_count": 545,
+      "evidence_range_count": 21,
+      "excess_input_tokens": 0,
+      "required_input_tokens": 69132,
+      "usable_input_tokens": 184870
+    }
+  ],
+  "terminal_event": "failed",
+  "window_count": 9,
+  "window_plan": {
+    "config_version": 63,
+    "data": {
+      "hard_input_tokens": 184870,
+      "message_count": 12402,
+      "retrieval_reserve_tokens": 3839,
+      "strategy": "multi_window_ledger",
+      "target_input_tokens": 110922,
+      "utilization_percent": 60.0,
+      "window_count": 9,
+      "window_plan_hash": "798b2ddc064424761259b2326b0cdbdf3738d4fb1b740dac12e7e0d152e0b561"
+    },
+    "event": "window_plan_created",
+    "request_id": "3880d2ea-f3d4-433f-a2ea-615f31328b1e",
+    "sequence": 5,
+    "timestamp": "2026-07-30T16:17:38.029457Z"
+  }
+}
