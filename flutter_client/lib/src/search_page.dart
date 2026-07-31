@@ -367,6 +367,15 @@ class _SearchPageState extends State<SearchPage> {
                 revision: revision,
                 controller: workspace.transcriptController,
                 isPageActive: widget.isPageActive,
+                sidebarWidth:
+                    workspace.splitSize(
+                      'flutter.split.transcript_evidence_sidebar',
+                    ) ??
+                    350,
+                onSidebarWidthChanged: (value) => workspace.persistSplitSize(
+                  'flutter.split.transcript_evidence_sidebar',
+                  value,
+                ),
               ),
             ),
           ],

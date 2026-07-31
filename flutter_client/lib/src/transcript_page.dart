@@ -42,6 +42,15 @@ class TranscriptPage extends StatelessWidget {
           revision: revision,
           controller: workspace.transcriptController,
           isPageActive: isPageActive,
+          sidebarWidth:
+              workspace.splitSize(
+                'flutter.split.transcript_evidence_sidebar',
+              ) ??
+              350,
+          onSidebarWidthChanged: (value) => workspace.persistSplitSize(
+            'flutter.split.transcript_evidence_sidebar',
+            value,
+          ),
         ),
       );
     },

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'evw_models.dart';
 import 'workstation_widgets.dart';
 import 'workspace_controller.dart';
+import 'splitter.dart';
 
 class PrintOutputPage extends StatefulWidget {
   const PrintOutputPage({super.key, required this.workspace});
@@ -423,13 +424,20 @@ class _PrintOutputPageState extends State<PrintOutputPage> {
                         ),
                 );
                 if (constraints.maxWidth >= 900) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(width: 300, child: artifactList),
-                      const SizedBox(width: 10),
-                      Expanded(child: preview),
-                    ],
+                  return ResizableSplitter(
+                    primary: artifactList,
+                    secondary: preview,
+                    initialPrimarySize:
+                        widget.workspace.splitSize(
+                          WorkspaceController.printArtifactListSplit,
+                        ) ??
+                        300,
+                    primaryMin: 240,
+                    secondaryMin: 420,
+                    onDragEnd: (value) => widget.workspace.persistSplitSize(
+                      WorkspaceController.printArtifactListSplit,
+                      value,
+                    ),
                   );
                 }
                 return Column(

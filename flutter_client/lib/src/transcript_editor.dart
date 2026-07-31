@@ -7,6 +7,7 @@ import 'app_theme.dart';
 import 'evw_database.dart';
 import 'evw_models.dart';
 import 'transcript_height_index.dart';
+import 'splitter.dart';
 import 'workstation_widgets.dart';
 
 enum EvidenceBoundary { contextStart, relevantStart, relevantEnd, contextEnd }
@@ -52,15 +53,18 @@ class TranscriptDocumentController extends ChangeNotifier {
   int? _activeBlockId;
   int _evidenceDataVersion = 0;
   bool _disposed = false;
+  List<CategorySummary> _categories = const [];
 
   int get evidenceDataVersion => _evidenceDataVersion;
 
   List<EvidenceBlock> get blocks => List.unmodifiable(_blocks);
+  List<CategorySummary> get categories => List.unmodifiable(_categories);
   int? get activeBlockId => _activeBlockId;
   EvidenceBlock? get activeBlock => _blockById(_activeBlockId);
 
   void reload() {
     _blocks = database.evidenceBlocks(revision.id);
+    _categories = database.categories(revision.datasetId);
     if (_activeBlockId != null && _blockById(_activeBlockId) == null) {
       _activeBlockId = null;
     }
@@ -165,11 +169,13 @@ class TranscriptDocumentController extends ChangeNotifier {
 
   EvidenceBlock createAtOrdinal(
     int ordinal, {
+    int? categoryId,
     String createdBy = 'transcript_editor',
   }) {
     final block = database.createEvidenceBlock(
       revisionId: revision.id,
       hitOrdinal: ordinal,
+      categoryId: categoryId,
       createdBy: createdBy,
     );
     _replaceBlock(block);
@@ -179,8 +185,8 @@ class TranscriptDocumentController extends ChangeNotifier {
     return block;
   }
 
-  void saveMetadata(String title, String summary) {
-    final block = activeBlock;
+  void saveMetadata(String title, String summary, {int? evidenceBlockId}) {
+    final block = _blockById(evidenceBlockId) ?? activeBlock;
     if (block == null) throw StateError('Select an evidence block first');
     _replaceBlock(
       database.updateEvidenceMetadata(
@@ -293,16 +299,92 @@ class TranscriptDocumentController extends ChangeNotifier {
     _notify(persisted: true);
   }
 
-  void deleteActiveBlock() {
-    final block = activeBlock;
-    if (block == null) throw StateError('Select an evidence block first');
+  void deleteBlock(int evidenceBlockId) {
+    final block = _blockById(evidenceBlockId);
+    if (block == null) {
+      throw StateError('Evidence block $evidenceBlockId is not loaded');
+    }
     database.deleteEvidenceBlock(
       revisionId: revision.id,
-      evidenceBlockId: block.id,
+      evidenceBlockId: evidenceBlockId,
     );
     _hiddenBlockIds.remove(block.id);
-    _activeBlockId = null;
+    if (_activeBlockId == evidenceBlockId) _activeBlockId = null;
     _blocks.removeWhere((item) => item.id == block.id);
+    _notify(persisted: true);
+  }
+
+  void moveBlockToCategory({
+    required int evidenceBlockId,
+    required int categoryId,
+  }) {
+    final updated = database.moveEvidenceBlock(
+      revisionId: revision.id,
+      evidenceBlockId: evidenceBlockId,
+      categoryId: categoryId,
+    );
+    _replaceBlock(updated);
+    _categories = database.categories(revision.datasetId);
+    _notify(persisted: true);
+  }
+
+  CategorySummary createCategory(String name) {
+    final created = database.createCategory(
+      datasetId: revision.datasetId,
+      name: name,
+    );
+    _categories = database.categories(revision.datasetId);
+    _notify(persisted: true);
+    return created;
+  }
+
+  CategorySummary renameCategory({
+    required int categoryId,
+    required String name,
+  }) {
+    final renamed = database.renameCategory(
+      datasetId: revision.datasetId,
+      categoryId: categoryId,
+      name: name,
+    );
+    _categories = database.categories(revision.datasetId);
+    _notify(persisted: true);
+    return renamed;
+  }
+
+  CategorySummary setCategoryCollapsed({
+    required int categoryId,
+    required bool isCollapsed,
+  }) {
+    final updated = database.setCategoryCollapsed(
+      datasetId: revision.datasetId,
+      categoryId: categoryId,
+      isCollapsed: isCollapsed,
+    );
+    _categories = database.categories(revision.datasetId);
+    _notify(persisted: true);
+    return updated;
+  }
+
+  void deleteCategory(int categoryId) {
+    database.deleteCategory(
+      datasetId: revision.datasetId,
+      categoryId: categoryId,
+    );
+    _categories = database.categories(revision.datasetId);
+    _notify(persisted: true);
+  }
+
+  void mergeCategories({
+    required int sourceCategoryId,
+    required int destinationCategoryId,
+  }) {
+    database.mergeCategories(
+      datasetId: revision.datasetId,
+      sourceCategoryId: sourceCategoryId,
+      destinationCategoryId: destinationCategoryId,
+    );
+    _categories = database.categories(revision.datasetId);
     _notify(persisted: true);
   }
 
@@ -711,14 +793,14 @@ class VirtualTranscriptViewState extends State<VirtualTranscriptView> {
                     children: [
                       Icon(
                         Icons.chevron_right,
-                        size: 20,
-                        color: Color(0xaa28516b),
+                        size: 28,
+                        color: Color(0xe028516b),
                       ),
                       Spacer(),
                       Icon(
                         Icons.chevron_left,
-                        size: 20,
-                        color: Color(0xaa28516b),
+                        size: 28,
+                        color: Color(0xe028516b),
                       ),
                     ],
                   ),
@@ -933,12 +1015,16 @@ class TranscriptEvidenceEditor extends StatefulWidget {
     required this.revision,
     this.controller,
     this.isPageActive = true,
+    this.sidebarWidth,
+    this.onSidebarWidthChanged,
   });
 
   final EvwDatabase database;
   final RevisionSummary revision;
   final TranscriptDocumentController? controller;
   final bool isPageActive;
+  final double? sidebarWidth;
+  final ValueChanged<double>? onSidebarWidthChanged;
 
   @override
   State<TranscriptEvidenceEditor> createState() =>
@@ -952,6 +1038,8 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
   final TextEditingController _title = TextEditingController();
   final TextEditingController _summary = TextEditingController();
   int? _metadataBlockId;
+  int? _selectedSidebarBlockId;
+  int? _selectedCategoryId;
   String? _error;
 
   @override
@@ -1003,11 +1091,65 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
   }
 
   void _syncMetadataFields() {
-    final block = _controller.activeBlock;
+    final selectedId = _selectedSidebarBlockId;
+    final block = selectedId == null ? null : _blockById(selectedId);
+    if (selectedId != null && block == null) {
+      _selectedSidebarBlockId = null;
+      _selectedCategoryId = null;
+    }
     if (block?.id == _metadataBlockId) return;
     _metadataBlockId = block?.id;
     _title.text = block?.title ?? '';
     _summary.text = block?.summary ?? '';
+  }
+
+  EvidenceBlock? _blockById(int? blockId) {
+    if (blockId == null) return null;
+    final matches = _controller.blocks.where((block) => block.id == blockId);
+    return matches.isEmpty ? null : matches.first;
+  }
+
+  CategorySummary? _categoryById(int? categoryId) {
+    if (categoryId == null) return null;
+    final matches = _controller.categories.where(
+      (category) => category.id == categoryId,
+    );
+    return matches.isEmpty ? null : matches.first;
+  }
+
+  int _creationCategoryId() {
+    final selectedBlock = _blockById(_selectedSidebarBlockId);
+    final categoryId = _selectedCategoryId ?? selectedBlock?.categoryId;
+    if (categoryId != null && _categoryById(categoryId) != null) {
+      return categoryId;
+    }
+    final uncategorizedMatches = _controller.categories.where(
+      (category) => category.name.toLowerCase() == 'uncategorized',
+    );
+    final uncategorized = uncategorizedMatches.isEmpty
+        ? null
+        : uncategorizedMatches.first;
+    if (uncategorized == null) {
+      throw StateError('The selected dataset has no Uncategorized category');
+    }
+    return uncategorized.id;
+  }
+
+  void _selectSidebarCategory(int categoryId) {
+    setState(() {
+      _selectedCategoryId = categoryId;
+      _selectedSidebarBlockId = null;
+    });
+    _syncMetadataFields();
+  }
+
+  void _selectSidebarBlock(EvidenceBlock block) {
+    setState(() {
+      _selectedSidebarBlockId = block.id;
+      _selectedCategoryId = block.categoryId;
+    });
+    _syncMetadataFields();
+    revealEvidenceBlock(block.id);
   }
 
   void _run(VoidCallback operation) {
@@ -1023,7 +1165,13 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
     final ordinal = _transcriptKey.currentState?.viewportCenterOrdinal();
     if (ordinal == null) return;
     _run(() {
-      final block = _controller.createAtOrdinal(ordinal);
+      final block = _controller.createAtOrdinal(
+        ordinal,
+        categoryId: _creationCategoryId(),
+      );
+      _selectedSidebarBlockId = block.id;
+      _selectedCategoryId = block.categoryId;
+      _syncMetadataFields();
       _transcriptKey.currentState?.scrollToOrdinal(block.coreOrdinal);
     });
   }
@@ -1052,15 +1200,21 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
     if (ordinal == null) return null;
     EvidenceBlock? result;
     _run(() {
-      result = _controller.createAtOrdinal(ordinal, createdBy: createdBy);
+      result = _controller.createAtOrdinal(
+        ordinal,
+        categoryId: _creationCategoryId(),
+        createdBy: createdBy,
+      );
+      _selectedSidebarBlockId = result!.id;
+      _selectedCategoryId = result!.categoryId;
+      _syncMetadataFields();
       _transcriptKey.currentState?.scrollToOrdinal(ordinal);
     });
     return result;
   }
 
-  Future<void> _deleteActiveBlock() async {
-    final block = _controller.activeBlock;
-    if (block == null) return;
+  Future<void> _confirmDeleteBlock(EvidenceBlock block) async {
+    final blockId = block.id;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1086,15 +1240,409 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
       ),
     );
     if (confirmed == true && mounted) {
-      _run(_controller.deleteActiveBlock);
+      _run(() {
+        _controller.deleteBlock(blockId);
+        if (_selectedSidebarBlockId == blockId) {
+          _selectedSidebarBlockId = null;
+          _selectedCategoryId = null;
+          _syncMetadataFields();
+        }
+      });
     }
+  }
+
+  Future<void> _deleteActiveBlock() async {
+    final block = _blockById(_selectedSidebarBlockId);
+    if (block != null) await _confirmDeleteBlock(block);
+  }
+
+  Future<String?> _categoryNameDialog({
+    required String title,
+    required String action,
+    String initial = '',
+  }) async {
+    final field = TextEditingController(text: initial);
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: field,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Name'),
+            onSubmitted: (value) => Navigator.pop(dialogContext, value),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, field.text),
+              child: Text(action),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      field.dispose();
+    }
+  }
+
+  Future<void> _createCategory() async {
+    final name = await _categoryNameDialog(
+      title: 'New category',
+      action: 'Create',
+    );
+    if (!mounted || name == null) return;
+    _run(() {
+      final created = _controller.createCategory(name);
+      setState(() {
+        _selectedCategoryId = created.id;
+        _selectedSidebarBlockId = null;
+      });
+      _syncMetadataFields();
+    });
+  }
+
+  Future<void> _renameCategory(CategorySummary category) async {
+    final name = await _categoryNameDialog(
+      title: 'Rename category',
+      action: 'Save',
+      initial: category.name,
+    );
+    if (!mounted || name == null) return;
+    _run(() => _controller.renameCategory(categoryId: category.id, name: name));
+  }
+
+  Future<void> _deleteCategory(CategorySummary category) async {
+    if (category.evidenceCount != 0) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete category?'),
+        content: Text('Delete category “${category.name}”?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete category'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    _run(() {
+      _controller.deleteCategory(category.id);
+      if (_selectedCategoryId == category.id) _selectedCategoryId = null;
+    });
+  }
+
+  Future<void> _mergeCategory(CategorySummary source) async {
+    final destinations = _controller.categories
+        .where((category) => category.id != source.id)
+        .toList();
+    if (destinations.isEmpty) return;
+    var destinationId = destinations.first.id;
+    final selectedDestination = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Merge category'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Merge “${source.name}” into the destination category? '
+                '${source.evidenceCount} evidence blocks will move.',
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: destinationId,
+                decoration: const InputDecoration(labelText: 'Destination'),
+                items: destinations
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category.id,
+                        child: Text(category.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null)
+                    setDialogState(() => destinationId = value);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, destinationId),
+              child: const Text('Merge'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selectedDestination == null || !mounted) return;
+    _run(() {
+      _controller.mergeCategories(
+        sourceCategoryId: source.id,
+        destinationCategoryId: selectedDestination,
+      );
+      if (_selectedCategoryId == source.id) {
+        _selectedCategoryId = selectedDestination;
+      }
+    });
+  }
+
+  void _moveBlockToCategory(int blockId, int categoryId) {
+    final block = _blockById(blockId);
+    if (block == null || block.categoryId == categoryId) return;
+    _run(() {
+      _controller.moveBlockToCategory(
+        evidenceBlockId: blockId,
+        categoryId: categoryId,
+      );
+      final destination = _categoryById(categoryId);
+      if (destination?.isCollapsed == true) {
+        _controller.setCategoryCollapsed(
+          categoryId: categoryId,
+          isCollapsed: false,
+        );
+      }
+      setState(() {
+        _selectedSidebarBlockId = blockId;
+        _selectedCategoryId = categoryId;
+      });
+      _syncMetadataFields();
+    });
+  }
+
+  Widget _categoryInspector() {
+    final selected = _blockById(_selectedSidebarBlockId);
+    final blocksByCategory = <int, List<EvidenceBlock>>{};
+    for (final block in _controller.blocks) {
+      blocksByCategory.putIfAbsent(block.categoryId, () => []).add(block);
+    }
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SectionHeader(
+              title: 'Evidence blocks',
+              leading: const Icon(Icons.bookmarks_outlined, size: 19),
+              trailing: OutlinedButton.icon(
+                onPressed: _createCategory,
+                icon: const Icon(Icons.create_new_folder_outlined, size: 17),
+                label: const Text('New category'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: _controller.categories.isEmpty
+                  ? const Center(child: Text('No evidence categories yet.'))
+                  : ListView(
+                      children: [
+                        for (final category in _controller.categories)
+                          _categoryTree(
+                            category,
+                            blocksByCategory[category.id] ?? const [],
+                          ),
+                      ],
+                    ),
+            ),
+            const Divider(),
+            if (selected != null) ...[
+              TextField(
+                controller: _title,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _summary,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Summary',
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () => _run(
+                  () => _controller.saveMetadata(
+                    _title.text,
+                    _summary.text,
+                    evidenceBlockId: selected.id,
+                  ),
+                ),
+                child: const Text('Save title and summary'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _categoryTree(CategorySummary category, List<EvidenceBlock> blocks) =>
+      DragTarget<int>(
+        onWillAcceptWithDetails: (_) => true,
+        onAcceptWithDetails: (details) =>
+            _moveBlockToCategory(details.data, category.id),
+        builder: (context, candidates, rejected) {
+          final isSelected = _selectedCategoryId == category.id;
+          final isHovering = candidates.isNotEmpty;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 5),
+            decoration: BoxDecoration(
+              color: isHovering
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.45)
+                  : null,
+              border: Border.all(
+                color: isHovering
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outlineVariant,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListTile(
+                  dense: true,
+                  selected: isSelected,
+                  leading: IconButton(
+                    tooltip: category.isCollapsed
+                        ? 'Expand category'
+                        : 'Collapse category',
+                    onPressed: () => _run(
+                      () => _controller.setCategoryCollapsed(
+                        categoryId: category.id,
+                        isCollapsed: !category.isCollapsed,
+                      ),
+                    ),
+                    icon: Icon(
+                      category.isCollapsed
+                          ? Icons.chevron_right
+                          : Icons.expand_more,
+                    ),
+                  ),
+                  title: Text(category.name),
+                  subtitle: Text('${category.evidenceCount} evidence blocks'),
+                  onTap: () => _selectSidebarCategory(category.id),
+                  trailing: _categoryMenu(category),
+                ),
+                if (!category.isCollapsed) ...blocks.map(_sidebarBlockRow),
+              ],
+            ),
+          );
+        },
+      );
+
+  Widget? _categoryMenu(CategorySummary category) {
+    if (category.name.toLowerCase() == 'uncategorized') return null;
+    final canDelete = category.evidenceCount == 0;
+    return PopupMenuButton<String>(
+      tooltip: 'Category actions',
+      onSelected: (action) {
+        switch (action) {
+          case 'rename':
+            _renameCategory(category);
+          case 'delete':
+            _deleteCategory(category);
+          case 'merge':
+            _mergeCategory(category);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(value: 'rename', child: Text('Rename category')),
+        if (canDelete)
+          const PopupMenuItem(value: 'delete', child: Text('Delete category')),
+        const PopupMenuItem(value: 'merge', child: Text('Merge into...')),
+      ],
+    );
+  }
+
+  Widget _sidebarBlockRow(EvidenceBlock block) {
+    final hidden = _controller.isHidden(block.id);
+    final selected = _selectedSidebarBlockId == block.id;
+    return Draggable<int>(
+      data: block.id,
+      feedback: Material(
+        elevation: 4,
+        child: SizedBox(
+          width: 280,
+          child: ListTile(
+            dense: true,
+            title: Text(
+              block.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+      child: GestureDetector(
+        onSecondaryTapUp: (_) => _showBlockContextMenu(block),
+        child: ListTile(
+          dense: true,
+          selected: selected,
+          contentPadding: const EdgeInsets.only(left: 8, right: 4),
+          leading: const Icon(Icons.drag_indicator, size: 18),
+          title: Text(
+            block.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text('${block.messageIds.length} messages'),
+          onTap: () => _selectSidebarBlock(block),
+          trailing: IconButton(
+            tooltip: hidden
+                ? 'Show this blockâ€™s transcript markup'
+                : 'Hide this blockâ€™s transcript markup',
+            onPressed: () => _controller.setHidden(block.id, !hidden),
+            icon: Icon(hidden ? Icons.visibility_off : Icons.visibility),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showBlockContextMenu(EvidenceBlock block) async {
+    final action = await showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(180, 240, 20, 20),
+      items: const [
+        PopupMenuItem(value: 'delete', child: Text('Delete block')),
+      ],
+    );
+    if (action == 'delete' && mounted) await _confirmDeleteBlock(block);
   }
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      _toolbar(),
       if (_error != null)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -1121,15 +1669,50 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
                 onError: (error) => setState(() => _error = '$error'),
               ),
             );
-            final inspector = _inspector();
+            final inspector = _categoryInspector();
+            final sidebar = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: inspector),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: widget.revision.status == 'ready'
+                            ? _createAtCenter
+                            : null,
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('New block at center'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _selectedSidebarBlockId == null
+                            ? null
+                            : () {
+                                final block = _blockById(
+                                  _selectedSidebarBlockId,
+                                );
+                                if (block != null) _confirmDeleteBlock(block);
+                              },
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Delete selected'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
             if (constraints.maxWidth >= 980) {
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: transcript),
-                  const SizedBox(width: 12),
-                  SizedBox(width: 350, child: inspector),
-                ],
+              return ResizableSplitter(
+                primary: sidebar,
+                secondary: transcript,
+                initialPrimarySize: widget.sidebarWidth ?? 350,
+                primaryMin: 280,
+                secondaryMin: 420,
+                onDragEnd: (value) => widget.onSidebarWidthChanged?.call(value),
               );
             }
             return Column(
@@ -1138,7 +1721,7 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
                 const SizedBox(height: 8),
                 SizedBox(
                   height: math.min(260.0, constraints.maxHeight * 0.42),
-                  child: inspector,
+                  child: sidebar,
                 ),
               ],
             );
@@ -1148,6 +1731,7 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
     ],
   );
 
+  // ignore: unused_element
   Widget _toolbar() => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: SectionSurface(
@@ -1187,6 +1771,7 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
     ),
   );
 
+  // ignore: unused_element
   Widget _inspector() {
     final active = _controller.activeBlock;
     return Card(

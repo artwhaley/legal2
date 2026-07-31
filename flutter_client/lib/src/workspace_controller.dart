@@ -24,6 +24,13 @@ class WorkspaceOperationLease {
 }
 
 class WorkspaceController extends ChangeNotifier {
+  static const transcriptEvidenceSidebarSplit =
+      'flutter.split.transcript_evidence_sidebar';
+  static const corpusListSplit = 'flutter.split.corpus_list';
+  static const printArtifactListSplit = 'flutter.split.print_artifact_list';
+  static const searchResultsSplit = 'flutter.split.search_results';
+  static const conversationContentSplit = 'flutter.split.conversation_content';
+
   WorkspaceController({required this.gateway});
 
   final ServerGateway gateway;
@@ -37,6 +44,19 @@ class WorkspaceController extends ChangeNotifier {
   int evidenceDataVersion = 0;
   WorkspaceOperationLease? _remoteOperation;
   bool _disposed = false;
+
+  double? splitSize(String key) {
+    final current = database;
+    if (current == null) return null;
+    return current.workspaceSetting(key);
+  }
+
+  void persistSplitSize(String key, double value) {
+    final current = database;
+    if (current == null) throw StateError('Open an EVW before saving layout');
+    current.setWorkspaceSetting(key, value);
+    if (!_disposed) notifyListeners();
+  }
 
   bool get isOpen => database != null;
   bool get hasReadyScope => database != null && selectedRevision != null;

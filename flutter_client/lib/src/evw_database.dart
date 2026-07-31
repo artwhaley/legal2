@@ -106,6 +106,7 @@ class EvwDatabase {
       'schema_version',
       'workspace_state',
       'dataset',
+      'workspace_setting',
       'source_thread',
       'message',
       'category',
@@ -126,6 +127,14 @@ class EvwDatabase {
       'printable_artifact_group',
       'printable_artifact',
       'printable_artifact_evidence_block',
+    ]);
+    _requireColumns(db, 'category', [
+      'category_id',
+      'dataset_id',
+      'name',
+      'is_collapsed',
+      'created_at',
+      'updated_at',
     ]);
     _requireColumns(db, 'working_corpus', [
       'working_corpus_id',
@@ -1282,18 +1291,238 @@ class EvwDatabase {
 
   List<CategorySummary> categories(int datasetId) => db
       .select(
-        'SELECT category_id,name FROM category WHERE dataset_id=? ORDER BY name COLLATE NOCASE,category_id',
+        '''SELECT c.category_id,c.name,c.is_collapsed,
+                  (SELECT COUNT(*) FROM evidence_block b
+                   WHERE b.dataset_id=c.dataset_id AND b.category_id=c.category_id)
+                   AS evidence_count
+           FROM category c
+           WHERE c.dataset_id=?
+           ORDER BY c.name COLLATE NOCASE,c.category_id''',
         [datasetId],
       )
       .map(
-        (row) =>
-            CategorySummary(row['category_id'] as int, row['name'] as String),
+        (row) => CategorySummary(
+          row['category_id'] as int,
+          row['name'] as String,
+          isCollapsed: (row['is_collapsed'] as int) != 0,
+          evidenceCount: row['evidence_count'] as int,
+        ),
       )
       .toList();
+
+  CategorySummary createCategory({
+    required int datasetId,
+    required String name,
+  }) {
+    final normalized = name.trim();
+    _validateCategoryName(datasetId, normalized);
+    final now = DateTime.now().toUtc().toIso8601String();
+    late int categoryId;
+    _write(() {
+      _requireDataset(datasetId);
+      _validateCategoryName(datasetId, normalized);
+      db.execute(
+        '''INSERT INTO category(
+             dataset_id,name,description,color,is_collapsed,created_at,updated_at)
+           VALUES (?,?, '', '', 0, ?, ?)''',
+        [datasetId, normalized, now, now],
+      );
+      categoryId = db.lastInsertRowId;
+      _touchWorkspace(now);
+    });
+    return categories(datasetId).firstWhere((item) => item.id == categoryId);
+  }
+
+  CategorySummary renameCategory({
+    required int datasetId,
+    required int categoryId,
+    required String name,
+  }) {
+    final normalized = name.trim();
+    final now = DateTime.now().toUtc().toIso8601String();
+    _write(() {
+      final category = _categoryRow(datasetId, categoryId);
+      if (_isUncategorized(category['name'] as String)) {
+        throw StateError('Uncategorized cannot be renamed');
+      }
+      _validateCategoryName(datasetId, normalized, excludingId: categoryId);
+      db.execute(
+        'UPDATE category SET name=?,updated_at=? WHERE category_id=? AND dataset_id=?',
+        [normalized, now, categoryId, datasetId],
+      );
+      _touchWorkspace(now);
+    });
+    return categories(datasetId).firstWhere((item) => item.id == categoryId);
+  }
+
+  CategorySummary setCategoryCollapsed({
+    required int datasetId,
+    required int categoryId,
+    required bool isCollapsed,
+  }) {
+    final now = DateTime.now().toUtc().toIso8601String();
+    _write(() {
+      _categoryRow(datasetId, categoryId);
+      db.execute(
+        'UPDATE category SET is_collapsed=?,updated_at=? WHERE category_id=? AND dataset_id=?',
+        [isCollapsed ? 1 : 0, now, categoryId, datasetId],
+      );
+      _touchWorkspace(now);
+    });
+    return categories(datasetId).firstWhere((item) => item.id == categoryId);
+  }
+
+  EvidenceBlock moveEvidenceBlock({
+    required int revisionId,
+    required int evidenceBlockId,
+    required int categoryId,
+  }) {
+    final now = DateTime.now().toUtc().toIso8601String();
+    _write(() {
+      final revisionScope = _readyScope(revisionId);
+      final block = _evidenceBlockRow(revisionId, evidenceBlockId);
+      if ((block['dataset_id'] as int) != revisionScope.datasetId) {
+        throw StateError(
+          'Evidence block $evidenceBlockId is not in the selected dataset',
+        );
+      }
+      _categoryRow(revisionScope.datasetId, categoryId);
+      db.execute(
+        'UPDATE evidence_block SET category_id=?,updated_at=? WHERE evidence_block_id=? AND dataset_id=?',
+        [categoryId, now, evidenceBlockId, revisionScope.datasetId],
+      );
+      _touchWorkspace(now);
+    });
+    return evidenceBlock(revisionId, evidenceBlockId);
+  }
+
+  void deleteCategory({required int datasetId, required int categoryId}) {
+    final now = DateTime.now().toUtc().toIso8601String();
+    _write(() {
+      final category = _categoryRow(datasetId, categoryId);
+      if (_isUncategorized(category['name'] as String)) {
+        throw StateError('Uncategorized cannot be deleted');
+      }
+      final count =
+          db.select(
+                'SELECT COUNT(*) AS count FROM evidence_block WHERE dataset_id=? AND category_id=?',
+                [datasetId, categoryId],
+              ).first['count']
+              as int;
+      if (count != 0) {
+        throw StateError(
+          'Category $categoryId is not empty; merge it into another category first',
+        );
+      }
+      db.execute('DELETE FROM category WHERE category_id=? AND dataset_id=?', [
+        categoryId,
+        datasetId,
+      ]);
+      _touchWorkspace(now);
+    });
+  }
+
+  void mergeCategories({
+    required int datasetId,
+    required int sourceCategoryId,
+    required int destinationCategoryId,
+  }) {
+    final now = DateTime.now().toUtc().toIso8601String();
+    _write(() {
+      if (sourceCategoryId == destinationCategoryId) {
+        throw StateError('A category cannot be merged into itself');
+      }
+      final source = _categoryRow(datasetId, sourceCategoryId);
+      _categoryRow(datasetId, destinationCategoryId);
+      if (_isUncategorized(source['name'] as String)) {
+        throw StateError('Uncategorized cannot be used as a merge source');
+      }
+      db.execute(
+        'UPDATE evidence_block SET category_id=?,updated_at=? WHERE dataset_id=? AND category_id=?',
+        [destinationCategoryId, now, datasetId, sourceCategoryId],
+      );
+      db.execute('DELETE FROM category WHERE category_id=? AND dataset_id=?', [
+        sourceCategoryId,
+        datasetId,
+      ]);
+      _touchWorkspace(now);
+    });
+  }
+
+  void _requireDataset(int datasetId) {
+    final rows = db.select('SELECT 1 FROM dataset WHERE dataset_id=?', [
+      datasetId,
+    ]);
+    if (rows.isEmpty) throw StateError('Dataset $datasetId does not exist');
+  }
+
+  int _uncategorizedId(int datasetId) {
+    final rows = db.select(
+      '''SELECT category_id FROM category
+         WHERE dataset_id=? AND name='Uncategorized' COLLATE NOCASE
+         ORDER BY category_id LIMIT 1''',
+      [datasetId],
+    );
+    if (rows.isEmpty) {
+      throw StateError('Dataset $datasetId has no Uncategorized category');
+    }
+    return rows.first['category_id'] as int;
+  }
+
+  Row _categoryRow(int datasetId, int categoryId) {
+    final rows = db.select(
+      'SELECT category_id,dataset_id,name FROM category WHERE category_id=? AND dataset_id=?',
+      [categoryId, datasetId],
+    );
+    if (rows.length != 1) {
+      throw StateError(
+        'Category $categoryId does not belong to dataset $datasetId',
+      );
+    }
+    return rows.single;
+  }
+
+  Row _evidenceBlockRow(int revisionId, int evidenceBlockId) {
+    final rows = db.select(
+      '''SELECT b.evidence_block_id,b.dataset_id
+         FROM evidence_block b
+         JOIN working_corpus_revision_evidence_block a
+           ON a.evidence_block_id=b.evidence_block_id
+         WHERE a.working_corpus_revision_id=? AND b.evidence_block_id=?''',
+      [revisionId, evidenceBlockId],
+    );
+    if (rows.length != 1) {
+      throw StateError(
+        'Evidence block $evidenceBlockId is not associated with revision $revisionId',
+      );
+    }
+    return rows.single;
+  }
+
+  void _validateCategoryName(int datasetId, String name, {int? excludingId}) {
+    if (name.isEmpty) throw StateError('Category name cannot be blank');
+    if (_isUncategorized(name)) {
+      throw StateError('Uncategorized is reserved');
+    }
+    final rows = db.select(
+      '''SELECT category_id FROM category
+         WHERE dataset_id=? AND name=? COLLATE NOCASE''',
+      [datasetId, name],
+    );
+    if (rows.any(
+      (row) => excludingId == null || row['category_id'] != excludingId,
+    )) {
+      throw StateError('Category "$name" already exists');
+    }
+  }
+
+  bool _isUncategorized(String name) =>
+      name.trim().toLowerCase() == 'uncategorized';
 
   EvidenceBlock createEvidenceBlock({
     required int revisionId,
     required int hitOrdinal,
+    int? categoryId,
     String? title,
     String summary = '',
     String createdBy = 'transcript_editor',
@@ -1332,18 +1561,11 @@ class EvwDatabase {
         'An evidence block requires at least two messages in one source conversation',
       );
     }
-    final categoryRows = db.select(
-      '''SELECT category_id FROM category
-         WHERE dataset_id=? AND name='Uncategorized' COLLATE NOCASE
-         ORDER BY category_id LIMIT 1''',
-      [scope.datasetId],
-    );
-    if (categoryRows.isEmpty) {
-      throw StateError(
-        'Dataset ${scope.datasetId} has no Uncategorized category',
-      );
-    }
-    final categoryId = categoryRows.first['category_id'] as int;
+    final selectedCategoryId = categoryId ?? _uncategorizedId(scope.datasetId);
+    _categoryRow(scope.datasetId, selectedCategoryId);
+    final defaultTitle = hit.body.trim().isEmpty
+        ? 'No text in hit message'
+        : hit.body.trim();
     final now = DateTime.now().toUtc().toIso8601String();
     late int blockId;
     _write(() {
@@ -1357,9 +1579,9 @@ class EvwDatabase {
           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
         [
           scope.datasetId,
-          categoryId,
+          selectedCategoryId,
           hit.threadId,
-          title ?? 'Evidence at message ${hitOrdinal + 1}',
+          title ?? defaultTitle,
           summary,
           ordered.first.value,
           hit.id,
@@ -1861,6 +2083,36 @@ class EvwDatabase {
       db.execute('ROLLBACK');
       rethrow;
     }
+  }
+
+  double? workspaceSetting(String key) {
+    final rows = db.select('SELECT value FROM workspace_setting WHERE key=?', [
+      key,
+    ]);
+    if (rows.isEmpty) return null;
+    final raw = rows.first['value'];
+    final value = raw is num ? raw.toDouble() : double.tryParse('$raw');
+    if (value == null || !value.isFinite || value <= 0) {
+      throw StateError(
+        'Workspace setting "$key" is not a finite positive number',
+      );
+    }
+    return value;
+  }
+
+  void setWorkspaceSetting(String key, double value) {
+    if (!value.isFinite || value <= 0) {
+      throw ArgumentError.value(value, 'value', 'must be finite and positive');
+    }
+    final now = DateTime.now().toUtc().toIso8601String();
+    _write(() {
+      db.execute(
+        '''INSERT INTO workspace_setting(key,value) VALUES(?,?)
+           ON CONFLICT(key) DO UPDATE SET value=excluded.value''',
+        [key, value.toString()],
+      );
+      _touchWorkspace(now);
+    });
   }
 
   void checkpoint() {

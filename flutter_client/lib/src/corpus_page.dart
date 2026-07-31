@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'workstation_widgets.dart';
 import 'workspace_controller.dart';
+import 'splitter.dart';
 
 class CorpusPage extends StatelessWidget {
   const CorpusPage({super.key, required this.workspace});
@@ -116,13 +117,20 @@ class CorpusPage extends StatelessWidget {
                               )
                             : _RevisionCard(workspace: workspace);
                         if (constraints.maxWidth >= 1040) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(flex: 5, child: corpora),
-                              const SizedBox(width: 14),
-                              Expanded(flex: 6, child: revision),
-                            ],
+                          return ResizableSplitter(
+                            primary: corpora,
+                            secondary: revision,
+                            initialPrimarySize:
+                                workspace.splitSize(
+                                  WorkspaceController.corpusListSplit,
+                                ) ??
+                                360,
+                            primaryMin: 280,
+                            secondaryMin: 360,
+                            onDragEnd: (value) => workspace.persistSplitSize(
+                              WorkspaceController.corpusListSplit,
+                              value,
+                            ),
                           );
                         }
                         return ListView(

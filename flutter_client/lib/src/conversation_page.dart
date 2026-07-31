@@ -40,9 +40,7 @@ class _ConversationPageState extends State<ConversationPage> {
   final GlobalKey<TranscriptEvidenceEditorState> _editorKey = GlobalKey();
   final List<_ConversationCard> _cards = [];
   RequestCancellation? _cancellation;
-  Timer? _elapsedTimer;
-  DateTime? _startedAt;
-  Duration _elapsed = Duration.zero;
+  bool _stopRequested = false;
   String? _error;
   String? _notice;
   int? _loadedRevisionId;
@@ -58,7 +56,6 @@ class _ConversationPageState extends State<ConversationPage> {
   @override
   void dispose() {
     workspace.removeListener(_onWorkspaceChanged);
-    _elapsedTimer?.cancel();
     _question.dispose();
     super.dispose();
   }
@@ -93,12 +90,7 @@ class _ConversationPageState extends State<ConversationPage> {
       _cards.add(card);
       _loadedRevisionId = revision.id;
       _cancellation = cancellation;
-      _startedAt = DateTime.now();
-      _elapsed = Duration.zero;
-    });
-    _elapsedTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
-      if (!mounted || _startedAt == null) return;
-      setState(() => _elapsed = DateTime.now().difference(_startedAt!));
+      _stopRequested = false;
     });
     try {
       final outcome = await ConversationWorkflow(workspace: workspace).run(
@@ -123,22 +115,19 @@ class _ConversationPageState extends State<ConversationPage> {
         });
       }
     } finally {
-      _elapsedTimer?.cancel();
-      _elapsedTimer = null;
       if (mounted) {
         setState(() {
-          _elapsed = _startedAt == null
-              ? Duration.zero
-              : DateTime.now().difference(_startedAt!);
-          _startedAt = null;
           _cancellation = null;
+          _stopRequested = false;
         });
       }
     }
   }
 
   void _cancel() {
-    _cancellation?.cancel();
+    if (_cancellation == null || _stopRequested) return;
+    _stopRequested = true;
+    _cancellation!.cancel();
     if (mounted) {
       setState(() {
         _notice = 'Cancellation requested. Waiting for the request to close.';
@@ -237,8 +226,6 @@ class _ConversationPageState extends State<ConversationPage> {
     if (database == null || revision == null) {
       return const WorkstationPage(
         title: 'Evidence conversation',
-        description:
-            'Ask a scoped question, inspect live processing state, and review every cited range against the transcript.',
         child: EmptyWorkspaceState(
           icon: Icons.question_answer_outlined,
           title: 'Conversation requires a working corpus',
@@ -249,17 +236,9 @@ class _ConversationPageState extends State<ConversationPage> {
     }
     return WorkstationPage(
       title: 'Evidence conversation',
-      description:
-          'Ask a scoped question, inspect live processing state, and review every cited range against the transcript.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ConversationStatus(
-            active: _cancellation != null,
-            elapsed: _elapsed,
-            progress: _cards.isEmpty ? const [] : _cards.last.progress,
-            onCancel: _cancellation == null ? null : _cancel,
-          ),
           if (_error != null) ...[
             const SizedBox(height: 8),
             OperationalMessage(
@@ -316,9 +295,15 @@ class _ConversationPageState extends State<ConversationPage> {
               ),
               const SizedBox(width: 8),
               FilledButton.icon(
-                onPressed: _cancellation == null ? _send : null,
-                icon: const Icon(Icons.send),
-                label: const Text('Send'),
+                onPressed: _cancellation == null
+                    ? _send
+                    : (_stopRequested ? null : _cancel),
+                icon: Icon(_cancellation == null ? Icons.send : Icons.stop),
+                label: Text(
+                  _cancellation == null
+                      ? 'Send'
+                      : (_stopRequested ? 'Stopping...' : 'Stop'),
+                ),
               ),
             ],
           ),
@@ -331,6 +316,15 @@ class _ConversationPageState extends State<ConversationPage> {
               revision: revision,
               controller: workspace.transcriptController,
               isPageActive: widget.isPageActive,
+              sidebarWidth:
+                  workspace.splitSize(
+                    'flutter.split.transcript_evidence_sidebar',
+                  ) ??
+                  350,
+              onSidebarWidthChanged: (value) => workspace.persistSplitSize(
+                'flutter.split.transcript_evidence_sidebar',
+                value,
+              ),
             ),
           ),
         ],
@@ -339,6 +333,7 @@ class _ConversationPageState extends State<ConversationPage> {
   }
 }
 
+// ignore: unused_element
 class _ConversationStatus extends StatelessWidget {
   const _ConversationStatus({
     required this.active,
@@ -462,13 +457,7 @@ class _ConversationCardView extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: card.outcome == null
               ? card.failure == null
-                    ? const Row(
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(width: 12),
-                          Text('Working...'),
-                        ],
-                      )
+                    ? _WorkingConversationState(progress: card.progress)
                     : card.failure is GatewayError &&
                           (card.failure as GatewayError).cancelled
                     ? SelectableText('CANCELLED\n${card.failure}')
@@ -485,6 +474,62 @@ class _ConversationCardView extends StatelessWidget {
       const SizedBox(height: 12),
     ],
   );
+}
+
+class _WorkingConversationState extends StatelessWidget {
+  const _WorkingConversationState({required this.progress});
+
+  final List<ConversationProgress> progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = progress.isEmpty ? null : progress.last;
+    final windowEvents = progress
+        .map((item) => item.event)
+        .whereType<ServerEvent>()
+        .toList();
+    final completedWindows = windowEvents
+        .where((event) => event.event == 'window_completed')
+        .length;
+    final windowCounts = windowEvents
+        .map((event) => event.data['window_count'])
+        .whereType<int>()
+        .toList();
+    final windowCount = windowCounts.isEmpty ? null : windowCounts.first;
+    final progressValue = windowCount == null || windowCount == 0
+        ? null
+        : (completedWindows / windowCount).clamp(0.0, 1.0).toDouble();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                latest?.message ?? 'Working...',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+          ],
+        ),
+        if (progressValue != null) ...[
+          const SizedBox(height: 10),
+          LinearProgressIndicator(value: progressValue),
+          const SizedBox(height: 5),
+          Text(
+            '$completedWindows of $windowCount windows completed',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 class _ResultView extends StatelessWidget {

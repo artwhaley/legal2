@@ -6,14 +6,14 @@ class WorkstationPage extends StatelessWidget {
   const WorkstationPage({
     super.key,
     required this.title,
-    required this.description,
+    this.description,
     required this.child,
     this.actions = const [],
     this.padding = const EdgeInsets.fromLTRB(20, 18, 20, 20),
   });
 
   final String title;
-  final String description;
+  final String? description;
   final Widget child;
   final List<Widget> actions;
   final EdgeInsets padding;
@@ -30,8 +30,13 @@ class WorkstationPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 3),
-                Text(description, style: Theme.of(context).textTheme.bodySmall),
+                if (description != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    description!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ],
             );
             if (actions.isEmpty) return heading;

@@ -50,6 +50,89 @@ void main() {
     );
   });
 
+  test('categories persist lifecycle mutations and dataset-wide counts', () {
+    final fixture = _Fixture(messageCount: 20);
+    addTearDown(fixture.close);
+
+    final created = fixture.database.createCategory(
+      datasetId: 1,
+      name: 'Review',
+    );
+    expect(created.evidenceCount, 0);
+    expect(
+      () => fixture.database.createCategory(datasetId: 1, name: ' review '),
+      throwsStateError,
+    );
+    expect(
+      () => fixture.database.renameCategory(
+        datasetId: 1,
+        categoryId: created.id,
+        name: 'Uncategorized',
+      ),
+      throwsStateError,
+    );
+
+    final collapsed = fixture.database.setCategoryCollapsed(
+      datasetId: 1,
+      categoryId: created.id,
+      isCollapsed: true,
+    );
+    expect(collapsed.isCollapsed, isTrue);
+    final block = fixture.database.createEvidenceBlock(
+      revisionId: 1,
+      hitOrdinal: 4,
+      categoryId: created.id,
+    );
+    expect(
+      fixture.database
+          .categories(1)
+          .firstWhere((category) => category.id == created.id)
+          .evidenceCount,
+      1,
+    );
+    expect(
+      () =>
+          fixture.database.deleteCategory(datasetId: 1, categoryId: created.id),
+      throwsStateError,
+    );
+    fixture.database.mergeCategories(
+      datasetId: 1,
+      sourceCategoryId: created.id,
+      destinationCategoryId: 1,
+    );
+    expect(fixture.database.evidenceBlock(1, block.id).categoryId, 1);
+    expect(
+      fixture.database
+          .categories(1)
+          .any((category) => category.id == created.id),
+      isFalse,
+    );
+  });
+
+  test('transcript evidence defaults to the complete hit body', () {
+    final fixture = _Fixture(messageCount: 12);
+    addTearDown(fixture.close);
+    fixture.raw.execute('UPDATE message SET body=? WHERE message_id=?', [
+      '  First line\nSecond line — π  ',
+      'm004',
+    ]);
+    final block = fixture.database.createEvidenceBlock(
+      revisionId: 1,
+      hitOrdinal: 4,
+    );
+    expect(block.title, 'First line\nSecond line — π');
+
+    fixture.raw.execute('UPDATE message SET body=? WHERE message_id=?', [
+      '   ',
+      'm006',
+    ]);
+    final emptyBodyBlock = fixture.database.createEvidenceBlock(
+      revisionId: 1,
+      hitOrdinal: 6,
+    );
+    expect(emptyBodyBlock.title, 'No text in hit message');
+  });
+
   test(
     'evidence editing persists exact same-thread messages and every field',
     () {
@@ -126,7 +209,7 @@ void main() {
       controller.setHidden(stored.id, false);
       expect(controller.annotationFor(fixture.message(6)).relevant, isTrue);
       controller.selectBlock(stored.id);
-      controller.deleteActiveBlock();
+      controller.deleteBlock(stored.id);
       expect(controller.blocks, isEmpty);
       expect(
         fixture.raw.select(
@@ -493,8 +576,11 @@ class _Fixture {
       );
       CREATE TABLE category(
         category_id INTEGER PRIMARY KEY AUTOINCREMENT,dataset_id INTEGER,
-        name TEXT,created_at TEXT,updated_at TEXT
+        name TEXT,description TEXT NOT NULL DEFAULT '',color TEXT NOT NULL DEFAULT '',
+        is_collapsed INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT,updated_at TEXT
       );
+      CREATE TABLE workspace_setting(key TEXT PRIMARY KEY,value TEXT NOT NULL);
       CREATE TABLE working_corpus(
         working_corpus_id INTEGER PRIMARY KEY,dataset_id INTEGER,name TEXT,
         current_revision_id INTEGER

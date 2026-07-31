@@ -135,3 +135,14 @@
 - [T103 - Exhaustive Scan Date Scope](tickets/T103_exhaustive_scan_date_scope.md)
 - [T104 - Conversational Date Range UI And Context Behavior](tickets/T104_conversational_date_range_ui_and_context_behavior.md)
 - [T105 - Search Date Range Regression](tickets/T105_search_date_range_regression.md)
+
+## Flutter client layout intentionality
+
+**Orchestrator:** [flutter_client_layout_orchestrator.md](tickets/flutter_client_layout_orchestrator.md) - execute **T106 -> T111 in order**.
+
+- [T106 - Flutter Evidence Category Persistence And Default Titles](tickets/T106_flutter_evidence_category_persistence_and_default_titles.md)
+- [T107 - Flutter Evidence Category Sidebar](tickets/T107_flutter_evidence_category_sidebar.md)
+- [T108 - Flutter Transcript Sidebar Layout And Safe Deletion](tickets/T108_flutter_transcript_sidebar_layout_cleanup.md)
+- [T109 - Flutter Conversation Chrome Cleanup And Send/Stop Control](tickets/T109_flutter_conversation_chrome_cleanup.md)
+- [T110 - Flutter Persisted Resizable Work Areas](tickets/T110_flutter_persisted_resizable_work_areas.md)
+- [T111 - Flutter Layout Regression And Smoke](tickets/T111_flutter_layout_regression_and_smoke.md)

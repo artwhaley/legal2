@@ -147,9 +147,16 @@ class EvidenceBlock {
 }
 
 class CategorySummary {
-  const CategorySummary(this.id, this.name);
+  const CategorySummary(
+    this.id,
+    this.name, {
+    this.isCollapsed = false,
+    this.evidenceCount = 0,
+  });
   final int id;
   final String name;
+  final bool isCollapsed;
+  final int evidenceCount;
 }
 
 class EvidenceSummary {
