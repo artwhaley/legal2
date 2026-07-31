@@ -96,7 +96,7 @@ OPERATION_GUIDE = {
         "title": "Evidence-ledger synthesis",
         "step": "Conversation - final step",
         "summary": "Produces the final conversational answer from the validated evidence ledger and coverage report.",
-        "when": "Runs once at the end of every conversation, after extraction and any required compaction. It is responsible for the answer shown to the user.",
+        "when": "Runs at the end of every conversation, after extraction and any required compaction. Empty output may retry under this operation's visible retry policy. If synthesis remains unavailable, the server returns the validated ledger as a partial result instead of discarding it.",
     },
 }
 
@@ -668,6 +668,7 @@ def sample_user_object(operation: str) -> dict[str, Any]:
         "messages": [first, second],
         "normalizations": [],
         "uncertainties": [],
+        "warnings": [],
     }
     analysis_plan = {
         "analysis_question": "Identify passages responsive to the user's question.",
@@ -678,7 +679,7 @@ def sample_user_object(operation: str) -> dict[str, Any]:
         "answer_requirements": ["State results and cite accepted ranges."],
         "interpretive_assumptions": [],
     }
-    metadata = [{key: record[key] for key in ("range_id", "window_id", "source_range_index", "thread_id", "start_message_id", "end_message_id", "summary", "relevance", "normalizations")}]
+    metadata = [{key: record[key] for key in ("range_id", "window_id", "source_range_index", "thread_id", "start_message_id", "end_message_id", "summary", "relevance", "normalizations", "uncertainties", "warnings")}]
     if operation == "keyword_expansion":
         return {"task": operation, "query": "school meeting schedule"}
     if operation == "analysis_planning":

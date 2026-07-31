@@ -46,3 +46,25 @@ Debug capture was stopped/flushed. Temporary live configuration was restored thr
 - [live Markdown report](C:/Users/artwh/OneDrive/Documents/legal2/.tmp/result-preserving-validation-live/20260730T193650Z-23cc0595/result.md)
 
 The worktree remains dirty because extensive pre-existing user changes were preserved; no reset, checkout, commit, push, or unrelated cleanup was performed.
+
+## Post-closeout deficiency correction
+
+The executor closeout was subsequently audited and corrected on 2026-07-30.
+The correction preserves validated results instead of turning final-synthesis
+transport failures into total failures, isolates queue and circuit failures per
+window, quarantines fabricated citation IDs without discarding readable model
+output, preserves extraction warnings and uncertainties in the public ledger,
+normalizes safe compaction ID reordering, and makes the Python test client show
+and persist the complete readable result.
+
+Post-correction verification:
+
+- Full local regression: `183 passed, 2 deselected, 1 warning`.
+- Scale tests: `2 passed`.
+- Browser tests: `1 passed`.
+- Compileall: PASS.
+- Package boundaries: PASS.
+- `git diff --check`: PASS; only line-ending conversion warnings.
+- Forbidden active-residue scan: NONE.
+
+No live provider call or embedding rebuild was performed for this correction.

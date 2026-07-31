@@ -93,11 +93,9 @@ install(DIRECTORY "${NATIVE_ASSETS_DIR}"
    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
    COMPONENT Runtime)
 
-# Bundle native EVW extensions (sqlite-vec and spellfix)
+# Bundle the native sqlite-vec extension used by local embedding search.
 set(EVW_NATIVE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/native")
 install(FILES "${EVW_NATIVE_DIR}/vec0.dll" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-  COMPONENT Runtime)
-install(FILES "${EVW_NATIVE_DIR}/spellfix.dll" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
 # Fully re-copy the assets directory on each build to avoid having stale files

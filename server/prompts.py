@@ -10,7 +10,9 @@ Do not invent facts, quotations, speakers, dates, threads, messages, ranges,
 windows, or groups. Distinguish direct evidence from inference. Preserve
 uncertainties and missing context. Do not give legal conclusions.
 Return exactly one JSON object. Do not return markdown fences, prose outside the
-JSON object, omitted required fields, additional fields, or null placeholders."""
+JSON object, omitted required fields, or additional fields. Use null only when
+the operation's exact response shape explicitly permits null for an absent
+optional value."""
 
 
 DEFAULT_PROMPTS: dict[str, str] = {
@@ -43,9 +45,18 @@ Return exactly one object with this shape and no explanation:
 Task: inspect every message in the supplied chronological window for the
 original question using the exact frozen analysis plan as the definition of
 responsiveness. Inspect every supplied message. Retrieval suggestions are
-fallible attention aids only. Return every passage that directly, plausibly,
-indirectly, or borderline helps answer the plan; overcollection is preferable
-to omission. Explain uncertainty rather than using it to suppress a range.
+fallible attention aids that identify passages to inspect, not passages to
+report. A suggestion, semantic similarity, shared search term, or broad topical
+overlap is not evidence that a passage answers the plan. After inspecting a
+suggested passage, dismiss it when its content has no substantive connection to
+the plan. Do not return a range merely because retrieval surfaced it, and do
+not return a range whose relevance explanation only says why it is irrelevant.
+
+Return every passage whose content itself directly, plausibly, indirectly, or
+borderline helps answer the plan. Overcollection is preferable to omission
+among passages with an actual plausible connection; it does not justify
+collecting clearly unrelated material. Explain genuine uncertainty about a
+plausibly responsive passage rather than using uncertainty to suppress it.
 Do not assign a final ranking or responsiveness category during extraction.
 Expand a range when surrounding messages form the same relevant exchange.
 Preserve exact opaque IDs and thread boundaries. Return an empty
@@ -74,12 +85,23 @@ Return exactly:
 
 Task: answer the original question from the exact frozen analysis plan,
 complete window coverage report, evidence-validation summary, and either exact
-evidence records or highest-level compaction summaries. Prefer overcollection
-to omission. Return strongly responsive results first, then borderline,
-context-dependent, indirect, or otherwise lower-probability results; all later
-results remain visible to the reviewer. Each result must classify its own
-likely responsiveness as exactly high_probability or lower_probability and
-cite only supplied exact range IDs. Paraphrase evidence rather than creating
+evidence records or highest-level compaction summaries. Include a result only
+when the cited evidence content itself has a substantive connection to the
+analysis plan. Retrieval selection, semantic similarity, shared terms, or a
+prior suggestion is never evidence of responsiveness and is never a reason to
+include a result. Never justify a result by saying that retrieval flagged it.
+If a supplied ledger range is clearly irrelevant after inspection, omit it
+from results without narrating why it is irrelevant; the caller preserves
+uncited ledger records separately for review.
+
+Return strongly responsive results first, then genuinely borderline,
+context-dependent, or indirect results. Each result must classify its own
+likely responsiveness as exactly high_probability or lower_probability.
+lower_probability means there is an actual plausible connection to the plan
+but its responsiveness is uncertain, indirect, or context-dependent. It is not
+a catch-all category for unrelated supplied ranges. Prefer overcollection to
+omission among genuinely plausible results, not among irrelevant records. Cite
+only supplied exact range IDs. Paraphrase evidence rather than creating
 canonical message quotations. Do not create or infer missing IDs. Explain
 coverage and validation uncertainty. The categories describe likely
 responsiveness to the plan, not factual truth. Never invent facts, dates,

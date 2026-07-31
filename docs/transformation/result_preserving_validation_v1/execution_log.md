@@ -261,3 +261,23 @@ transcript content.
   `git diff --check` PASS, forbidden active-residue scan NONE.
 - RPV1-900 gate: complete. No external blocker remains. All packet tickets
   RPV1-000 through RPV1-900 are dispositioned.
+
+## 2026-07-30 - Post-closeout deficiency correction
+
+- Audited the completed packet against its result-preservation contract and
+  corrected eight concrete gaps: synthesis transport failure discarded the
+  ledger; queue/circuit failures escaped per-window isolation; long fabricated
+  IDs could invalidate an otherwise readable answer; extraction warnings and
+  uncertainties were absent from the public ledger; no-result behavior was
+  ambiguous; safe compaction ID reordering was rejected; stream diagnostics
+  mislabeled failures; and the Python test client displayed/persisted an
+  incomplete representation of the result.
+- Updated only the server contract/runtime, admin help, and temporary Python
+  test-client surfaces necessary to close those gaps. No architecture redesign,
+  provider change, live call, embedding rebuild, or EVW schema migration was
+  performed.
+- Final project-local regression with a unique workspace temp root:
+  `183 passed, 2 deselected, 1 warning`, exit 0.
+- Explicit scale gate: `2 passed`. Explicit browser gate: `1 passed`.
+- Compileall PASS, package boundaries PASS, `git diff --check` PASS with
+  line-ending conversion warnings only, forbidden active-residue scan NONE.

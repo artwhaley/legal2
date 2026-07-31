@@ -481,7 +481,7 @@ WarningCode = Literal[
     "UNKNOWN_PROBABILITY", "SYNTHESIS_OUTPUT_NONCONFORMANT",
     "SYNTHESIS_RESULT_UNCLASSIFIED", "SYNTHESIS_OMITTED_LEDGER_RANGE",
     "WINDOW_OUTPUT_UNUSABLE", "WINDOW_UNAVAILABLE", "COMPACTION_UNAVAILABLE",
-    "SYNTHESIS_UNAVAILABLE",
+    "COMPACTION_RANGE_ORDER_CORRECTED", "SYNTHESIS_UNAVAILABLE",
 ]
 
 
@@ -587,6 +587,8 @@ class ConversationalEvidenceLedgerItem(StrictModel):
     summary: str | None
     relevance: str | None
     normalizations: list[Literal["endpoint_order_swapped"]]
+    uncertainties: list[str]
+    warnings: list[WarningRecord]
 
     @field_validator("range_id", "window_id", "thread_id", "start_message_id", "end_message_id")
     @classmethod
@@ -599,6 +601,13 @@ class ConversationalEvidenceLedgerItem(StrictModel):
         if value is not None:
             _nonblank(value, "ledger text")
         return value
+
+    @field_validator("uncertainties")
+    @classmethod
+    def valid_ledger_uncertainties(cls, values: list[str]) -> list[str]:
+        for value in values:
+            _nonblank(value, "ledger uncertainty")
+        return values
 
 
 class PublicResultItem(StrictModel):
@@ -621,7 +630,7 @@ class PublicResultItem(StrictModel):
     @classmethod
     def valid_public_range_ids(cls, values: list[str]) -> list[str]:
         for value in values:
-            _bounded(value, maximum=MAX_ID_LENGTH, name="result range ID")
+            _nonblank(value, "result range ID")
         return values
 
 
@@ -653,7 +662,7 @@ class UnverifiedModelStatement(StrictModel):
     @classmethod
     def valid_unverified_ids(cls, values: list[str]) -> list[str]:
         for value in values:
-            _bounded(value, maximum=MAX_ID_LENGTH, name="reported range ID")
+            _nonblank(value, "reported range ID")
         return values
 
 
@@ -661,6 +670,12 @@ class SynthesisValidation(StrictModel):
     status: Literal["conformant", "warnings", "unparseable", "unavailable"]
     raw_output_preserved: bool
     warnings: list[WarningRecord]
+
+    @model_validator(mode="after")
+    def conformant_has_no_warnings(self) -> "SynthesisValidation":
+        if self.status == "conformant" and self.warnings:
+            raise ValueError("conformant synthesis validation cannot contain warnings")
+        return self
 
 
 class Coverage(StrictModel):

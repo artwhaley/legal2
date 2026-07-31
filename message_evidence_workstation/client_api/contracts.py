@@ -76,6 +76,23 @@ def _string_list(value: Any, label: str, *, maximum_items: int, minimum_items: i
     return result
 
 
+def _reported_model_string_list(
+    value: Any,
+    label: str,
+    *,
+    maximum_items: int,
+) -> list[str]:
+    """Validate untrusted model-reported strings without inventing an ID limit."""
+    if not isinstance(value, list) or len(value) > maximum_items:
+        raise ValueError(f"{label} count is invalid")
+    result: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip() or item != item.strip():
+            raise ValueError(f"{label} is invalid")
+        result.append(item)
+    return result
+
+
 def _validate_analysis_plan_body(value: Any) -> dict[str, Any]:
     plan = _exact(
         value,
@@ -246,7 +263,7 @@ WARNING_CODES = {
     "UNKNOWN_PROBABILITY", "SYNTHESIS_OUTPUT_NONCONFORMANT",
     "SYNTHESIS_RESULT_UNCLASSIFIED", "SYNTHESIS_OMITTED_LEDGER_RANGE",
     "WINDOW_OUTPUT_UNUSABLE", "WINDOW_UNAVAILABLE", "COMPACTION_UNAVAILABLE",
-    "SYNTHESIS_UNAVAILABLE",
+    "COMPACTION_RANGE_ORDER_CORRECTED", "SYNTHESIS_UNAVAILABLE",
 }
 
 
@@ -313,9 +330,17 @@ def _validate_result_item(value: Any, ledger_ids: set[str]) -> None:
     if item["probability"] not in {None, "high_probability", "lower_probability"} or (item["classification_status"] == "model_classified") != (item["probability"] is not None):
         raise ValueError("public result probability is invalid")
     _string(item["statement"], "public result statement")
-    reported = _string_list(item["reported_range_ids"], "reported range IDs", maximum_items=100000, minimum_items=1)
+    reported = _reported_model_string_list(
+        item["reported_range_ids"], "reported range IDs", maximum_items=100000
+    )
+    if not reported:
+        raise ValueError("reported range IDs count is invalid")
     verified = _string_list(item["verified_range_ids"], "verified range IDs", maximum_items=100000)
-    unverified = _string_list(item["unverified_range_ids"], "unverified range IDs", maximum_items=100000)
+    unverified = _reported_model_string_list(
+        item["unverified_range_ids"], "unverified range IDs", maximum_items=100000
+    )
+    if len(unverified) != len(set(unverified)):
+        raise ValueError("unverified range IDs must be unique")
     if set(verified) & set(unverified) or set(verified) | set(unverified) != set(reported):
         raise ValueError("public result citation partitions are invalid")
     if item["citation_status"] != ("verified" if not unverified else "partial" if verified else "unverified"):
@@ -354,7 +379,7 @@ def _validate_completed_result(payload: Any) -> None:
     if not isinstance(result["evidence_ledger"], list):
         raise ValueError("evidence ledger must be a list")
     for record in result["evidence_ledger"]:
-        record = _exact(record, {"range_id", "window_id", "source_range_index", "thread_id", "start_message_id", "end_message_id", "summary", "relevance", "normalizations"}, "evidence ledger record")
+        record = _exact(record, {"range_id", "window_id", "source_range_index", "thread_id", "start_message_id", "end_message_id", "summary", "relevance", "normalizations", "uncertainties", "warnings"}, "evidence ledger record")
         if record["range_id"] in ledger_ids or not _int(record["source_range_index"]) or record["source_range_index"] < 0:
             raise ValueError("evidence ledger identity is invalid")
         ledger_ids.add(_string(record["range_id"], "evidence range ID", maximum=512))
@@ -365,6 +390,14 @@ def _validate_completed_result(payload: Any) -> None:
                 _string(record[key], f"evidence ledger {key}")
         if not isinstance(record["normalizations"], list) or any(item != "endpoint_order_swapped" for item in record["normalizations"]):
             raise ValueError("evidence ledger normalizations are invalid")
+        if not isinstance(record["uncertainties"], list):
+            raise ValueError("evidence ledger uncertainties are invalid")
+        for uncertainty in record["uncertainties"]:
+            _string(uncertainty, "evidence ledger uncertainty")
+        if not isinstance(record["warnings"], list):
+            raise ValueError("evidence ledger warnings are invalid")
+        for warning in record["warnings"]:
+            _validate_warning(warning, "evidence ledger warning")
     if not isinstance(result["results"], list):
         raise ValueError("public results must be a list")
     for item in result["results"]:
@@ -381,7 +414,11 @@ def _validate_completed_result(payload: Any) -> None:
     for item in result["unverified_model_statements"]:
         item = _exact(item, {"statement", "reported_range_ids", "probability", "uncertainty", "warnings"}, "unverified model statement")
         _string(item["statement"], "unverified model statement")
-        _string_list(item["reported_range_ids"], "unverified reported range IDs", maximum_items=100000)
+        _reported_model_string_list(
+            item["reported_range_ids"],
+            "unverified reported range IDs",
+            maximum_items=100000,
+        )
         if item["probability"] not in {None, "high_probability", "lower_probability"}:
             raise ValueError("unverified model probability is invalid")
         if item["uncertainty"] is not None:
@@ -394,6 +431,8 @@ def _validate_completed_result(payload: Any) -> None:
         raise ValueError("synthesis validation is invalid")
     for warning in synthesis["warnings"]:
         _validate_warning(warning, "synthesis warning")
+    if synthesis["status"] == "conformant" and synthesis["warnings"]:
+        raise ValueError("conformant synthesis validation contains warnings")
     coverage = _exact(result["coverage"], {"message_count", "planned_window_count", "usable_window_count", "unavailable_window_count", "evidence_range_count"}, "conversation coverage")
     if any(not _int(item) or item < 0 for item in coverage.values()) or coverage["usable_window_count"] + coverage["unavailable_window_count"] != coverage["planned_window_count"]:
         raise ValueError("conversation coverage is invalid")

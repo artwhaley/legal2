@@ -114,7 +114,7 @@ ANALYSIS_EVENTS = [
             "overview": "Answer",
             "raw_answer": None,
             "strategy": "single_window_ledger",
-            "evidence_ledger": [{"range_id": "r000001", "window_id": "w0001", "source_range_index": 0, "thread_id": "t1", "start_message_id": "m1", "end_message_id": "m1", "summary": "school conflict", "relevance": "direct", "normalizations": []}],
+            "evidence_ledger": [{"range_id": "r000001", "window_id": "w0001", "source_range_index": 0, "thread_id": "t1", "start_message_id": "m1", "end_message_id": "m1", "summary": "school conflict", "relevance": "direct", "normalizations": [], "uncertainties": [], "warnings": []}],
             "completion_status": "complete",
             "results": [{"probability": "high_probability", "classification_status": "model_classified", "statement": "Answer", "reported_range_ids": ["r000001"], "verified_range_ids": ["r000001"], "unverified_range_ids": [], "citation_status": "verified", "uncertainty": None, "warnings": []}],
             "unclassified_evidence": [],

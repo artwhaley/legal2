@@ -113,6 +113,8 @@ async def run_model_operation(
     preserve_raw_output: bool = False,
     retry_unusable_output: bool = False,
     unusable_output: Callable[[str], bool] | None = None,
+    attempt_started: Callable[[int], None] | None = None,
+    raw_output_received_event: tuple[str, Mapping[str, Any]] | None = None,
 ) -> tuple[ModelT | RawModelOutput, UsageEntry]:
     operation: OperationConfig = snapshot.operations[operation_name]
     wire = [
@@ -141,6 +143,8 @@ async def run_model_operation(
     )
 
     async def call(attempt: int) -> tuple[ModelT, UsageEntry]:
+        if attempt_started is not None:
+            attempt_started(attempt)
         app.state.debug_capture.record_for_request(
             request_id,
             "provider_request",
@@ -276,6 +280,19 @@ async def run_model_operation(
             result.usage_source,
             estimate_cost(operation, result.input_tokens, result.output_tokens),
         )
+        if raw_output_received_event is not None and progress_queue is not None:
+            event_name, base_data = raw_output_received_event
+            progress_queue.put_nowait((
+                event_name,
+                {
+                    **dict(base_data),
+                    "content_nonblank": bool(result.content.strip()),
+                    "input_tokens": entry.input_tokens,
+                    "output_tokens": entry.output_tokens,
+                    "usage_source": entry.source,
+                    "estimated_cost": entry.cost,
+                },
+            ))
         try:
             if preserve_raw_output:
                 if retry_unusable_output and (unusable_output(result.content) if unusable_output is not None else not result.content.strip()):

@@ -229,3 +229,50 @@ def test_fabricated_ids_never_enter_verified_ledger_or_navigation():
     assert "r999999" not in {item["range_id"] for item in result["evidence_ledger"]}
     assert "r999999" not in {item["range_id"] for item in result["unclassified_evidence"]}
     assert result["unverified_model_statements"][0]["reported_range_ids"] == ["r999999"]
+
+
+def test_oversized_fabricated_id_is_quarantined_without_destroying_the_answer():
+    fabricated = "fabricated-" + ("x" * 600)
+    raw = json.dumps({
+        "overview": "Readable answer",
+        "results": [_result("high_probability", "Keep this statement", [fabricated])],
+        "uncertainties": [],
+    })
+    result = _assemble(raw, [_record(1)])
+    assert result["completion_status"] == "complete_with_warnings"
+    assert result["answer_source"] == "raw_synthesis_output"
+    assert result["raw_answer"] == raw
+    assert result["unverified_model_statements"][0]["statement"] == "Keep this statement"
+    assert result["unverified_model_statements"][0]["reported_range_ids"] == [fabricated]
+
+
+def test_extraction_uncertainties_and_warnings_remain_in_public_ledger():
+    record = replace(
+        _record(1),
+        uncertainties=("The exchange may continue outside this window.",),
+        warnings=({"code": "THREAD_ID_CORRECTED", "details": {"range_index": 0}},),
+    )
+    result = _assemble(json.dumps({
+        "overview": "Overview",
+        "results": [_result("high_probability", "Supported", ["r000001"])],
+        "uncertainties": [],
+    }), [record])
+    assert result["evidence_ledger"][0]["uncertainties"] == [
+        "The exchange may continue outside this window."
+    ]
+    assert result["evidence_ledger"][0]["warnings"][0]["code"] == "THREAD_ID_CORRECTED"
+
+
+def test_synthesis_status_reports_warnings_when_citations_or_coverage_warn():
+    fabricated = _assemble(json.dumps({
+        "overview": "Overview",
+        "results": [_result("high_probability", "Unsupported", ["r999999"])],
+        "uncertainties": [],
+    }), [_record(1)])
+    omitted = _assemble(json.dumps({
+        "overview": "Overview",
+        "results": [_result("high_probability", "First only", ["r000001"])],
+        "uncertainties": [],
+    }), [_record(1), _record(2)])
+    assert fabricated["synthesis_validation"]["status"] == "warnings"
+    assert omitted["synthesis_validation"]["status"] == "warnings"

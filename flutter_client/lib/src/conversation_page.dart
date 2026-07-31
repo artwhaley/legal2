@@ -1,0 +1,692 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+
+import 'conversation_workflow.dart';
+import 'evw_database.dart';
+import 'evw_models.dart';
+import 'server_contracts.dart';
+import 'server_gateway.dart';
+import 'transcript_editor.dart';
+import 'workspace_controller.dart';
+
+class ConversationPage extends StatefulWidget {
+  const ConversationPage({
+    super.key,
+    required this.workspace,
+    required this.isPageActive,
+  });
+
+  final WorkspaceController workspace;
+  final bool isPageActive;
+
+  @override
+  State<ConversationPage> createState() => _ConversationPageState();
+}
+
+class _ConversationCard {
+  _ConversationCard(this.question);
+
+  final String question;
+  ConversationExecutionResult? outcome;
+  Object? failure;
+  final List<ConversationProgress> progress = [];
+}
+
+class _ConversationPageState extends State<ConversationPage> {
+  final TextEditingController _question = TextEditingController();
+  final GlobalKey<TranscriptEvidenceEditorState> _editorKey = GlobalKey();
+  final List<_ConversationCard> _cards = [];
+  RequestCancellation? _cancellation;
+  Timer? _elapsedTimer;
+  DateTime? _startedAt;
+  Duration _elapsed = Duration.zero;
+  String? _error;
+  String? _notice;
+  int? _loadedRevisionId;
+
+  WorkspaceController get workspace => widget.workspace;
+
+  @override
+  void initState() {
+    super.initState();
+    workspace.addListener(_onWorkspaceChanged);
+  }
+
+  @override
+  void dispose() {
+    workspace.removeListener(_onWorkspaceChanged);
+    _elapsedTimer?.cancel();
+    _question.dispose();
+    super.dispose();
+  }
+
+  void _onWorkspaceChanged() {
+    final revisionId = workspace.selectedRevision?.id;
+    if (revisionId != _loadedRevisionId && _cards.isNotEmpty) {
+      _loadedRevisionId = revisionId;
+      if (mounted) setState(_cards.clear);
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _send() async {
+    final text = _question.text.trim();
+    if (text.isEmpty) {
+      setState(() => _error = 'Question cannot be blank.');
+      return;
+    }
+    if (_cancellation != null) return;
+    final database = workspace.database;
+    final revision = workspace.selectedRevision;
+    if (database == null || revision == null) {
+      setState(() => _error = 'Select a ready working corpus on Corpus first.');
+      return;
+    }
+    final card = _ConversationCard(text);
+    final cancellation = RequestCancellation();
+    setState(() {
+      _error = null;
+      _notice = null;
+      _cards.add(card);
+      _loadedRevisionId = revision.id;
+      _cancellation = cancellation;
+      _startedAt = DateTime.now();
+      _elapsed = Duration.zero;
+    });
+    _elapsedTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (!mounted || _startedAt == null) return;
+      setState(() => _elapsed = DateTime.now().difference(_startedAt!));
+    });
+    try {
+      final outcome = await ConversationWorkflow(workspace: workspace).run(
+        text,
+        cancellation: cancellation,
+        onProgress: (item) {
+          if (!mounted) return;
+          setState(() => card.progress.add(item));
+        },
+      );
+      if (mounted) setState(() => card.outcome = outcome);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          card.failure = error;
+          if (error is GatewayError && error.cancelled) {
+            _notice = error.toString();
+            _error = null;
+          } else {
+            _error = '$error';
+          }
+        });
+      }
+    } finally {
+      _elapsedTimer?.cancel();
+      _elapsedTimer = null;
+      if (mounted) {
+        setState(() {
+          _elapsed = _startedAt == null
+              ? Duration.zero
+              : DateTime.now().difference(_startedAt!);
+          _startedAt = null;
+          _cancellation = null;
+        });
+      }
+    }
+  }
+
+  void _cancel() {
+    _cancellation?.cancel();
+    if (mounted) {
+      setState(() {
+        _notice = 'Cancellation requested. Waiting for the request to close.';
+        _error = null;
+      });
+    }
+  }
+
+  void _viewRange(Map<String, dynamic> range) {
+    final database = workspace.database;
+    final revision = workspace.selectedRevision;
+    final start = range['start_message_id'];
+    final end = range['end_message_id'];
+    if (database == null ||
+        revision == null ||
+        start is! String ||
+        end is! String) {
+      _showRangeFailure('Range endpoints are not valid.');
+      return;
+    }
+    final core = database.coreMessageForRange(revision.id, start, end);
+    if (core == null) {
+      _showRangeFailure(
+        'Range cannot be navigated because its endpoints are absent, cross threads, or out of order.',
+      );
+      return;
+    }
+    if (!(_editorKey.currentState?.focusMessage(core.id) ?? false)) {
+      _showRangeFailure(
+        'The shared transcript editor could not focus this range.',
+      );
+    }
+  }
+
+  void _saveRange(Map<String, dynamic> range, {String? statement}) {
+    final database = workspace.database;
+    final revision = workspace.selectedRevision;
+    final start = range['start_message_id'];
+    final end = range['end_message_id'];
+    if (database == null ||
+        revision == null ||
+        start is! String ||
+        end is! String) {
+      _showRangeFailure('Range endpoints are not valid.');
+      return;
+    }
+    final rangeId = range['range_id'];
+    final summary = range['summary'] is String
+        ? range['summary'] as String
+        : range['relevance'] is String
+        ? range['relevance'] as String
+        : '';
+    final title = statement?.trim().isNotEmpty == true
+        ? statement!.trim()
+        : summary.trim().isNotEmpty
+        ? summary.trim()
+        : 'Evidence ${rangeId is String ? rangeId : ''}'.trim();
+    try {
+      final block = database.createConversationalEvidenceBlock(
+        revisionId: revision.id,
+        startMessageId: start,
+        endMessageId: end,
+        title: title,
+        summary: summary,
+      );
+      final controller = workspace.transcriptController;
+      if (controller == null) {
+        throw StateError('The shared transcript controller is unavailable');
+      }
+      controller.reload();
+      controller.selectBlock(block.id);
+      if (!(_editorKey.currentState?.focusMessage(block.coreMessageId) ??
+          false)) {
+        throw StateError(
+          'Evidence was saved, but the transcript could not focus its core message',
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Saved evidence block ${block.id}')),
+        );
+      }
+    } catch (error) {
+      _showRangeFailure('$error');
+    }
+  }
+
+  void _showRangeFailure(String message) {
+    if (mounted) setState(() => _error = message);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final database = workspace.database;
+    final revision = workspace.selectedRevision;
+    if (database == null || revision == null) {
+      return const Center(
+        child: Text(
+          'Select a ready working corpus on Corpus to use Conversation.',
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ConversationStatus(
+            active: _cancellation != null,
+            elapsed: _elapsed,
+            progress: _cards.isEmpty ? const [] : _cards.last.progress,
+            onCancel: _cancellation == null ? null : _cancel,
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              'FAILED\n$_error',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          if (_notice != null) ...[
+            const SizedBox(height: 8),
+            SelectableText(_notice!),
+          ],
+          const SizedBox(height: 8),
+          Expanded(
+            flex: 3,
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: _cards.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Ask a question about the selected revision.',
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _cards.length,
+                      itemBuilder: (context, index) => _ConversationCardView(
+                        card: _cards[index],
+                        database: database,
+                        revision: revision,
+                        onViewRange: _viewRange,
+                        onSaveRange: _saveRange,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _question,
+                  minLines: 1,
+                  maxLines: 4,
+                  enabled: _cancellation == null,
+                  decoration: const InputDecoration(
+                    labelText: 'Question',
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (_) => _send(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: _cancellation == null ? _send : null,
+                icon: const Icon(Icons.send),
+                label: const Text('Send'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            flex: 4,
+            child: TranscriptEvidenceEditor(
+              key: _editorKey,
+              database: database,
+              revision: revision,
+              controller: workspace.transcriptController,
+              isPageActive: widget.isPageActive,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConversationStatus extends StatelessWidget {
+  const _ConversationStatus({
+    required this.active,
+    required this.elapsed,
+    required this.progress,
+    required this.onCancel,
+  });
+
+  final bool active;
+  final Duration elapsed;
+  final List<ConversationProgress> progress;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = progress.isEmpty ? null : progress.last;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            if (active)
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            if (active) const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                latest == null
+                    ? 'Ready'
+                    : '${latest.message}  (${_formatDuration(elapsed)})',
+              ),
+            ),
+            if (onCancel != null)
+              OutlinedButton(onPressed: onCancel, child: const Text('Cancel')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConversationCardView extends StatelessWidget {
+  const _ConversationCardView({
+    required this.card,
+    required this.database,
+    required this.revision,
+    required this.onViewRange,
+    required this.onSaveRange,
+  });
+
+  final _ConversationCard card;
+  final EvwDatabase database;
+  final RevisionSummary revision;
+  final void Function(Map<String, dynamic>) onViewRange;
+  final void Function(Map<String, dynamic>, {String? statement}) onSaveRange;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Card(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: SelectableText(card.question),
+        ),
+      ),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: card.outcome == null
+              ? card.failure == null
+                    ? const Row(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 12),
+                          Text('Working...'),
+                        ],
+                      )
+                    : card.failure is GatewayError &&
+                          (card.failure as GatewayError).cancelled
+                    ? SelectableText('CANCELLED\n${card.failure}')
+                    : SelectableText('FAILED\n${card.failure}')
+              : _ResultView(
+                  result: card.outcome!.result,
+                  database: database,
+                  revision: revision,
+                  onViewRange: onViewRange,
+                  onSaveRange: onSaveRange,
+                ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _ResultView extends StatelessWidget {
+  const _ResultView({
+    required this.result,
+    required this.database,
+    required this.revision,
+    required this.onViewRange,
+    required this.onSaveRange,
+  });
+
+  final Map<String, dynamic> result;
+  final EvwDatabase database;
+  final RevisionSummary revision;
+  final void Function(Map<String, dynamic>) onViewRange;
+  final void Function(Map<String, dynamic>, {String? statement}) onSaveRange;
+
+  @override
+  Widget build(BuildContext context) {
+    final ledger =
+        (result['evidence_ledger'] as List?)
+            ?.whereType<Map>()
+            .map((item) => item.cast<String, dynamic>())
+            .toList() ??
+        const <Map<String, dynamic>>[];
+    final knownIds = ledger
+        .map((item) => item['range_id'])
+        .whereType<String>()
+        .toSet();
+    final statementByRange = <String, String>{};
+    for (final item in (result['results'] as List?) ?? const []) {
+      if (item is! Map) continue;
+      final statement = item['statement'];
+      if (statement is! String) continue;
+      for (final rangeId in (item['verified_range_ids'] as List?) ?? const []) {
+        if (rangeId is String) statementByRange[rangeId] = statement;
+      }
+    }
+    final unknownIds = <String>{};
+    for (final item in (result['results'] as List?) ?? const []) {
+      if (item is! Map) continue;
+      for (final rangeId in (item['verified_range_ids'] as List?) ?? const []) {
+        if (rangeId is String && !knownIds.contains(rangeId))
+          unknownIds.add(rangeId);
+      }
+    }
+    final overview = result['overview'];
+    final rawAnswer = result['raw_answer'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: 8,
+          children: [
+            Chip(label: Text('${result['completion_status']}')),
+            Chip(label: Text('${result['answer_source']}')),
+          ],
+        ),
+        if (overview is String && overview.isNotEmpty) SelectableText(overview),
+        if (rawAnswer is String && rawAnswer.isNotEmpty)
+          SelectableText(rawAnswer),
+        _ResultsSection(
+          title: 'High-probability results',
+          entries: classifiedConversationResults(
+            result,
+            probability: 'high_probability',
+          ),
+        ),
+        const Divider(),
+        _ResultsSection(
+          title: 'Lower-probability results',
+          entries: classifiedConversationResults(
+            result,
+            probability: 'lower_probability',
+          ),
+        ),
+        if (result['unclassified_evidence'] is List &&
+            (result['unclassified_evidence'] as List).isNotEmpty)
+          _JsonSection(
+            title: 'Unclassified validated evidence',
+            value: result['unclassified_evidence'],
+          ),
+        if (result['unverified_model_statements'] is List &&
+            (result['unverified_model_statements'] as List).isNotEmpty)
+          _JsonSection(
+            title: 'Unverified model statements',
+            value: result['unverified_model_statements'],
+          ),
+        if (unknownIds.isNotEmpty)
+          _JsonSection(
+            title: 'Warnings: unknown range IDs (not navigable)',
+            value: unknownIds.toList(),
+          ),
+        _JsonSection(title: 'Coverage', value: result['coverage']),
+        _JsonSection(
+          title: 'Warnings and processing details',
+          value: {
+            'uncertainties': result['uncertainties'],
+            'retrieval_diagnostics': result['retrieval_diagnostics'],
+            'ledger_processing': result['ledger_processing'],
+            'evidence_validation': result['evidence_validation'],
+            'synthesis_validation': result['synthesis_validation'],
+            'strategy': result['strategy'],
+          },
+        ),
+        if (ledger.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Canonical evidence ranges',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          ...ledger.map(
+            (range) => _RangeTile(
+              range: range,
+              statement: statementByRange[range['range_id']],
+              database: database,
+              revision: revision,
+              onView: () => onViewRange(range),
+              onSave: () => onSaveRange(
+                range,
+                statement: statementByRange[range['range_id']],
+              ),
+            ),
+          ),
+        ],
+        ExpansionTile(
+          title: const Text('Complete canonical result'),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: SelectableText(
+                const JsonEncoder.withIndent('  ').convert(result),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+List<Map<String, dynamic>> classifiedConversationResults(
+  Map<String, dynamic> result, {
+  required String probability,
+}) {
+  if (probability != 'high_probability' && probability != 'lower_probability') {
+    throw ArgumentError.value(probability, 'probability');
+  }
+  return ((result['results'] as List?) ?? const [])
+      .whereType<Map>()
+      .map((item) => item.cast<String, dynamic>())
+      .where(
+        (item) =>
+            item['classification_status'] == 'model_classified' &&
+            item['probability'] == probability,
+      )
+      .toList();
+}
+
+class _ResultsSection extends StatelessWidget {
+  const _ResultsSection({required this.title, required this.entries});
+
+  final String title;
+  final List<Map<String, dynamic>> entries;
+
+  @override
+  Widget build(BuildContext context) => entries.isEmpty
+      ? const SizedBox.shrink()
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            ...entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: SelectableText(
+                  '${entry['statement']}\nCitation: ${entry['citation_status']}  Probability: ${entry['probability']}\nWarnings: ${entry['warnings']}',
+                ),
+              ),
+            ),
+          ],
+        );
+}
+
+class _JsonSection extends StatelessWidget {
+  const _JsonSection({required this.title, required this.value});
+
+  final String title;
+  final Object? value;
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    title: Text(title),
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: SelectableText(
+          const JsonEncoder.withIndent('  ').convert(value),
+        ),
+      ),
+    ],
+  );
+}
+
+class _RangeTile extends StatelessWidget {
+  const _RangeTile({
+    required this.range,
+    required this.statement,
+    required this.database,
+    required this.revision,
+    required this.onView,
+    required this.onSave,
+  });
+
+  final Map<String, dynamic> range;
+  final String? statement;
+  final EvwDatabase database;
+  final RevisionSummary revision;
+  final VoidCallback onView;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = range['start_message_id'];
+    final end = range['end_message_id'];
+    final description = statement?.trim().isNotEmpty == true
+        ? statement!
+        : '${range['summary'] ?? range['relevance'] ?? ''}';
+    final valid =
+        start is String &&
+        end is String &&
+        database.coreMessageForRange(revision.id, start, end) != null;
+    return Card(
+      child: ListTile(
+        title: Text('${range['range_id']}  $description'),
+        subtitle: Text(
+          '${range['start_message_id']} -> ${range['end_message_id']}\n${range['uncertainties']}',
+        ),
+        isThreeLine: true,
+        trailing: Wrap(
+          spacing: 4,
+          children: [
+            IconButton(
+              tooltip: 'View in transcript',
+              onPressed: valid ? onView : null,
+              icon: const Icon(Icons.center_focus_strong),
+            ),
+            IconButton(
+              tooltip: 'Save evidence block',
+              onPressed: valid ? onSave : null,
+              icon: const Icon(Icons.bookmark_add_outlined),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatDuration(Duration value) {
+  final seconds = value.inSeconds;
+  return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
+}

@@ -25,6 +25,10 @@ class NoUsableWindowOutput(LedgerError):
     code = "NO_USABLE_WINDOW_OUTPUT"
 
 
+class NoUsableResult(LedgerError):
+    code = "NO_USABLE_RESULT"
+
+
 class UnsplitableMessage(LedgerError):
     code = "UNSPLITTABLE_MESSAGE"
 

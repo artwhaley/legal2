@@ -1,10 +1,19 @@
-# EVW Windows viewer
+# EVW Flutter Windows client
 
-This is the read-only Flutter Windows client for EVW schema v15.
+This is the Flutter Windows client for EVW schema v15.
 
 It opens a local `.evw`, validates SQLite integrity and the v15 schema, shows
-multiple named corpus revisions and their metadata, and displays a selected revision transcript. It
-does not write the EVW, call the model server, or implement search yet.
+named working corpora and their current ready revision metadata, and provides
+five coordinated pages: Corpus, Search, Conversation, Transcript, and
+Document preview. Search uses scoped local FTS5 or an already-ready local
+sqlite-vec message index. Conversation planning, query embeddings, and
+analysis use the configured server gateway with strict JSON/NDJSON validation.
+Transcript, Conversation, and Search share one exact-message evidence
+controller; Document preview reads and edits persisted printable artifacts.
+
+The app takes the same exclusive `.evw.lock` used by the Python client, writes
+through short SQLite transactions, and checkpoints WAL state on open and clean
+close. Do not open the same EVW in both clients at once.
 
 ## Run
 
@@ -14,7 +23,7 @@ flutter run -d windows
 ```
 
 Build the release executable, then run the compatibility probe directly for
-native SQLite, FTS5, sqlite-vec, spellfix, file, and locking checks:
+native SQLite, FTS5, sqlite-vec, file, and locking checks:
 
 ```powershell
 flutter build windows --release

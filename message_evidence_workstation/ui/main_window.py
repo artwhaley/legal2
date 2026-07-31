@@ -38,6 +38,7 @@ from message_evidence_workstation.services.client_workflows import (
     EmbeddingSearchWorkflow,
     KeywordSearchWorkflow,
     clear_local_embeddings,
+    format_conversational_result,
 )
 
 
@@ -360,7 +361,7 @@ class MainWindow(QMainWindow):
             "complete_with_warnings": "COMPLETE WITH WARNINGS: readable results returned with validation annotations.",
             "partial": "PARTIAL: some evidence or synthesis output was unavailable; retained results remain visible.",
         }.get(completion_status, f"UNKNOWN COMPLETION STATUS: {completion_status}")
-        self.output.setPlainText(status_line + "\n" + json.dumps(display, ensure_ascii=False, indent=2, default=str))
+        self.output.setPlainText(status_line + "\n\n" + format_conversational_result(display))
 
     def _on_conversation_failed(self, message: str) -> None:
         previous = self.conversation_progress_state

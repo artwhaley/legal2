@@ -357,15 +357,30 @@ class ConfigStore:
             )
 
     def _migrate_obsolete_synthesis_prompts(self) -> None:
-        """Replace only known seeded result-contract prompts in every version.
+        """Replace only recognized seeded contract prompts in every version.
 
         Operator-authored prompts remain untouched and are rejected by normal
         activation validation when they still request the obsolete contract.
         """
         legacy_seed_hashes = {
-            "window_evidence_extraction": "06093b93b2ad58cc0133c7e8a9e35c533bd15aefad028ad15b6a3799e6577984",
-            "ledger_compaction": "869c8761712521d86bd1fc9acf624a6920d7ce7b42a700276e6912af045eb33e",
-            "ledger_synthesis": "c4e708bf8e1ecda6503008a3982956816f066f20403790a116533192286a2936",
+            "keyword_expansion": {
+                "20623ff67e3b10be0147196a9f4b078534def6f5fbd37b7b136addd257df69d1",
+            },
+            "analysis_planning": {
+                "0c96e296df3824eabea29bdd0853e62876fc9b90d14a0a0e0c58d2b8a40929ba",
+            },
+            "window_evidence_extraction": {
+                "06093b93b2ad58cc0133c7e8a9e35c533bd15aefad028ad15b6a3799e6577984",
+                "2ab3d006cdfbba73e718b5c21fb5ea98516e0db266a1ee1257b53f78087c6b1a",
+            },
+            "ledger_compaction": {
+                "869c8761712521d86bd1fc9acf624a6920d7ce7b42a700276e6912af045eb33e",
+                "06d162b003fbea374b80f4746cc85fffa214957b6d76c931fa32928a078aefc1",
+            },
+            "ledger_synthesis": {
+                "c4e708bf8e1ecda6503008a3982956816f066f20403790a116533192286a2936",
+                "6c3f2b4a1f2d395373311a4b30b37767770775bac5faac8db671d02e4c1f4b7a",
+            },
         }
         rows = self.conn.execute(
             "SELECT version_id,payload_json FROM config_version ORDER BY version_id"
@@ -382,13 +397,16 @@ class ConfigStore:
                 )
             migrated = json.loads(json.dumps(raw, ensure_ascii=False))
             changed = False
-            for operation, legacy_seed_hash in legacy_seed_hashes.items():
+            for operation, recognized_seed_hashes in legacy_seed_hashes.items():
                 assignment = assignments.get(operation)
                 if not isinstance(assignment, dict) or not isinstance(assignment.get("system_prompt"), str):
                     raise ConfigurationCorruption(
                         f"configuration version {version_id} has an invalid {operation} assignment"
                     )
-                if hashlib.sha256(assignment["system_prompt"].encode("utf-8")).hexdigest() == legacy_seed_hash:
+                if (
+                    hashlib.sha256(assignment["system_prompt"].encode("utf-8")).hexdigest()
+                    in recognized_seed_hashes
+                ):
                     migrated["operation_assignments"][operation]["system_prompt"] = DEFAULT_PROMPTS[operation]
                     changed = True
                     migrated_operations.add(operation)

@@ -79,6 +79,93 @@ class StaleConversationScope(RuntimeError):
     pass
 
 
+def format_conversational_result(result: dict[str, Any]) -> str:
+    """Render the strict server result as readable test equipment output."""
+    status = str(result["completion_status"])
+    source = str(result["answer_source"])
+    lines = [f"STATUS: {status.upper()}"]
+
+    if source == "structured_synthesis":
+        lines.extend(["", "ANSWER", str(result["overview"])])
+    elif source == "raw_synthesis_output":
+        lines.extend(["", "RAW MODEL RESPONSE", str(result["raw_answer"])])
+    else:
+        lines.extend([
+            "",
+            "ANSWER UNAVAILABLE",
+            "Narrative synthesis was unavailable. The validated evidence ledger remains below.",
+        ])
+
+    if source != "raw_synthesis_output":
+        high = [
+            item for item in result["results"]
+            if item["probability"] == "high_probability"
+        ]
+        lower = [
+            item for item in result["results"]
+            if item["probability"] == "lower_probability"
+        ]
+        model_unclassified = [
+            item for item in result["results"]
+            if item["classification_status"] == "unclassified"
+        ]
+
+        def append_results(title: str, items: list[dict[str, Any]]) -> None:
+            lines.extend(["", title])
+            if not items:
+                lines.append("(none)")
+                return
+            for number, item in enumerate(items, 1):
+                lines.append(f"{number}. {item['statement']}")
+                if item["verified_range_ids"]:
+                    lines.append("   Verified ranges: " + ", ".join(item["verified_range_ids"]))
+                if item["unverified_range_ids"]:
+                    lines.append("   Unverified references: " + ", ".join(item["unverified_range_ids"]))
+                if item["uncertainty"]:
+                    lines.append(f"   Uncertainty: {item['uncertainty']}")
+
+        append_results("HIGH PROBABILITY", high)
+        lines.extend(["", "---------------- LOWER-PROBABILITY / REVIEW MATERIAL ----------------"])
+        append_results("LOWER PROBABILITY", lower)
+        append_results("MODEL RESULTS WITHOUT A VALID PROBABILITY LABEL", model_unclassified)
+
+    lines.extend(["", "UNCLASSIFIED VALIDATED EVIDENCE"])
+    if result["unclassified_evidence"]:
+        for item in result["unclassified_evidence"]:
+            description = item["summary"] or item["relevance"] or "(no model description)"
+            lines.append(f"- {item['range_id']}: {description}")
+    else:
+        lines.append("(none)")
+
+    lines.extend(["", "UNVERIFIED MODEL STATEMENTS"])
+    if result["unverified_model_statements"]:
+        for item in result["unverified_model_statements"]:
+            references = ", ".join(item["reported_range_ids"]) or "(none)"
+            lines.append(f"- {item['statement']}")
+            lines.append(f"  Reported references: {references}")
+    else:
+        lines.append("(none)")
+
+    warnings = result["synthesis_validation"]["warnings"]
+    lines.extend(["", "WARNINGS"])
+    if warnings:
+        for warning in warnings:
+            lines.append(f"- {warning['code']}")
+    else:
+        lines.append("(none)")
+
+    coverage = result["coverage"]
+    lines.extend([
+        "",
+        "COVERAGE",
+        (
+            f"{coverage['usable_window_count']}/{coverage['planned_window_count']} windows usable; "
+            f"{coverage['evidence_range_count']} validated evidence ranges."
+        ),
+    ])
+    return "\n".join(lines)
+
+
 def _blob(vector: list[float]) -> bytes:
     return struct.pack("<" + "f" * len(vector), *(float(value) for value in vector))
 
@@ -652,7 +739,7 @@ class ConversationalWorkflow:
             elif event.event == "window_output_unusable":
                 message = (
                     f"Window {int(data['window_index']) + 1:,}/{int(data['window_count']):,} "
-                    f"returned unusable output; retrying configured attempts"
+                    f"returned unusable output after {int(data['attempt']):,} provider attempt(s)"
                 )
             elif event.event == "window_unavailable":
                 message = (
@@ -906,16 +993,35 @@ class ConversationalWorkflow:
         repo = WorkingCorpusRepository(conn)
         repo.validate_ready_scope(scope.working_corpus)
         now = utc_now_iso()
-        conversation_id = int(conn.execute("INSERT INTO conversation(dataset_id,working_corpus_id,working_corpus_revision_id,index_generation,scope_hash,created_at) VALUES (?,?,?,?,?,?)", (scope.dataset_id, scope.working_corpus_id, scope.working_corpus_revision_id, scope.index_generation, scope.working_corpus.scope_hash, now)).lastrowid)
-        source = result.get("answer_source")
-        presented_answer = (
-            result.get("overview")
-            if source == "structured_synthesis"
-            else result.get("raw_answer")
-            if source == "raw_synthesis_output"
-            else ""
-        )
-        turn_id = int(conn.execute("INSERT INTO conversation_turn(conversation_id,working_corpus_id,working_corpus_revision_id,index_generation,scope_hash,user_prompt,presented_answer,mode,created_at) VALUES (?,?,?,?,?,?,?,?,?)", (conversation_id, scope.working_corpus_id, scope.working_corpus_revision_id, scope.index_generation, scope.working_corpus.scope_hash, prompt, str(presented_answer or ""), str(result.get("strategy", "conversation")), now)).lastrowid)
+        completion_status = str(result["completion_status"])
+        presented_answer = format_conversational_result(result)
+        conversation_id = int(conn.execute(
+            "INSERT INTO conversation(dataset_id,working_corpus_id,working_corpus_revision_id,index_generation,scope_hash,created_at,status) VALUES (?,?,?,?,?,?,?)",
+            (
+                scope.dataset_id,
+                scope.working_corpus_id,
+                scope.working_corpus_revision_id,
+                scope.index_generation,
+                scope.working_corpus.scope_hash,
+                now,
+                completion_status,
+            ),
+        ).lastrowid)
+        turn_id = int(conn.execute(
+            "INSERT INTO conversation_turn(conversation_id,working_corpus_id,working_corpus_revision_id,index_generation,scope_hash,user_prompt,presented_answer,mode,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (
+                conversation_id,
+                scope.working_corpus_id,
+                scope.working_corpus_revision_id,
+                scope.index_generation,
+                scope.working_corpus.scope_hash,
+                prompt,
+                presented_answer,
+                str(result.get("strategy", "conversation")),
+                completion_status,
+                now,
+            ),
+        ).lastrowid)
         for item in result.get("evidence_ranges", result.get("evidence_ledger", [])) or []:
             message_id = item.get("start_message_id")
             if message_id and conn.execute("SELECT 1 FROM working_corpus_revision_message WHERE working_corpus_revision_id=? AND message_id=?", (scope.working_corpus_revision_id, message_id)).fetchone():

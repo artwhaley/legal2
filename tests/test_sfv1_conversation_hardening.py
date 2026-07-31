@@ -173,3 +173,206 @@ def test_long_provider_call_emits_heartbeat(tmp_path):
         plan = _plan_for(client)
         response = client.post("/v1/conversational-analysis", json=_analysis_body(plan, _messages()))
     assert any(json.loads(line)["event"] == "heartbeat" for line in response.text.splitlines() if line)
+
+
+def test_exhausted_synthesis_transport_failure_returns_completed_ledger_partial(tmp_path):
+    async def handler(request):
+        payload = json.loads(request.content)
+        user = json.loads(payload["messages"][1]["content"])
+        if user["task"] == "ledger_synthesis":
+            return httpx.Response(503, text="synthetic synthesis outage")
+        from tests.sfv1_support import output_for_user
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": json.dumps(output_for_user(user))}}],
+                "usage": {"prompt_tokens": 101, "completion_tokens": 23},
+            },
+        )
+
+    selected = server_config(operation_changes={"max_attempts": 1})
+    from tests.sfv1_support import configured_service, fake_embedding_service
+    service, _ = configured_service(tmp_path, selected)
+    app = __import__("server.app", fromlist=["create_app"]).create_app(
+        config_service=service,
+        provider=AsyncProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler))),
+        embedding_service=fake_embedding_service(selected),
+    )
+    with TestClient(app) as client:
+        plan = _plan_for(client)
+        response = client.post(
+            "/v1/conversational-analysis",
+            json=_analysis_body(plan, _messages()),
+        )
+    events = [json.loads(line) for line in response.text.splitlines() if line]
+    terminal = events[-1]
+    assert terminal["event"] == "completed"
+    assert terminal["result"]["completion_status"] == "partial"
+    assert terminal["result"]["answer_source"] == "synthesis_unavailable"
+    assert terminal["result"]["evidence_ledger"]
+    assert any(
+        event["event"] == "warning"
+        and event["data"]["code"] == "SYNTHESIS_UNAVAILABLE"
+        and event["data"]["details"]["error_code"] == "PROVIDER_UNAVAILABLE"
+        for event in events
+    )
+
+
+def test_empty_synthesis_and_empty_ledger_is_no_usable_result_failure(tmp_path):
+    async def handler(request):
+        payload = json.loads(request.content)
+        user = json.loads(payload["messages"][1]["content"])
+        from tests.sfv1_support import output_for_user
+        output = output_for_user(user)
+        if user["task"] == "window_evidence_extraction":
+            output["evidence_ranges"] = []
+        content = "" if user["task"] == "ledger_synthesis" else json.dumps(output)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": content}}],
+                "usage": {"prompt_tokens": 101, "completion_tokens": 23},
+            },
+        )
+
+    selected = server_config(operation_changes={"max_attempts": 1})
+    from tests.sfv1_support import configured_service, fake_embedding_service
+    service, _ = configured_service(tmp_path, selected)
+    app = __import__("server.app", fromlist=["create_app"]).create_app(
+        config_service=service,
+        provider=AsyncProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler))),
+        embedding_service=fake_embedding_service(selected),
+    )
+    with TestClient(app) as client:
+        plan = _plan_for(client)
+        response = client.post(
+            "/v1/conversational-analysis",
+            json=_analysis_body(plan, _messages()),
+        )
+    events = [json.loads(line) for line in response.text.splitlines() if line]
+    assert any(
+        event["event"] == "ledger_synthesis_received"
+        and event["data"]["content_nonblank"] is False
+        for event in events
+    )
+    assert events[-1]["event"] == "failed"
+    assert events[-1]["error"]["code"] == "NO_USABLE_RESULT"
+
+
+def test_circuit_open_isolated_after_completed_sibling_and_transport_is_not_mislabeled(tmp_path):
+    messages = [
+        {
+            "message_id": f"m{index}",
+            "thread_id": "t1",
+            "timestamp": f"2026-01-01T00:{index:02d}:00Z",
+            "sender": "Person",
+            "text": ("word " * 2_400) + str(index),
+        }
+        for index in range(1, 9)
+    ]
+
+    async def handler(request):
+        payload = json.loads(request.content)
+        user = json.loads(payload["messages"][1]["content"])
+        if (
+            user["task"] == "window_evidence_extraction"
+            and user["window_id"] == "w000002"
+        ):
+            return httpx.Response(503, text="synthetic second-window outage")
+        from tests.sfv1_support import output_for_user
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": json.dumps(output_for_user(user))}}],
+                "usage": {"prompt_tokens": 101, "completion_tokens": 23},
+            },
+        )
+
+    from server.config import GlobalConfig
+    selected = server_config(
+        global_config=GlobalConfig(
+            retrieval_assistance_mode="none",
+            maximum_concurrent_windows=1,
+            window_input_utilization_percent=50.0,
+        )
+    )
+    operations = dict(selected.operations)
+    operations["window_evidence_extraction"] = replace(
+        operations["window_evidence_extraction"],
+        max_attempts=1,
+        circuit_threshold=1,
+        circuit_cooldown_seconds=60.0,
+    )
+    selected = with_resolved_operations(selected, operations)
+    from tests.sfv1_support import configured_service, fake_embedding_service
+    service, _ = configured_service(tmp_path, selected)
+    app = __import__("server.app", fromlist=["create_app"]).create_app(
+        config_service=service,
+        provider=AsyncProvider(httpx.AsyncClient(transport=httpx.MockTransport(handler))),
+        embedding_service=fake_embedding_service(selected),
+    )
+    with TestClient(app) as client:
+        plan = _plan_for(client)
+        response = client.post(
+            "/v1/conversational-analysis",
+            json=_analysis_body(plan, messages),
+        )
+    events = [json.loads(line) for line in response.text.splitlines() if line]
+    terminal = events[-1]
+    assert terminal["event"] == "completed"
+    assert terminal["result"]["completion_status"] == "partial"
+    assert terminal["result"]["evidence_ledger"]
+    unavailable = [
+        event for event in events if event["event"] == "window_unavailable"
+    ]
+    assert [event["data"]["code"] for event in unavailable] == [
+        "PROVIDER_UNAVAILABLE",
+        "CIRCUIT_OPEN",
+    ]
+    assert [event["data"]["attempts"] for event in unavailable] == [1, 0]
+    assert not any(event["event"] == "window_output_unusable" for event in events)
+
+
+def test_compaction_known_id_reordering_is_corrected_and_reported(tmp_path):
+    reordered = False
+
+    def mutate(user, output):
+        nonlocal reordered
+        if user["task"] == "window_evidence_extraction":
+            output["evidence_ranges"] = [
+                {
+                    "thread_id": message["thread_id"],
+                    "start_message_id": message["message_id"],
+                    "end_message_id": message["message_id"],
+                    "summary": f"Evidence {index}",
+                    "relevance": "Responsive",
+                }
+                for index, message in enumerate(user["messages"], 1)
+            ]
+        elif user["task"] == "ledger_compaction" and len(output["covered_range_ids"]) > 1:
+            output["covered_range_ids"].reverse()
+            reordered = True
+        return output
+
+    selected = server_config()
+    operations = dict(selected.operations)
+    operations["ledger_synthesis"] = replace(
+        operations["ledger_synthesis"], target_input_tokens=2_100
+    )
+    selected = with_resolved_operations(selected, operations)
+    app = _app(tmp_path, config=selected, provider=fake_provider(mutate=mutate))
+    with TestClient(app) as client:
+        plan = _plan_for(client)
+        response = client.post(
+            "/v1/conversational-analysis",
+            json=_analysis_body(plan, _messages(8)),
+        )
+    events = [json.loads(line) for line in response.text.splitlines() if line]
+    assert reordered is True
+    assert events[-1]["event"] == "completed"
+    assert events[-1]["result"]["answer_source"] == "structured_synthesis"
+    assert any(
+        event["event"] == "warning"
+        and event["data"]["code"] == "COMPACTION_RANGE_ORDER_CORRECTED"
+        for event in events
+    )

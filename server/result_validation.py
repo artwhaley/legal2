@@ -182,6 +182,8 @@ def _record_mapping(record: EvidenceRangeRecord | Mapping[str, Any]) -> Mapping[
             "summary": record.summary,
             "relevance": record.relevance,
             "normalizations": list(record.normalizations),
+            "uncertainties": list(record.uncertainties),
+            "warnings": list(record.warnings),
         }
     return record
 
@@ -324,6 +326,8 @@ def assemble_synthesis_result(
     elif inspection.parse_status == "unparseable":
         synthesis_status = "unparseable"
     else:
+        synthesis_status = "warnings"
+    if synthesis_status == "conformant" and (all_warnings or unclassified or unverified_items):
         synthesis_status = "warnings"
     status = _status(
         evidence_validation=evidence_validation,

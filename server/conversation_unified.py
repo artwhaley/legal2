@@ -30,6 +30,7 @@ from server.evidence_ledger import (
     EvidenceRangeRecord,
     LedgerBudgetExceeded,
     LedgerError,
+    NoUsableResult,
     NoUsableWindowOutput,
     WindowLedgerInput,
     build_ledger,
@@ -41,6 +42,7 @@ from server.result_validation import assemble_synthesis_result, inspect_synthesi
 from server.model_runtime import RawModelOutput, UsageCollector, WorkloadTooLarge, run_model_operation
 from server.observability import map_error
 from server.provider import ProviderError
+from server.resilience import CircuitOpenError, QueueFullError, QueueTimeoutError
 from server.token_accounting import (
     build_provider_payload,
     canonical_json,
@@ -62,6 +64,7 @@ class WindowUnavailableOutcome:
     index: int
     code: str
     attempts: int
+    output_unusable: bool = False
 
 
 class ModelInvocation:
@@ -587,6 +590,7 @@ def _record_payload(record: EvidenceRangeRecord) -> dict[str, Any]:
         "normalizations": list(record.normalizations),
         "messages": [dict(message) for message in record.messages],
         "uncertainties": list(record.uncertainties),
+        "warnings": list(record.warnings),
     }
 
 
@@ -849,6 +853,12 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
             unavailable: list[WindowUnavailableOutcome] = []
 
             async def run_window(index: int, window: WindowLedgerInput, progress_queue):
+                attempts_started = 0
+
+                def record_attempt(attempt: int) -> None:
+                    nonlocal attempts_started
+                    attempts_started = max(attempts_started, attempt)
+
                 def unusable(content: str) -> bool:
                     try:
                         value = json.loads(content.strip())
@@ -884,6 +894,7 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                         preserve_raw_output=True,
                         retry_unusable_output=True,
                         unusable_output=unusable,
+                        attempt_started=record_attempt,
                     )
                     assert isinstance(output, RawModelOutput)
                     raw = json.loads(output.content.strip())
@@ -912,10 +923,26 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                     )
                     return WindowCompletedOutcome(index, validated, usage)
                 except ProviderError as exc:
-                    return WindowUnavailableOutcome(index, exc.code, window_operation.max_attempts)
+                    return WindowUnavailableOutcome(
+                        index,
+                        exc.code,
+                        attempts_started,
+                        output_unusable=exc.code == "MODEL_OUTPUT_UNUSABLE",
+                    )
+                except (CircuitOpenError, QueueFullError, QueueTimeoutError) as exc:
+                    return WindowUnavailableOutcome(
+                        index,
+                        getattr(exc, "code", exc.__class__.__name__),
+                        attempts_started,
+                    )
                 except LedgerError as exc:
                     if (exc.details or {}).get("reason") == "WINDOW_OUTPUT_UNUSABLE":
-                        return WindowUnavailableOutcome(index, "WINDOW_OUTPUT_UNUSABLE", window_operation.max_attempts)
+                        return WindowUnavailableOutcome(
+                            index,
+                            "WINDOW_OUTPUT_UNUSABLE",
+                            attempts_started,
+                            output_unusable=True,
+                        )
                     raise
 
             maximum = snapshot.global_config.maximum_concurrent_windows
@@ -1024,16 +1051,17 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                                     error_code=outcome.code,
                                     completed_windows=completed_window_count,
                                 )
-                                yield sequencer.event(
-                                    "window_output_unusable",
-                                    data={
-                                        "window_id": windows[index].window_id,
-                                        "window_index": index,
-                                        "window_count": len(windows),
-                                        "attempt": outcome.attempts,
-                                        "code": outcome.code,
-                                    },
-                                )
+                                if outcome.output_unusable:
+                                    yield sequencer.event(
+                                        "window_output_unusable",
+                                        data={
+                                            "window_id": windows[index].window_id,
+                                            "window_index": index,
+                                            "window_count": len(windows),
+                                            "attempt": outcome.attempts,
+                                            "code": outcome.code,
+                                        },
+                                    )
                                 yield sequencer.event(
                                     "window_unavailable",
                                     data={
@@ -1114,6 +1142,8 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                     "summary": record.summary,
                     "relevance": record.relevance,
                     "normalizations": list(record.normalizations),
+                    "uncertainties": list(record.uncertainties),
+                    "warnings": list(record.warnings),
                 }
                 for record in ledger.records
             ]
@@ -1286,8 +1316,37 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                                 "compaction group returned a nonconforming machine-readable envelope",
                                 details={"reason": "COMPACTION_UNAVAILABLE", "group_id": group_id},
                             ) from exc
-                        if compacted.group_id != group_id or compacted.covered_range_ids != expected_ids:
+                        if compacted.group_id != group_id:
+                            raise LedgerError("compaction group ID did not match its request")
+                        returned_ids = list(compacted.covered_range_ids)
+                        if (
+                            len(returned_ids) != len(expected_ids)
+                            or len(set(returned_ids)) != len(returned_ids)
+                            or set(returned_ids) != set(expected_ids)
+                        ):
                             raise LedgerError("compaction group did not preserve original range coverage")
+                        if returned_ids != expected_ids:
+                            compacted = compacted.model_copy(
+                                update={"covered_range_ids": expected_ids}
+                            )
+                            correction = {
+                                "code": "COMPACTION_RANGE_ORDER_CORRECTED",
+                                "details": {
+                                    "level": level,
+                                    "group_id": group_id,
+                                    "range_count": len(expected_ids),
+                                },
+                            }
+                            evidence_validation.setdefault("warnings", []).append(correction)
+                            yield sequencer.event(
+                                "warning",
+                                data={
+                                    **correction,
+                                    "stage": "compaction",
+                                    "operation": "ledger_compaction",
+                                    "window_id": None,
+                                },
+                            )
                         reduced.append({"level": level, **compacted.model_dump()})
                         compaction_group_calls += 1
                         yield sequencer.event(
@@ -1382,6 +1441,10 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                 preserve_raw_output=True,
                 retry_unusable_output=True,
                 unusable_output=lambda content: inspect_synthesis_content(content).parse_status == "unavailable",
+                raw_output_received_event=(
+                    "ledger_synthesis_received",
+                    {"evidence_range_count": len(ledger.records)},
+                ),
             )
             try:
                 async for progress_name, progress_data in invocation.progress():
@@ -1389,9 +1452,12 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                         logged("heartbeat", **progress_data)
                     yield sequencer.event(progress_name, data=progress_data)
                 final, usage = invocation.result()
-            except ProviderError as exc:
-                if exc.code != "MODEL_OUTPUT_UNUSABLE":
-                    raise
+            except (ProviderError, CircuitOpenError, QueueFullError, QueueTimeoutError) as exc:
+                if not ledger.records:
+                    raise NoUsableResult(
+                        "final synthesis was unavailable and no validated evidence exists",
+                        details={"synthesis_error_code": getattr(exc, "code", exc.__class__.__name__)},
+                    ) from exc
                 result, inspection = assemble_synthesis_result(
                     None,
                     records=ledger.records,
@@ -1407,7 +1473,16 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                 )
                 yield sequencer.event(
                     "warning",
-                    data={"code": "SYNTHESIS_UNAVAILABLE", "details": {"reason": "configured_attempts_exhausted"}, "stage": "synthesis", "operation": "ledger_synthesis", "window_id": None},
+                    data={
+                        "code": "SYNTHESIS_UNAVAILABLE",
+                        "details": {
+                            "reason": "configured_attempts_exhausted",
+                            "error_code": getattr(exc, "code", exc.__class__.__name__),
+                        },
+                        "stage": "synthesis",
+                        "operation": "ledger_synthesis",
+                        "window_id": None,
+                    },
                 )
                 yield sequencer.event(
                     "synthesis_validation_completed",
@@ -1431,17 +1506,6 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
             assert isinstance(final, RawModelOutput)
             raw_synthesis = final.content
             inspected_synthesis = inspect_synthesis_content(raw_synthesis)
-            yield sequencer.event(
-                "ledger_synthesis_received",
-                data={
-                    "evidence_range_count": len(ledger.records),
-                    "content_nonblank": inspected_synthesis.parse_status != "unavailable",
-                    "input_tokens": usage.input_tokens,
-                    "output_tokens": usage.output_tokens,
-                    "usage_source": usage.source,
-                    "estimated_cost": usage.cost,
-                },
-            )
             cited_range_ids = {
                 range_id
                 for item in inspected_synthesis.results
@@ -1469,9 +1533,12 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                 "synthesis_validation_completed",
                 data={
                     "status": result["synthesis_validation"]["status"],
-                    "result_count": len(result["results"]),
+                    "result_count": len(result["results"]) + len(result["unverified_model_statements"]),
                     "verified_citation_count": sum(len(item["verified_range_ids"]) for item in result["results"]),
-                    "unverified_citation_count": sum(len(item["unverified_range_ids"]) for item in result["results"]),
+                    "unverified_citation_count": (
+                        sum(len(item["unverified_range_ids"]) for item in result["results"])
+                        + sum(len(item["reported_range_ids"]) for item in result["unverified_model_statements"])
+                    ),
                     "omitted_range_count": len(result["unclassified_evidence"]),
                     "warning_count": len(result["synthesis_validation"]["warnings"]),
                 },
@@ -1497,7 +1564,10 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
             logged("client_cancelled", severity="WARNING")
             raise
         except Exception as exc:
-            if compaction_in_progress and isinstance(exc, (ProviderError, LedgerError)):
+            if compaction_in_progress and isinstance(
+                exc,
+                (ProviderError, LedgerError, CircuitOpenError, QueueFullError, QueueTimeoutError),
+            ):
                 fallback_warning = {
                     "code": "COMPACTION_UNAVAILABLE",
                     "details": {"reason": str(exc)[:512], "error_code": getattr(exc, "code", "COMPACTION_UNAVAILABLE")},
