@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqlite3/open.dart' as sqopen;
 import 'src/compatibility_probe.dart';
+import 'src/app_theme.dart';
 import 'src/native_extensions.dart';
 import 'src/server_gateway.dart';
 import 'src/workspace_view.dart';
@@ -76,10 +77,8 @@ class EvwViewerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'EVW v15 viewer',
-    theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-      useMaterial3: true,
-    ),
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.light,
     home: WorkspaceView(
       initialPath: initialPath,
       gateway: gateway ?? UnconfiguredServerGateway(baseUrl: serverUrl),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'evw_models.dart';
+import 'workstation_widgets.dart';
 import 'workspace_controller.dart';
 
 class PrintOutputPage extends StatefulWidget {
@@ -254,126 +255,191 @@ class _PrintOutputPageState extends State<PrintOutputPage> {
     final database = workspace.database;
     final revision = workspace.selectedRevision;
     if (database == null || revision == null) {
-      return const Center(
-        child: Text(
-          'Select a ready working corpus on Corpus to organize document artifacts.',
+      return const WorkstationPage(
+        title: 'Document assembly',
+        description:
+            'Organize persisted evidence blocks into ordered, reviewable print artifacts.',
+        child: EmptyWorkspaceState(
+          icon: Icons.description_outlined,
+          title: 'Document assembly requires a working corpus',
+          message:
+              'Select a ready working corpus on Corpus to organize document artifacts.',
         ),
       );
     }
     final evidence =
         workspace.transcriptController?.blocks ?? const <EvidenceBlock>[];
-    return Padding(
-      padding: const EdgeInsets.all(12),
+    return WorkstationPage(
+      title: 'Document assembly',
+      description:
+          'Organize persisted evidence blocks into ordered, reviewable print artifacts.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_error != null)
-            SelectableText(
-              'FAILED\n$_error',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+          if (_error != null) ...[
+            OperationalMessage(
+              message: _error!,
+              label: 'FAILED',
+              tone: OperationalTone.failure,
             ),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text('Artifacts', style: Theme.of(context).textTheme.titleLarge),
-              DropdownButton<int>(
-                value: _groupId,
-                hint: const Text('No groups yet'),
-                items: _groups
-                    .map(
-                      (group) => DropdownMenuItem(
-                        value: group.id,
-                        child: Text(group.name),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _selectGroup,
-              ),
-              DropdownButton<int>(
-                value: _evidenceBlockId,
-                hint: const Text('Select evidence block'),
-                items: evidence
-                    .map(
-                      (block) => DropdownMenuItem(
-                        value: block.id,
-                        child: Text(
-                          '${block.id}: ${block.title}',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => _evidenceBlockId = value),
-              ),
-              FilledButton.icon(
-                onPressed: _evidenceBlockId == null ? null : _createArtifact,
-                icon: const Icon(Icons.note_add_outlined),
-                label: const Text('Create artifact'),
-              ),
-              if (_document != null)
-                OutlinedButton.icon(
-                  onPressed: _evidenceBlockId == null ? null : _appendBlock,
-                  icon: const Icon(Icons.playlist_add),
-                  label: const Text('Append block'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: Row(
+            const SizedBox(height: 8),
+          ],
+          SectionSurface(
+            padding: const EdgeInsets.all(12),
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
-                  width: 280,
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    child: _artifacts.isEmpty
-                        ? const Center(child: Text('No persisted artifacts.'))
-                        : ListView.builder(
-                            itemCount: _artifacts.length,
-                            itemBuilder: (context, index) {
-                              final artifact = _artifacts[index];
-                              return ListTile(
-                                selected: artifact.id == _artifactId,
-                                title: Text(
-                                  artifact.title.isEmpty
-                                      ? 'Untitled artifact'
-                                      : artifact.title,
-                                ),
-                                subtitle: Text(
-                                  '${artifact.exhibitNumber} ${artifact.caseNumber}'
-                                      .trim(),
-                                ),
-                                onTap: () => _selectArtifact(artifact.id),
-                              );
-                            },
-                          ),
-                  ),
+                const SectionHeader(
+                  title: 'Artifact controls',
+                  description:
+                      'Choose a collection and source evidence block before creating or appending.',
+                  leading: Icon(Icons.account_tree_outlined, size: 19),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    child: _document == null
-                        ? const Center(
-                            child: Text(
-                              'Select or create an artifact to see Document preview.',
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    DropdownButton<int>(
+                      value: _groupId,
+                      hint: const Text('No groups yet'),
+                      items: _groups
+                          .map(
+                            (group) => DropdownMenuItem(
+                              value: group.id,
+                              child: Text(group.name),
                             ),
                           )
-                        : _DocumentPreview(
-                            document: _document!,
-                            title: _title,
-                            exhibit: _exhibit,
-                            caseNumber: _caseNumber,
-                            onSaveMetadata: _saveMetadata,
-                            onMove: _moveBlock,
-                            onRemove: _removeBlock,
-                          ),
-                  ),
+                          .toList(),
+                      onChanged: _selectGroup,
+                    ),
+                    DropdownButton<int>(
+                      value: _evidenceBlockId,
+                      hint: const Text('Select evidence block'),
+                      items: evidence
+                          .map(
+                            (block) => DropdownMenuItem(
+                              value: block.id,
+                              child: Text(
+                                '${block.id}: ${block.title}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _evidenceBlockId = value),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _evidenceBlockId == null
+                          ? null
+                          : _createArtifact,
+                      icon: const Icon(Icons.note_add_outlined, size: 18),
+                      label: const Text('Create artifact'),
+                    ),
+                    if (_document != null)
+                      OutlinedButton.icon(
+                        onPressed: _evidenceBlockId == null
+                            ? null
+                            : _appendBlock,
+                        icon: const Icon(Icons.playlist_add, size: 18),
+                        label: const Text('Append block'),
+                      ),
+                  ],
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final artifactList = Card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(12, 11, 12, 9),
+                        child: SectionHeader(
+                          title: 'Artifacts',
+                          description: 'Persisted documents in this group.',
+                          leading: Icon(Icons.description_outlined, size: 18),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: _artifacts.isEmpty
+                            ? const Center(
+                                child: Text('No persisted artifacts.'),
+                              )
+                            : ListView.separated(
+                                itemCount: _artifacts.length,
+                                separatorBuilder: (_, _) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final artifact = _artifacts[index];
+                                  return ListTile(
+                                    selected: artifact.id == _artifactId,
+                                    leading: const Icon(
+                                      Icons.article_outlined,
+                                      size: 19,
+                                    ),
+                                    title: Text(
+                                      artifact.title.isEmpty
+                                          ? 'Untitled artifact'
+                                          : artifact.title,
+                                    ),
+                                    subtitle: Text(
+                                      '${artifact.exhibitNumber} ${artifact.caseNumber}'
+                                          .trim(),
+                                    ),
+                                    onTap: () => _selectArtifact(artifact.id),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+                final preview = Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: _document == null
+                      ? const EmptyWorkspaceState(
+                          icon: Icons.insert_drive_file_outlined,
+                          title: 'No artifact selected',
+                          message:
+                              'Select or create an artifact to see Document preview.',
+                        )
+                      : _DocumentPreview(
+                          document: _document!,
+                          title: _title,
+                          exhibit: _exhibit,
+                          caseNumber: _caseNumber,
+                          onSaveMetadata: _saveMetadata,
+                          onMove: _moveBlock,
+                          onRemove: _removeBlock,
+                        ),
+                );
+                if (constraints.maxWidth >= 900) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: 300, child: artifactList),
+                      const SizedBox(width: 10),
+                      Expanded(child: preview),
+                    ],
+                  );
+                }
+                return Column(
+                  children: [
+                    SizedBox(height: 180, child: artifactList),
+                    const SizedBox(height: 10),
+                    Expanded(child: preview),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -403,43 +469,62 @@ class _DocumentPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(16),
     children: [
-      Text('Document preview', style: Theme.of(context).textTheme.titleLarge),
-      Text('Group: ${document.groupName}'),
-      const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          SizedBox(
-            width: 240,
-            child: TextField(
-              controller: title,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-          ),
-          SizedBox(
-            width: 140,
-            child: TextField(
-              controller: exhibit,
-              decoration: const InputDecoration(labelText: 'Exhibit number'),
-            ),
-          ),
-          SizedBox(
-            width: 180,
-            child: TextField(
-              controller: caseNumber,
-              decoration: const InputDecoration(labelText: 'Case number'),
-            ),
-          ),
-          FilledButton(
-            onPressed: onSaveMetadata,
-            child: const Text('Save metadata'),
-          ),
-        ],
+      SectionHeader(
+        title: 'Document preview',
+        description: 'Group: ${document.groupName}',
+        leading: const Icon(Icons.preview_outlined, size: 20),
       ),
-      const Divider(height: 24),
+      const SizedBox(height: 12),
+      SectionSurface(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'DOCUMENT METADATA',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              children: [
+                SizedBox(
+                  width: 240,
+                  child: TextField(
+                    controller: title,
+                    decoration: const InputDecoration(labelText: 'Title'),
+                  ),
+                ),
+                SizedBox(
+                  width: 140,
+                  child: TextField(
+                    controller: exhibit,
+                    decoration: const InputDecoration(
+                      labelText: 'Exhibit number',
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 180,
+                  child: TextField(
+                    controller: caseNumber,
+                    decoration: const InputDecoration(labelText: 'Case number'),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: onSaveMetadata,
+                  child: const Text('Save metadata'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const Divider(height: 28),
       if (document.blocks.isEmpty)
         const Text('This artifact has no attached evidence blocks.')
       else
@@ -473,9 +558,10 @@ class _PreviewBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    margin: const EdgeInsets.only(bottom: 10),
+    color: Colors.white,
     child: Padding(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -501,6 +587,9 @@ class _PreviewBlock extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'Remove attached block',
+                style: IconButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
                 onPressed: () => onRemove(block.joinId),
                 icon: const Icon(Icons.remove_circle_outline),
               ),
@@ -511,10 +600,10 @@ class _PreviewBlock extends StatelessWidget {
           ...block.messages.map(
             (message) => Container(
               color: block.evidence.isRelevant(message)
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : Theme.of(context).colorScheme.surface,
-              padding: const EdgeInsets.all(8),
-              margin: const EdgeInsets.only(bottom: 2),
+                  ? const Color(0xffe5f1e9)
+                  : const Color(0xfff4f6f7),
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 3),
               child: Text(
                 '[${block.evidence.sections[message.id] ?? 'context'}] ${message.sender} · ${message.timestamp}\n${message.body}',
               ),

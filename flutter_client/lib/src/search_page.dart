@@ -5,6 +5,7 @@ import 'search_workflow.dart';
 import 'server_contracts.dart';
 import 'server_gateway.dart';
 import 'transcript_editor.dart';
+import 'workstation_widgets.dart';
 import 'workspace_controller.dart';
 
 class SearchPage extends StatefulWidget {
@@ -217,129 +218,159 @@ class _SearchPageState extends State<SearchPage> {
     final database = workspace.database;
     final revision = workspace.selectedRevision;
     if (database == null || revision == null) {
-      return const Center(
-        child: Text('Select a ready working corpus on Corpus to search.'),
+      return const WorkstationPage(
+        title: 'Evidence search',
+        description:
+            'Run exact full-text or semantic retrieval, then review each result in the shared transcript.',
+        child: EmptyWorkspaceState(
+          icon: Icons.manage_search,
+          title: 'Search requires a working corpus',
+          message: 'Select a ready working corpus on Corpus to search.',
+        ),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 360,
-                child: TextField(
-                  controller: _query,
-                  decoration: const InputDecoration(
-                    labelText: 'Search query',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _search(),
-                ),
-              ),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'fts', label: Text('FTS5')),
-                  ButtonSegment(value: 'embedding', label: Text('Embedding')),
-                ],
-                selected: {_mode},
-                onSelectionChanged: _working
-                    ? null
-                    : (selection) => setState(() => _mode = selection.single),
-              ),
-              if (_mode == 'embedding')
-                SizedBox(
-                  width: 130,
-                  child: TextField(
-                    controller: _topK,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Top results',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              FilledButton(
-                onPressed: _working ? null : () => _search(),
-                child: Text(_working ? 'Searching…' : 'Search'),
-              ),
-              if (_cancellation != null)
-                OutlinedButton(
-                  onPressed: _cancelEmbedding,
-                  child: const Text('Cancel'),
-                ),
-            ],
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 8),
-            SelectableText(
-              'FAILED\n$_error',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-          if (_notice != null) ...[
-            const SizedBox(height: 8),
-            SelectableText(_notice!),
-          ],
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 260,
-            child: Card(
-              margin: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    return WorkstationPage(
+      title: 'Evidence search',
+      description:
+          'Run exact full-text or semantic retrieval, then review each result in the shared transcript.',
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SectionSurface(
+              padding: const EdgeInsets.all(12),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerLow,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
-                      children: [
-                        Text('Results: $_total'),
-                        const SizedBox(width: 12),
-                        Text('Loaded: ${_hits.length}'),
-                        const Spacer(),
-                        if (_nextOffset != null)
-                          OutlinedButton(
-                            onPressed: _working
-                                ? null
-                                : () => _search(append: true),
-                            child: const Text('Load more'),
-                          ),
-                      ],
+                  SizedBox(
+                    width: 360,
+                    child: TextField(
+                      controller: _query,
+                      decoration: const InputDecoration(
+                        labelText: 'Search query',
+                        hintText: 'Enter terms or a semantic query',
+                        prefixIcon: Icon(Icons.search, size: 19),
+                      ),
+                      onSubmitted: (_) => _search(),
                     ),
                   ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: _hits.isEmpty
-                        ? const Center(child: Text('No search results loaded.'))
-                        : ListView.builder(
-                            itemCount: _hits.length,
-                            itemBuilder: (context, index) => _ResultTile(
-                              hit: _hits[index],
-                              onView: () => _view(_hits[index]),
-                              onSave: () => _save(_hits[index]),
-                            ),
-                          ),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'fts', label: Text('FTS5')),
+                      ButtonSegment(
+                        value: 'embedding',
+                        label: Text('Embedding'),
+                      ),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: _working
+                        ? null
+                        : (selection) =>
+                              setState(() => _mode = selection.single),
                   ),
+                  if (_mode == 'embedding')
+                    SizedBox(
+                      width: 130,
+                      child: TextField(
+                        controller: _topK,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Top results',
+                        ),
+                      ),
+                    ),
+                  FilledButton(
+                    onPressed: _working ? null : () => _search(),
+                    child: Text(_working ? 'Searching…' : 'Search'),
+                  ),
+                  if (_cancellation != null)
+                    OutlinedButton(
+                      onPressed: _cancelEmbedding,
+                      child: const Text('Cancel'),
+                    ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: TranscriptEvidenceEditor(
-              key: _editorKey,
-              database: database,
-              revision: revision,
-              controller: workspace.transcriptController,
-              isPageActive: widget.isPageActive,
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              OperationalMessage(
+                message: _error!,
+                label: 'FAILED',
+                tone: OperationalTone.failure,
+              ),
+            ],
+            if (_notice != null) ...[
+              const SizedBox(height: 8),
+              OperationalMessage(message: _notice!),
+            ],
+            const SizedBox(height: 10),
+            SizedBox(
+              height: (constraints.maxHeight * 0.31)
+                  .clamp(185.0, 300.0)
+                  .toDouble(),
+              child: SectionSurface(
+                padding: EdgeInsets.zero,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 11, 12, 10),
+                      child: SectionHeader(
+                        title: 'Search results',
+                        description: '$_total matches · ${_hits.length} loaded',
+                        leading: const Icon(
+                          Icons.format_list_bulleted,
+                          size: 19,
+                        ),
+                        trailing: _nextOffset == null
+                            ? null
+                            : OutlinedButton(
+                                onPressed: _working
+                                    ? null
+                                    : () => _search(append: true),
+                                child: const Text('Load more'),
+                              ),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: _hits.isEmpty
+                          ? const Center(
+                              child: Text('No search results loaded.'),
+                            )
+                          : ListView.separated(
+                              itemCount: _hits.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) => _ResultTile(
+                                hit: _hits[index],
+                                onView: () => _view(_hits[index]),
+                                onSave: () => _save(_hits[index]),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Expanded(
+              child: TranscriptEvidenceEditor(
+                key: _editorKey,
+                database: database,
+                revision: revision,
+                controller: workspace.transcriptController,
+                isPageActive: widget.isPageActive,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -362,13 +393,40 @@ class _ResultTile extends StatelessWidget {
         ? 'Rank ${hit.rank.toInt()} · Distance ${hit.distance!.toStringAsFixed(6)}'
         : 'FTS5 score ${hit.rank.toStringAsFixed(6)}';
     return ListTile(
-      dense: true,
+      leading: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(
+          hit.matchType == 'embedding'
+              ? Icons.hub_outlined
+              : Icons.text_snippet_outlined,
+          size: 17,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
       title: Text('${hit.sender} · ${hit.timestamp}'),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(score),
-          Text(hit.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(
+            score,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            hit.body,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
         ],
       ),
       trailing: Wrap(

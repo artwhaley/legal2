@@ -3,9 +3,11 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'evw_database.dart';
 import 'evw_models.dart';
 import 'transcript_height_index.dart';
+import 'workstation_widgets.dart';
 
 enum EvidenceBoundary { contextStart, relevantStart, relevantEnd, contextEnd }
 
@@ -486,14 +488,14 @@ class VirtualTranscriptViewState extends State<VirtualTranscriptView> {
   }
 
   double _measureMessage(TranscriptMessage message, double width) {
-    final bodyWidth = math.max(180.0, width - 190);
+    final bodyWidth = math.max(180.0, width - 132);
     final sender = TextPainter(
       text: TextSpan(
         text: message.sender,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 13.5,
           fontWeight: FontWeight.w600,
-          height: 1.2,
+          height: 1.25,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -502,11 +504,11 @@ class VirtualTranscriptViewState extends State<VirtualTranscriptView> {
     final body = TextPainter(
       text: TextSpan(
         text: message.body,
-        style: const TextStyle(fontSize: 14, height: 1.35),
+        style: const TextStyle(fontSize: 14.5, height: 1.48),
       ),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: bodyWidth);
-    return math.max(76, 18 + sender.height + 6 + body.height + 32);
+    return math.max(86, 18 + sender.height + 7 + body.height + 34);
   }
 
   List<Widget> _visibleMessages(double width) {
@@ -521,20 +523,25 @@ class VirtualTranscriptViewState extends State<VirtualTranscriptView> {
     _visibleStart = start;
     _visibleEnd = math.max(start, end - 1);
 
+    final messageWidth = math.min(960.0, math.max(260.0, width - 48));
+    final horizontalInset = math.max(24.0, (width - messageWidth) / 2);
     final messages = <TranscriptMessage>[];
     for (var ordinal = start; ordinal < end; ordinal++) {
       final message = _messageAt(ordinal);
       if (message != null) messages.add(message);
     }
     for (final message in messages) {
-      _heightIndex.setHeight(message.ordinal, _measureMessage(message, width));
+      _heightIndex.setHeight(
+        message.ordinal,
+        _measureMessage(message, messageWidth),
+      );
     }
     return messages.map((message) {
       final annotation = widget.controller.annotationFor(message);
       return Positioned(
         top: _heightIndex.offsetForOrdinal(message.ordinal),
-        left: 24,
-        right: 24,
+        left: horizontalInset,
+        right: horizontalInset,
         height: _heightIndex.heightAt(message.ordinal),
         child: _TranscriptMessageView(
           message: message,
@@ -667,9 +674,12 @@ class VirtualTranscriptViewState extends State<VirtualTranscriptView> {
         ..._visibleMessages(nextWidth),
         ..._boundaryHandles(),
       ];
+      final messageWidth = math.min(960.0, math.max(260.0, nextWidth - 48));
+      final messageInset = math.max(24.0, (nextWidth - messageWidth) / 2);
+      final markerInset = math.max(2.0, messageInset - 22);
       _scheduleViewportActivation();
       return DecoratedBox(
-        decoration: const BoxDecoration(color: Color(0xfff3f1ed)),
+        decoration: const BoxDecoration(color: Color(0xffedf0f1)),
         child: Stack(
           children: [
             Scrollbar(
@@ -692,16 +702,25 @@ class VirtualTranscriptViewState extends State<VirtualTranscriptView> {
             IgnorePointer(
               child: Align(
                 alignment: Alignment.center,
-                child: Container(
-                  height: 1,
-                  margin: const EdgeInsets.only(left: 8, right: 22),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: Color(0x55707070),
-                        style: BorderStyle.solid,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: markerInset,
+                    right: markerInset,
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.chevron_right,
+                        size: 20,
+                        color: Color(0xaa28516b),
                       ),
-                    ),
+                      Spacer(),
+                      Icon(
+                        Icons.chevron_left,
+                        size: 20,
+                        color: Color(0xaa28516b),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -729,17 +748,30 @@ class _TranscriptMessageView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final background = annotation.highlighted
-        ? const Color(0xfffff2a8)
+        ? const Color(0xfffff4c7)
         : annotation.relevant
-        ? const Color(0xffe2f1dc)
+        ? const Color(0xffe5f1e9)
         : annotation.context
-        ? const Color(0xffe9e6e0)
-        : Colors.white;
+        ? const Color(0xffedf0f2)
+        : const Color(0xfffbfcfc);
+    final accent = annotation.highlighted
+        ? const Color(0xffa87a12)
+        : annotation.relevant
+        ? const Color(0xff3f7656)
+        : annotation.context
+        ? const Color(0xff89969e)
+        : const Color(0xffd8dfe2);
     final subdued = annotation.context && !annotation.relevant;
-    return ColoredBox(
-      color: background,
+    return Container(
+      decoration: BoxDecoration(
+        color: background,
+        border: Border(
+          left: BorderSide(color: accent, width: annotation.primary ? 4 : 3),
+          bottom: const BorderSide(color: Color(0xffd8dfe2)),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+        padding: const EdgeInsets.fromLTRB(14, 11, 10, 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -754,11 +786,11 @@ class _TranscriptMessageView extends StatelessWidget {
                           message.sender,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                             color: subdued
-                                ? const Color(0xff666666)
-                                : const Color(0xff151515),
+                                ? const Color(0xff617079)
+                                : AppTheme.ink,
                           ),
                         ),
                       ),
@@ -767,23 +799,21 @@ class _TranscriptMessageView extends StatelessWidget {
                         message.timestamp,
                         style: const TextStyle(
                           fontSize: 11,
-                          color: Color(0xff777777),
+                          color: AppTheme.mutedInk,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 7),
                   SelectableText(
                     message.body,
                     style: TextStyle(
-                      fontSize: 14,
-                      height: 1.35,
+                      fontSize: 14.5,
+                      height: 1.48,
                       fontWeight: annotation.relevant || annotation.highlighted
                           ? FontWeight.w500
                           : FontWeight.normal,
-                      color: subdued
-                          ? const Color(0xff666666)
-                          : const Color(0xff151515),
+                      color: subdued ? const Color(0xff617079) : AppTheme.ink,
                     ),
                   ),
                   const Spacer(),
@@ -793,7 +823,8 @@ class _TranscriptMessageView extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 10,
-                      color: Color(0xff888888),
+                      color: Color(0xff6e7d86),
+                      letterSpacing: 0.15,
                     ),
                   ),
                 ],
@@ -814,9 +845,7 @@ class _TranscriptMessageView extends StatelessWidget {
                           annotation.primary
                               ? Icons.radio_button_checked
                               : Icons.radio_button_unchecked,
-                          color: annotation.primary
-                              ? const Color(0xff245b9e)
-                              : null,
+                          color: annotation.primary ? AppTheme.navy : null,
                         ),
                       ),
                     ),
@@ -830,7 +859,7 @@ class _TranscriptMessageView extends StatelessWidget {
                               ? Icons.star
                               : Icons.star_border,
                           color: annotation.highlighted
-                              ? const Color(0xff9b7200)
+                              ? const Color(0xff936b0e)
                               : null,
                         ),
                       ),
@@ -873,22 +902,22 @@ class _BoundaryHandle extends StatelessWidget {
             height: 20,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xff245b9e)),
+              color: const Color(0xfff7fafb),
+              border: Border.all(color: AppTheme.navy),
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(
               boundary.label,
               style: const TextStyle(
                 fontSize: 11,
-                color: Color(0xff245b9e),
+                color: AppTheme.navy,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
           const SizedBox(width: 6),
           const Expanded(
-            child: Divider(color: Color(0xff245b9e), thickness: 2, height: 2),
+            child: Divider(color: AppTheme.navy, thickness: 2, height: 2),
           ),
           const SizedBox(width: 20),
         ],
@@ -1046,6 +1075,10 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Delete block'),
           ),
@@ -1063,14 +1096,17 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
     children: [
       _toolbar(),
       if (_error != null)
-        MaterialBanner(
-          content: SelectableText('FAILED\n$_error'),
-          actions: [
-            TextButton(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: OperationalMessage(
+            message: _error!,
+            label: 'FAILED',
+            tone: OperationalTone.failure,
+            trailing: TextButton(
               onPressed: () => setState(() => _error = null),
               child: const Text('Dismiss'),
             ),
-          ],
+          ),
         ),
       Expanded(
         child: LayoutBuilder(
@@ -1113,35 +1149,41 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
   );
 
   Widget _toolbar() => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        FilledButton.icon(
-          onPressed: widget.revision.status == 'ready' ? _createAtCenter : null,
-          icon: const Icon(Icons.add),
-          label: const Text('New block at center'),
-        ),
-        OutlinedButton.icon(
-          onPressed: _controller.activeBlock == null
-              ? null
-              : () => revealEvidenceBlock(_controller.activeBlock!.id),
-          icon: const Icon(Icons.center_focus_strong),
-          label: const Text('Reveal active block'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () => _run(_controller.reload),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Reload evidence'),
-        ),
-        Text(
-          '${widget.revision.messages} messages · '
-          '${_controller.blocks.length} evidence blocks',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+    padding: const EdgeInsets.only(bottom: 10),
+    child: SectionSurface(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          FilledButton.icon(
+            onPressed: widget.revision.status == 'ready'
+                ? _createAtCenter
+                : null,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('New block at center'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _controller.activeBlock == null
+                ? null
+                : () => revealEvidenceBlock(_controller.activeBlock!.id),
+            icon: const Icon(Icons.center_focus_strong, size: 18),
+            label: const Text('Reveal active block'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _run(_controller.reload),
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Reload evidence'),
+          ),
+          Text(
+            '${widget.revision.messages} messages · '
+            '${_controller.blocks.length} evidence blocks',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
     ),
   );
 
@@ -1154,23 +1196,25 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Evidence blocks',
-              style: Theme.of(context).textTheme.titleMedium,
+            const SectionHeader(
+              title: 'Evidence blocks',
+              description: 'Selection and exact-range inspector.',
+              leading: Icon(Icons.bookmarks_outlined, size: 19),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
-              'The visible block nearest the center line becomes editable. '
+              'The visible block nearest the center markers becomes editable. '
               'It stays active while any of its context remains visible. '
               'The eye only hides transcript markup; it does not delete or change the block.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Expanded(
               child: _controller.blocks.isEmpty
                   ? const Center(child: Text('No evidence blocks yet.'))
-                  : ListView.builder(
+                  : ListView.separated(
                       itemCount: _controller.blocks.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final block = _controller.blocks[index];
                         final hidden = _controller.isHidden(block.id);
@@ -1235,6 +1279,10 @@ class TranscriptEvidenceEditorState extends State<TranscriptEvidenceEditor> {
               ),
               const SizedBox(height: 6),
               OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(color: Theme.of(context).colorScheme.error),
+                ),
                 onPressed: _deleteActiveBlock,
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('Delete evidence block'),

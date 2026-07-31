@@ -240,6 +240,8 @@ void main() {
     await tester.pump();
     expect(key.currentState, isNotNull);
     expect(key.currentState!.cachedMessageCount, lessThan(1500));
+    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_left), findsOneWidget);
 
     expect(key.currentState!.scrollToOrdinal(1400), isTrue);
     await tester.pump();

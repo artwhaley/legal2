@@ -9,6 +9,7 @@ import 'evw_models.dart';
 import 'server_contracts.dart';
 import 'server_gateway.dart';
 import 'transcript_editor.dart';
+import 'workstation_widgets.dart';
 import 'workspace_controller.dart';
 
 class ConversationPage extends StatefulWidget {
@@ -234,14 +235,22 @@ class _ConversationPageState extends State<ConversationPage> {
     final database = workspace.database;
     final revision = workspace.selectedRevision;
     if (database == null || revision == null) {
-      return const Center(
-        child: Text(
-          'Select a ready working corpus on Corpus to use Conversation.',
+      return const WorkstationPage(
+        title: 'Evidence conversation',
+        description:
+            'Ask a scoped question, inspect live processing state, and review every cited range against the transcript.',
+        child: EmptyWorkspaceState(
+          icon: Icons.question_answer_outlined,
+          title: 'Conversation requires a working corpus',
+          message:
+              'Select a ready working corpus on Corpus to use Conversation.',
         ),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.all(12),
+    return WorkstationPage(
+      title: 'Evidence conversation',
+      description:
+          'Ask a scoped question, inspect live processing state, and review every cited range against the transcript.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -253,14 +262,15 @@ class _ConversationPageState extends State<ConversationPage> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            SelectableText(
-              'FAILED\n$_error',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            OperationalMessage(
+              message: _error!,
+              label: 'FAILED',
+              tone: OperationalTone.failure,
             ),
           ],
           if (_notice != null) ...[
             const SizedBox(height: 8),
-            SelectableText(_notice!),
+            OperationalMessage(message: _notice!),
           ],
           const SizedBox(height: 8),
           Expanded(
@@ -298,7 +308,8 @@ class _ConversationPageState extends State<ConversationPage> {
                   enabled: _cancellation == null,
                   decoration: const InputDecoration(
                     labelText: 'Question',
-                    border: OutlineInputBorder(),
+                    hintText: 'Ask about the selected revision',
+                    prefixIcon: Icon(Icons.help_outline, size: 19),
                   ),
                   onSubmitted: (_) => _send(),
                 ),
@@ -346,8 +357,13 @@ class _ConversationStatus extends StatelessWidget {
     final latest = progress.isEmpty ? null : progress.last;
     return Card(
       margin: EdgeInsets.zero,
+      color: active
+          ? Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.45)
+          : Theme.of(context).colorScheme.surfaceContainerLow,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         child: Row(
           children: [
             if (active)
@@ -357,11 +373,27 @@ class _ConversationStatus extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             if (active) const SizedBox(width: 8),
+            if (!active)
+              const Icon(
+                Icons.check_circle_outline,
+                size: 17,
+                color: Color(0xff2c6a4b),
+              ),
+            if (!active) const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                latest == null
-                    ? 'Ready'
-                    : '${latest.message}  (${_formatDuration(elapsed)})',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    active ? 'Processing request' : 'Ready',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  if (latest != null)
+                    Text(
+                      '${latest.message}  (${_formatDuration(elapsed)})',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
             ),
             if (onCancel != null)
@@ -393,12 +425,38 @@ class _ConversationCardView extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Card(
-        color: Theme.of(context).colorScheme.primaryContainer,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: SelectableText(card.question),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.help_outline,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'QUESTION',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    SelectableText(card.question),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+      const SizedBox(height: 6),
       Card(
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -424,6 +482,7 @@ class _ConversationCardView extends StatelessWidget {
                 ),
         ),
       ),
+      const SizedBox(height: 12),
     ],
   );
 }
@@ -479,24 +538,48 @@ class _ResultView extends StatelessWidget {
       children: [
         Wrap(
           spacing: 8,
+          runSpacing: 6,
           children: [
-            Chip(label: Text('${result['completion_status']}')),
-            Chip(label: Text('${result['answer_source']}')),
+            StatusPill(
+              label: '${result['completion_status']}',
+              icon: Icons.task_alt,
+              color: const Color(0xff2c6a4b),
+            ),
+            StatusPill(
+              label: '${result['answer_source']}',
+              icon: Icons.source_outlined,
+            ),
           ],
         ),
-        if (overview is String && overview.isNotEmpty) SelectableText(overview),
+        if (overview is String && overview.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _NarrativePanel(
+            title: 'Answer overview',
+            icon: Icons.summarize_outlined,
+            text: overview,
+          ),
+        ],
         if (rawAnswer is String && rawAnswer.isNotEmpty)
-          SelectableText(rawAnswer),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _NarrativePanel(
+              title: 'Synthesized answer',
+              icon: Icons.article_outlined,
+              text: rawAnswer,
+              emphasized: true,
+            ),
+          ),
         _ResultsSection(
           title: 'High-probability results',
+          highProbability: true,
           entries: classifiedConversationResults(
             result,
             probability: 'high_probability',
           ),
         ),
-        const Divider(),
         _ResultsSection(
           title: 'Lower-probability results',
+          highProbability: false,
           entries: classifiedConversationResults(
             result,
             probability: 'lower_probability',
@@ -533,10 +616,13 @@ class _ResultView extends StatelessWidget {
         ),
         if (ledger.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(
-            'Canonical evidence ranges',
-            style: Theme.of(context).textTheme.titleMedium,
+          const SectionHeader(
+            title: 'Canonical evidence ranges',
+            description:
+                'Validated ranges available for transcript review and evidence-block creation.',
+            leading: Icon(Icons.fact_check_outlined, size: 19),
           ),
+          const SizedBox(height: 5),
           ...ledger.map(
             (range) => _RangeTile(
               range: range,
@@ -585,29 +671,97 @@ List<Map<String, dynamic>> classifiedConversationResults(
       .toList();
 }
 
+class _NarrativePanel extends StatelessWidget {
+  const _NarrativePanel({
+    required this.title,
+    required this.icon,
+    required this.text,
+    this.emphasized = false,
+  });
+
+  final String title;
+  final IconData icon;
+  final String text;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) => SectionSurface(
+    backgroundColor: emphasized
+        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.38)
+        : Theme.of(context).colorScheme.surfaceContainerLow,
+    borderColor: emphasized
+        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+        : null,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(title: title, leading: Icon(icon, size: 19)),
+        const SizedBox(height: 8),
+        SelectableText(
+          text,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.55),
+        ),
+      ],
+    ),
+  );
+}
+
 class _ResultsSection extends StatelessWidget {
-  const _ResultsSection({required this.title, required this.entries});
+  const _ResultsSection({
+    required this.title,
+    required this.entries,
+    required this.highProbability,
+  });
 
   final String title;
   final List<Map<String, dynamic>> entries;
+  final bool highProbability;
 
   @override
   Widget build(BuildContext context) => entries.isEmpty
       ? const SizedBox.shrink()
-      : Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 8),
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            ...entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: SelectableText(
-                  '${entry['statement']}\nCitation: ${entry['citation_status']}  Probability: ${entry['probability']}\nWarnings: ${entry['warnings']}',
+      : Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: SectionSurface(
+            backgroundColor: highProbability
+                ? const Color(0xffedf6f0)
+                : const Color(0xfffff7df),
+            borderColor: highProbability
+                ? const Color(0xff8db39b)
+                : const Color(0xffceb36b),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SectionHeader(
+                  title: title,
+                  description: highProbability
+                      ? 'Evidence the model classified with higher confidence.'
+                      : 'Potentially relevant evidence requiring closer review.',
+                  leading: Icon(
+                    highProbability
+                        ? Icons.verified_outlined
+                        : Icons.low_priority,
+                    size: 19,
+                    color: highProbability
+                        ? const Color(0xff2c6a4b)
+                        : const Color(0xff7a5d0a),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 6),
+                ...entries.map(
+                  (entry) => Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Color(0x337b8992))),
+                    ),
+                    child: SelectableText(
+                      '${entry['statement']}\nCitation: ${entry['citation_status']}  Probability: ${entry['probability']}\nWarnings: ${entry['warnings']}',
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
 }
 
@@ -618,16 +772,40 @@ class _JsonSection extends StatelessWidget {
   final Object? value;
 
   @override
-  Widget build(BuildContext context) => ExpansionTile(
-    title: Text(title),
-    children: [
-      Padding(
-        padding: const EdgeInsets.all(8),
-        child: SelectableText(
-          const JsonEncoder.withIndent('  ').convert(value),
-        ),
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(top: 5),
+    decoration: BoxDecoration(
+      color: title.startsWith('Warnings')
+          ? const Color(0xfffff7df)
+          : Theme.of(context).colorScheme.surfaceContainerLow,
+      border: Border.all(
+        color: title.startsWith('Warnings')
+            ? const Color(0xffceb36b)
+            : Theme.of(context).colorScheme.outlineVariant,
       ),
-    ],
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: ExpansionTile(
+      leading: Icon(
+        title.startsWith('Warnings')
+            ? Icons.warning_amber_outlined
+            : Icons.data_object,
+        size: 18,
+      ),
+      title: Text(title, style: Theme.of(context).textTheme.titleSmall),
+      children: [
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.all(10),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SelectableText(
+              const JsonEncoder.withIndent('  ').convert(value),
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -659,27 +837,36 @@ class _RangeTile extends StatelessWidget {
         start is String &&
         end is String &&
         database.coreMessageForRange(revision.id, start, end) != null;
-    return Card(
-      child: ListTile(
-        title: Text('${range['range_id']}  $description'),
-        subtitle: Text(
-          '${range['start_message_id']} -> ${range['end_message_id']}\n${range['uncertainties']}',
-        ),
-        isThreeLine: true,
-        trailing: Wrap(
-          spacing: 4,
-          children: [
-            IconButton(
-              tooltip: 'View in transcript',
-              onPressed: valid ? onView : null,
-              icon: const Icon(Icons.center_focus_strong),
-            ),
-            IconButton(
-              tooltip: 'Save evidence block',
-              onPressed: valid ? onSave : null,
-              icon: const Icon(Icons.bookmark_add_outlined),
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Card(
+        child: ListTile(
+          leading: Icon(
+            valid ? Icons.link : Icons.link_off,
+            color: valid
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.error,
+          ),
+          title: Text('${range['range_id']}  $description'),
+          subtitle: Text(
+            '${range['start_message_id']} -> ${range['end_message_id']}\n${range['uncertainties']}',
+          ),
+          isThreeLine: true,
+          trailing: Wrap(
+            spacing: 4,
+            children: [
+              IconButton(
+                tooltip: 'View in transcript',
+                onPressed: valid ? onView : null,
+                icon: const Icon(Icons.center_focus_strong),
+              ),
+              IconButton(
+                tooltip: 'Save evidence block',
+                onPressed: valid ? onSave : null,
+                icon: const Icon(Icons.bookmark_add_outlined),
+              ),
+            ],
+          ),
         ),
       ),
     );
