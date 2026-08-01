@@ -27,20 +27,58 @@ class ConversationPage extends StatefulWidget {
 }
 
 class _ConversationCard {
-  _ConversationCard(this.question);
+  _ConversationCard(this.question) : startedAt = DateTime.now();
 
   final String question;
+  final DateTime startedAt;
   ConversationExecutionResult? outcome;
   Object? failure;
   final List<ConversationProgress> progress = [];
+  final List<_ActivityEntry> activity = [];
+  final List<_ProvisionalRange> provisionalRanges = [];
+  Duration elapsed = Duration.zero;
+  bool active = true;
+}
+
+class _ActivityEntry {
+  const _ActivityEntry({required this.title, this.details = const []});
+
+  final String title;
+  final List<String> details;
+}
+
+class _ProvisionalRange {
+  const _ProvisionalRange({
+    required this.windowNumber,
+    required this.sourceRangeIndex,
+    required this.threadId,
+    required this.startMessageId,
+    required this.endMessageId,
+    required this.summary,
+    required this.relevance,
+  });
+
+  final int windowNumber;
+  final int sourceRangeIndex;
+  final String threadId;
+  final String startMessageId;
+  final String endMessageId;
+  final String? summary;
+  final String? relevance;
 }
 
 class _ConversationPageState extends State<ConversationPage> {
+  static const int _defaultSemanticStrength = 40;
+  static const int _minimumSemanticStrength = 1;
+  static const int _maximumSemanticStrength = 500;
+
   final TextEditingController _question = TextEditingController();
   final GlobalKey<TranscriptEvidenceEditorState> _editorKey = GlobalKey();
   final List<_ConversationCard> _cards = [];
   RequestCancellation? _cancellation;
+  Timer? _progressTimer;
   bool _stopRequested = false;
+  int _semanticStrength = _defaultSemanticStrength;
   String? _error;
   String? _notice;
   int? _loadedRevisionId;
@@ -56,6 +94,7 @@ class _ConversationPageState extends State<ConversationPage> {
   @override
   void dispose() {
     workspace.removeListener(_onWorkspaceChanged);
+    _progressTimer?.cancel();
     _question.dispose();
     super.dispose();
   }
@@ -84,6 +123,7 @@ class _ConversationPageState extends State<ConversationPage> {
     }
     final card = _ConversationCard(text);
     final cancellation = RequestCancellation();
+    _startProgressTimer(card);
     setState(() {
       _error = null;
       _notice = null;
@@ -95,10 +135,11 @@ class _ConversationPageState extends State<ConversationPage> {
     try {
       final outcome = await ConversationWorkflow(workspace: workspace).run(
         text,
+        maximumPromptSuggestionMessages: _semanticStrength,
         cancellation: cancellation,
         onProgress: (item) {
           if (!mounted) return;
-          setState(() => card.progress.add(item));
+          setState(() => _recordProgress(card, item));
         },
       );
       if (mounted) setState(() => card.outcome = outcome);
@@ -115,6 +156,7 @@ class _ConversationPageState extends State<ConversationPage> {
         });
       }
     } finally {
+      _finishProgressTimer(card);
       if (mounted) {
         setState(() {
           _cancellation = null;
@@ -122,6 +164,162 @@ class _ConversationPageState extends State<ConversationPage> {
         });
       }
     }
+  }
+
+  void _recordProgress(_ConversationCard card, ConversationProgress item) {
+    card.progress.add(item);
+    final notice = _activityNotice(card, item);
+    if (notice != null) card.activity.add(notice);
+
+    final event = item.event;
+    if (event?.event != 'window_completed') return;
+    final data = _optionalEventData(event!);
+    final windowIndex = data?['window_index'];
+    if (windowIndex is! int) return;
+    final rawRanges = data?['accepted_ranges'];
+    if (rawRanges is! List) return;
+    for (final raw in rawRanges) {
+      if (raw is! Map) continue;
+      final range = raw.cast<String, dynamic>();
+      final sourceRangeIndex = range['source_range_index'];
+      final threadId = range['thread_id'];
+      final startMessageId = range['start_message_id'];
+      final endMessageId = range['end_message_id'];
+      if (sourceRangeIndex is! int ||
+          threadId is! String ||
+          startMessageId is! String ||
+          endMessageId is! String) {
+        continue;
+      }
+      card.provisionalRanges.add(
+        _ProvisionalRange(
+          windowNumber: windowIndex + 1,
+          sourceRangeIndex: sourceRangeIndex,
+          threadId: threadId,
+          startMessageId: startMessageId,
+          endMessageId: endMessageId,
+          summary: range['summary'] is String
+              ? range['summary'] as String
+              : null,
+          relevance: range['relevance'] is String
+              ? range['relevance'] as String
+              : null,
+        ),
+      );
+    }
+  }
+
+  _ActivityEntry? _activityNotice(
+    _ConversationCard card,
+    ConversationProgress item,
+  ) {
+    if (item.phase == 'planning_started') {
+      return const _ActivityEntry(title: 'Formulating Analysis Plan...');
+    }
+    if (item.phase == 'planning_completed') {
+      final details = <String>['User query: ${card.question}'];
+      final expanded = item.metadata['analysis_question'];
+      if (expanded is String && expanded.trim().isNotEmpty) {
+        details.add('Expanded search prompt: $expanded');
+      }
+      final queries = item.metadata['retrieval_queries'];
+      if (queries is List) {
+        final terms = queries.whereType<String>().toList();
+        if (terms.isNotEmpty) {
+          details.add(
+            'keywords extracted for preliminary suggestions: ${terms.join(', ')}',
+          );
+        }
+      }
+      return _ActivityEntry(title: 'Analysis Plan Ready.', details: details);
+    }
+
+    final event = item.event;
+    if (event == null) return null;
+    final name = event.event;
+    final data = _optionalEventData(event);
+    if (name == 'retrieval_suggestions_built') {
+      final count = data?['selected_suggestion_message_count'];
+      if (count is int) {
+        return _ActivityEntry(
+          title:
+              'Flagged $count message${count == 1 ? '' : 's'} as preliminary suggestions for consideration.',
+        );
+      }
+      return null;
+    }
+    if (name == 'window_plan_created') {
+      final count = data?['window_count'];
+      if (count is int) {
+        return _ActivityEntry(
+          title: 'Splitting the working corpus into $count windows.',
+        );
+      }
+      return null;
+    }
+    if (name == 'window_started') {
+      final alreadyStarted = card.activity.any(
+        (entry) => entry.title == 'Beginning Analysis...',
+      );
+      return alreadyStarted
+          ? null
+          : const _ActivityEntry(title: 'Beginning Analysis...');
+    }
+    if (name == 'window_completed') {
+      final windowIndex = data?['window_index'];
+      final windowCount = data?['window_count'];
+      if (windowIndex is! int || windowCount is! int) return null;
+      final rangeCount = data?['accepted_range_count'];
+      final details = rangeCount is int
+          ? <String>[
+              'Window ${windowIndex + 1} returned $rangeCount candidate message '
+                  'range${rangeCount == 1 ? '' : 's'}.',
+            ]
+          : const <String>[];
+      return _ActivityEntry(
+        title:
+            'Window ${windowIndex + 1} complete of $windowCount total windows.',
+        details: details,
+      );
+    }
+    if (name == 'ledger_built') {
+      final rangeCount = data?['evidence_range_count'];
+      if (rangeCount is int) {
+        return _ActivityEntry(
+          title:
+              'All Windows Complete, passing $rangeCount total evidence ranges for synthesis into final answer.',
+        );
+      }
+      return null;
+    }
+    if (name == 'completed') {
+      return const _ActivityEntry(
+        title: 'Synthesis Complete - Displaying final answer.',
+      );
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _optionalEventData(ServerEvent event) {
+    final raw = event.value['data'];
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  void _startProgressTimer(_ConversationCard card) {
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || !card.active) return;
+      setState(() {
+        card.elapsed = DateTime.now().difference(card.startedAt);
+      });
+    });
+  }
+
+  void _finishProgressTimer(_ConversationCard card) {
+    card.elapsed = DateTime.now().difference(card.startedAt);
+    card.active = false;
+    _progressTimer?.cancel();
+    _progressTimer = null;
   }
 
   void _cancel() {
@@ -305,6 +503,41 @@ class _ConversationPageState extends State<ConversationPage> {
                       : (_stopRequested ? 'Stopping...' : 'Stop'),
                 ),
               ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 190,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Semantic Strength',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Slider(
+                            min: _minimumSemanticStrength.toDouble(),
+                            max: _maximumSemanticStrength.toDouble(),
+                            divisions:
+                                _maximumSemanticStrength -
+                                _minimumSemanticStrength,
+                            value: _semanticStrength.toDouble(),
+                            label: '$_semanticStrength',
+                            onChanged: _cancellation == null
+                                ? (value) => setState(
+                                    () => _semanticStrength = value.round(),
+                                  )
+                                : null,
+                          ),
+                        ),
+                        SizedBox(width: 30, child: Text('$_semanticStrength')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -328,73 +561,6 @@ class _ConversationPageState extends State<ConversationPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ignore: unused_element
-class _ConversationStatus extends StatelessWidget {
-  const _ConversationStatus({
-    required this.active,
-    required this.elapsed,
-    required this.progress,
-    required this.onCancel,
-  });
-
-  final bool active;
-  final Duration elapsed;
-  final List<ConversationProgress> progress;
-  final VoidCallback? onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    final latest = progress.isEmpty ? null : progress.last;
-    return Card(
-      margin: EdgeInsets.zero,
-      color: active
-          ? Theme.of(
-              context,
-            ).colorScheme.primaryContainer.withValues(alpha: 0.45)
-          : Theme.of(context).colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        child: Row(
-          children: [
-            if (active)
-              const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            if (active) const SizedBox(width: 8),
-            if (!active)
-              const Icon(
-                Icons.check_circle_outline,
-                size: 17,
-                color: Color(0xff2c6a4b),
-              ),
-            if (!active) const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    active ? 'Processing request' : 'Ready',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  if (latest != null)
-                    Text(
-                      '${latest.message}  (${_formatDuration(elapsed)})',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
-              ),
-            ),
-            if (onCancel != null)
-              OutlinedButton(onPressed: onCancel, child: const Text('Cancel')),
-          ],
-        ),
       ),
     );
   }
@@ -455,38 +621,86 @@ class _ConversationCardView extends StatelessWidget {
       Card(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: card.outcome == null
-              ? card.failure == null
-                    ? _WorkingConversationState(progress: card.progress)
-                    : card.failure is GatewayError &&
-                          (card.failure as GatewayError).cancelled
-                    ? SelectableText('CANCELLED\n${card.failure}')
-                    : SelectableText('FAILED\n${card.failure}')
-              : _ResultView(
-                  result: card.outcome!.result,
-                  database: database,
-                  revision: revision,
-                  onViewRange: onViewRange,
-                  onSaveRange: onSaveRange,
-                ),
+          child: _conversationBody(context),
         ),
       ),
       const SizedBox(height: 12),
     ],
   );
+
+  Widget _conversationBody(BuildContext context) {
+    if (card.outcome == null) {
+      if (card.failure == null) {
+        return _WorkingConversationState(
+          progress: card.progress,
+          activity: card.activity,
+          elapsed: card.elapsed,
+          provisionalRanges: card.provisionalRanges,
+        );
+      }
+      final cancelled =
+          card.failure is GatewayError &&
+          (card.failure as GatewayError).cancelled;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SelectableText(
+            '${cancelled ? 'CANCELLED' : 'FAILED'}\n${card.failure}',
+          ),
+          if (card.provisionalRanges.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _ProvisionalEvidencePanel(
+              ranges: card.provisionalRanges,
+              incomplete: true,
+            ),
+          ],
+          if (card.activity.isNotEmpty)
+            _ActivityHistory(activity: card.activity),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RunSummary(card: card, result: card.outcome!.result),
+        const SizedBox(height: 8),
+        _ResultView(
+          result: card.outcome!.result,
+          database: database,
+          revision: revision,
+          onViewRange: onViewRange,
+          onSaveRange: onSaveRange,
+        ),
+        if (card.activity.isNotEmpty) _ActivityHistory(activity: card.activity),
+      ],
+    );
+  }
 }
 
 class _WorkingConversationState extends StatelessWidget {
-  const _WorkingConversationState({required this.progress});
+  const _WorkingConversationState({
+    required this.progress,
+    required this.activity,
+    required this.elapsed,
+    required this.provisionalRanges,
+  });
 
   final List<ConversationProgress> progress;
+  final List<_ActivityEntry> activity;
+  final Duration elapsed;
+  final List<_ProvisionalRange> provisionalRanges;
 
   @override
   Widget build(BuildContext context) {
-    final latest = progress.isEmpty ? null : progress.last;
+    final latest = activity.isEmpty ? null : activity.last;
     final windowEvents = progress
         .map((item) => item.event)
         .whereType<ServerEvent>()
+        // Terminal envelopes carry `result` or `error`, not progress `data`.
+        // They can briefly be present in the active card while the workflow's
+        // final state is being applied, especially when another widget
+        // triggers a rebuild (such as expanding Activity).
+        .where((event) => !event.terminal)
         .toList();
     final completedWindows = windowEvents
         .where((event) => event.event == 'window_completed')
@@ -496,6 +710,11 @@ class _WorkingConversationState extends StatelessWidget {
         .whereType<int>()
         .toList();
     final windowCount = windowCounts.isEmpty ? null : windowCounts.first;
+    final heartbeats = windowEvents
+        .where((event) => event.event == 'heartbeat')
+        .toList();
+    final latestHeartbeat = heartbeats.isEmpty ? null : heartbeats.last;
+    final activeWindows = latestHeartbeat?.data['active_windows'];
     final progressValue = windowCount == null || windowCount == 0
         ? null
         : (completedWindows / windowCount).clamp(0.0, 1.0).toDouble();
@@ -511,10 +730,26 @@ class _WorkingConversationState extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                latest?.message ?? 'Working...',
-                style: Theme.of(context).textTheme.titleSmall,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    latest?.title ?? 'Working',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  if (latest != null && latest.details.isNotEmpty)
+                    Text(
+                      latest.details.first,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
               ),
+            ),
+            Text(
+              _formatDuration(elapsed),
+              style: Theme.of(context).textTheme.labelMedium,
             ),
           ],
         ),
@@ -523,10 +758,131 @@ class _WorkingConversationState extends StatelessWidget {
           LinearProgressIndicator(value: progressValue),
           const SizedBox(height: 5),
           Text(
-            '$completedWindows of $windowCount windows completed',
+            '$completedWindows of $windowCount windows completed'
+            '${activeWindows is int ? ' · $activeWindows active' : ''}',
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
+        if (provisionalRanges.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _ProvisionalEvidencePanel(ranges: provisionalRanges),
+        ],
+        if (activity.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _ActivityHistory(activity: activity),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProvisionalRangeTile extends StatelessWidget {
+  const _ProvisionalRangeTile(this.range);
+
+  final _ProvisionalRange range;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    dense: true,
+    contentPadding: EdgeInsets.zero,
+    title: Text(
+      'Window ${range.windowNumber} · ${range.summary ?? 'Description unavailable'}',
+    ),
+    subtitle: Text(
+      '${range.startMessageId} -> ${range.endMessageId}'
+      '${range.relevance == null ? '' : '\n${range.relevance}'}',
+    ),
+  );
+}
+
+class _ProvisionalEvidencePanel extends StatelessWidget {
+  const _ProvisionalEvidencePanel({
+    required this.ranges,
+    this.incomplete = false,
+  });
+
+  final List<_ProvisionalRange> ranges;
+  final bool incomplete;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        'Preliminary evidence - final synthesis may merge, reclassify, or omit these ranges.'
+        '${incomplete ? ' This run is incomplete.' : ''}',
+      ),
+      const SizedBox(height: 6),
+      ...ranges.map(_ProvisionalRangeTile.new),
+    ],
+  );
+}
+
+class _RunSummary extends StatelessWidget {
+  const _RunSummary({required this.card, required this.result});
+
+  final _ConversationCard card;
+  final Map<String, dynamic> result;
+
+  @override
+  Widget build(BuildContext context) {
+    final coverage = result['coverage'] is Map
+        ? (result['coverage'] as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
+    final usable = coverage['usable_window_count'];
+    final planned = coverage['planned_window_count'];
+    final ranges = coverage['evidence_range_count'];
+    final parts = <String>['Completed in ${_formatDuration(card.elapsed)}'];
+    if (usable is int && planned is int)
+      parts.add('$usable/$planned windows usable');
+    if (ranges is int) parts.add('$ranges candidate ranges');
+    return Text(
+      parts.join(' - '),
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
+}
+
+class _ActivityHistory extends StatelessWidget {
+  const _ActivityHistory({required this.activity});
+
+  final List<_ActivityEntry> activity;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      title: Text('Activity (${activity.length} updates)'),
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 280),
+          child: ListView.builder(
+            primary: false,
+            shrinkWrap: true,
+            itemCount: activity.length,
+            itemBuilder: (context, index) {
+              final item = activity[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.title),
+                    for (final detail in item.details)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          detail,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -920,5 +1276,11 @@ class _RangeTile extends StatelessWidget {
 
 String _formatDuration(Duration value) {
   final seconds = value.inSeconds;
-  return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
+  final hours = seconds ~/ 3600;
+  final minutes = (seconds % 3600) ~/ 60;
+  final remainder = seconds % 60;
+  if (hours > 0) {
+    return '$hours:${minutes.toString().padLeft(2, '0')}:${remainder.toString().padLeft(2, '0')}';
+  }
+  return '${minutes.toString().padLeft(2, '0')}:${remainder.toString().padLeft(2, '0')}';
 }

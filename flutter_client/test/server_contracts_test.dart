@@ -76,6 +76,29 @@ void main() {
         'output_tokens': 20,
         'usage_source': 'provider_reported',
         'estimated_cost': 0.01,
+        'accepted_ranges': [
+          {
+            'source_range_index': 0,
+            'thread_id': 't1',
+            'start_message_id': 'm1',
+            'end_message_id': 'm2',
+            'summary': 'A provisional range.',
+            'relevance': null,
+            'normalizations': ['endpoint_order_swapped'],
+          },
+          {
+            'source_range_index': 1,
+            'thread_id': 't1',
+            'start_message_id': 'm3',
+            'end_message_id': 'm4',
+            'summary': null,
+            'relevance': 'Relevant to the question.',
+            'normalizations': [],
+          },
+        ],
+        'window_uncertainties': [
+          'The exchange may continue outside this window.',
+        ],
       },
       'evidence_validation_completed': {
         'planned_window_count': 2,
@@ -233,6 +256,41 @@ void main() {
           'server_items_per_second': 1.0,
         }),
         endpoint: '/v1/embeddings',
+      ),
+      throwsA(isA<GatewayValidationError>()),
+    );
+  });
+
+  test('window completion rejects malformed provisional range details', () {
+    final base = <String, dynamic>{
+      'window_id': 'w1',
+      'window_index': 0,
+      'window_count': 1,
+      'accepted_range_count': 1,
+      'rejected_range_count': 0,
+      'normalized_range_count': 0,
+      'validation_status': 'complete',
+      'input_tokens': 1,
+      'output_tokens': 1,
+      'usage_source': 'estimated',
+      'estimated_cost': null,
+      'accepted_ranges': [
+        {
+          'source_range_index': 0,
+          'thread_id': 't1',
+          'start_message_id': 'm1',
+          'end_message_id': 'm2',
+          'summary': null,
+          'relevance': null,
+          'normalizations': ['bad-normalization'],
+        },
+      ],
+      'window_uncertainties': [],
+    };
+    expect(
+      () => validateStreamEvent(
+        _event('window_completed', base),
+        endpoint: '/v1/conversational-analysis',
       ),
       throwsA(isA<GatewayValidationError>()),
     );

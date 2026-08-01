@@ -23,11 +23,15 @@ void main() {
     'gateway validates JSON planning and NDJSON embedding streams',
     () async {
       final seenRequestIds = <String>[];
+      final seenSuggestionLimits = <int>[];
       server.listen((request) async {
         final body = jsonDecode(await utf8.decoder.bind(request).join()) as Map;
         final requestId = body['request_id'] as String;
         seenRequestIds.add(requestId);
         if (request.uri.path == '/v1/conversational-plan') {
+          seenSuggestionLimits.add(
+            body['maximum_prompt_suggestion_messages'] as int,
+          );
           request.response.headers.contentType = ContentType.json;
           request.response.write(jsonEncode(_plan(requestId)));
         } else {
@@ -65,7 +69,10 @@ void main() {
         await request.response.close();
       });
 
-      final plan = await gateway.conversationalPlan('Question?');
+      final plan = await gateway.conversationalPlan(
+        'Question?',
+        maximumPromptSuggestionMessages: 23,
+      );
       expect(plan.planId, '22222222-2222-4222-8222-222222222222');
       final received = <ServerEvent>[];
       await for (final event in gateway.embeddings([
@@ -80,6 +87,7 @@ void main() {
       ]);
       expect(seenRequestIds, hasLength(2));
       expect(seenRequestIds.toSet(), hasLength(2));
+      expect(seenSuggestionLimits, [23]);
     },
   );
 

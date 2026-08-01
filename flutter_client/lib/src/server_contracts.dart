@@ -562,6 +562,8 @@ void _validateProgressEvent(String event, Map<String, dynamic> data) {
       'output_tokens',
       'usage_source',
       'estimated_cost',
+      'accepted_ranges',
+      'window_uncertainties',
     }, event);
     _trimmedString(data['window_id'], 'completed window ID', 512);
     _nonnegativeInt(data['window_index'], 'completed window index');
@@ -581,6 +583,52 @@ void _validateProgressEvent(String event, Map<String, dynamic> data) {
             (data['accepted_range_count'] as int) ||
         !{'provider_reported', 'estimated'}.contains(data['usage_source'])) {
       throw GatewayValidationError('completed window data is inconsistent');
+    }
+    final acceptedRanges = _list(data['accepted_ranges'], 'accepted ranges');
+    if (acceptedRanges.length != data['accepted_range_count']) {
+      throw GatewayValidationError('accepted range count is inconsistent');
+    }
+    final sourceIndexes = <int>[];
+    for (final rawRange in acceptedRanges) {
+      final range = _map(rawRange, 'accepted range');
+      _exact(range, {
+        'source_range_index',
+        'thread_id',
+        'start_message_id',
+        'end_message_id',
+        'summary',
+        'relevance',
+        'normalizations',
+      }, 'accepted range');
+      _nonnegativeInt(
+        range['source_range_index'],
+        'accepted range source index',
+      );
+      sourceIndexes.add(range['source_range_index'] as int);
+      _trimmedString(range['thread_id'], 'accepted range thread ID', 512);
+      _trimmedString(range['start_message_id'], 'accepted range start ID', 512);
+      _trimmedString(range['end_message_id'], 'accepted range end ID', 512);
+      _nullableText(range['summary'], 'accepted range summary');
+      _nullableText(range['relevance'], 'accepted range relevance');
+      final normalizations = _list(
+        range['normalizations'],
+        'accepted range normalizations',
+      );
+      if (normalizations.any((value) => value != 'endpoint_order_swapped')) {
+        throw GatewayValidationError('accepted range normalization is invalid');
+      }
+    }
+    if (sourceIndexes.toSet().length != sourceIndexes.length ||
+        !_isSorted(sourceIndexes)) {
+      throw GatewayValidationError(
+        'accepted range source indexes are unordered',
+      );
+    }
+    for (final uncertainty in _list(
+      data['window_uncertainties'],
+      'window uncertainties',
+    )) {
+      _trimmedString(uncertainty, 'window uncertainty', 20000);
     }
     _nullableNonnegativeNumber(data['estimated_cost'], 'window cost');
     return;
@@ -1284,9 +1332,9 @@ void _validateWarnings(Object? raw, String label) {
   }
 }
 
-String? _nullableText(Object? value, String label) {
+String? _nullableText(Object? value, String label, [int maximum = 20000]) {
   if (value == null) return null;
-  if (value is! String || value.trim().isEmpty) {
+  if (value is! String || value.trim().isEmpty || value.length > maximum) {
     throw GatewayValidationError('$label is invalid');
   }
   return value;
@@ -1401,6 +1449,13 @@ String _trimmedString(Object? value, String label, int maximum) {
       value != value.trim())
     throw GatewayValidationError('$label is invalid');
   return value;
+}
+
+bool _isSorted(List<int> values) {
+  for (var index = 1; index < values.length; index++) {
+    if (values[index] < values[index - 1]) return false;
+  }
+  return true;
 }
 
 void _positiveInt(Object? value, String label) {

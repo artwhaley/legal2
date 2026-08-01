@@ -279,6 +279,7 @@ class _FakeGateway implements ServerGateway {
   @override
   Future<AnalysisPlanContract> conversationalPlan(
     String question, {
+    int maximumPromptSuggestionMessages = 40,
     RequestCancellation? cancellation,
   }) async => AnalysisPlanContract({
     'request_id': '11111111-1111-4111-8111-111111111111',

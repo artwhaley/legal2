@@ -39,6 +39,7 @@ abstract interface class ServerGateway {
 
   Future<AnalysisPlanContract> conversationalPlan(
     String question, {
+    int maximumPromptSuggestionMessages = 40,
     RequestCancellation? cancellation,
   });
 
@@ -62,6 +63,7 @@ class UnconfiguredServerGateway implements ServerGateway {
   @override
   Future<AnalysisPlanContract> conversationalPlan(
     String question, {
+    int maximumPromptSuggestionMessages = 40,
     RequestCancellation? cancellation,
   }) => Future.error(
     GatewayError('No server gateway is configured for this operation'),
@@ -101,14 +103,24 @@ class HttpServerGateway implements ServerGateway {
   @override
   Future<AnalysisPlanContract> conversationalPlan(
     String question, {
+    int maximumPromptSuggestionMessages = 40,
     RequestCancellation? cancellation,
   }) async {
     if (question.trim().isEmpty)
       throw ArgumentError('Question cannot be blank');
+    if (maximumPromptSuggestionMessages < 1 ||
+        maximumPromptSuggestionMessages > 500) {
+      throw ArgumentError.value(
+        maximumPromptSuggestionMessages,
+        'maximumPromptSuggestionMessages',
+        'must be between 1 and 500',
+      );
+    }
     final requestId = newRequestId();
     final result = await _postJson('/v1/conversational-plan', {
       'request_id': requestId,
       'question': question,
+      'maximum_prompt_suggestion_messages': maximumPromptSuggestionMessages,
     }, cancellation: cancellation);
     validateAnalysisPlan(result);
     if (result['request_id'] != requestId) {

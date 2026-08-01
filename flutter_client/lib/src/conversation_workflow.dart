@@ -12,12 +12,14 @@ class ConversationProgress {
     required this.message,
     required this.elapsed,
     this.event,
+    this.metadata = const {},
   });
 
   final String phase;
   final String message;
   final Duration elapsed;
   final ServerEvent? event;
+  final Map<String, dynamic> metadata;
 }
 
 class ConversationExecutionResult {
@@ -45,12 +47,21 @@ class ConversationWorkflow {
 
   Future<ConversationExecutionResult> run(
     String question, {
+    int maximumPromptSuggestionMessages = 40,
     RequestCancellation? cancellation,
     ConversationProgressCallback? onProgress,
   }) async {
     final normalizedQuestion = question.trim();
     if (normalizedQuestion.isEmpty) {
       throw ArgumentError('Question cannot be blank');
+    }
+    if (maximumPromptSuggestionMessages < 1 ||
+        maximumPromptSuggestionMessages > 500) {
+      throw ArgumentError.value(
+        maximumPromptSuggestionMessages,
+        'maximumPromptSuggestionMessages',
+        'must be between 1 and 500',
+      );
     }
     final database = workspace.database;
     final revision = workspace.selectedRevision;
@@ -69,12 +80,18 @@ class ConversationWorkflow {
     final lease = workspace.beginRemoteOperation('conversation analysis');
     final stopwatch = Stopwatch()..start();
     final progress = <ConversationProgress>[];
-    void publish(String phase, String message, {ServerEvent? event}) {
+    void publish(
+      String phase,
+      String message, {
+      ServerEvent? event,
+      Map<String, dynamic> metadata = const {},
+    }) {
       final item = ConversationProgress(
         phase: phase,
         message: message,
         elapsed: stopwatch.elapsed,
         event: event,
+        metadata: metadata,
       );
       progress.add(item);
       onProgress?.call(item);
@@ -88,12 +105,20 @@ class ConversationWorkflow {
       );
       final plan = await workspace.gateway.conversationalPlan(
         normalizedQuestion,
+        maximumPromptSuggestionMessages: maximumPromptSuggestionMessages,
         cancellation: cancellation,
       );
       cancellation?.checkpoint();
       publish(
         'planning_completed',
-        'Analysis plan accepted with ${plan.retrievalQueries.length} retrieval quer${plan.retrievalQueries.length == 1 ? 'y' : 'ies'}.',
+        'Analysis Plan Ready.',
+        metadata: {
+          'analysis_question': plan.analysisPlan['analysis_question'],
+          'retrieval_queries': plan.retrievalQueries
+              .map((query) => query['text'])
+              .whereType<String>()
+              .toList(growable: false),
+        },
       );
 
       final mode = plan.searchPolicy['mode'] as String;
