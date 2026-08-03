@@ -145,6 +145,25 @@ def test_planning_output_is_complete_and_strict():
         AnalysisPlanningOutput.model_validate({**_plan_output(), "retrieval_queries": ["question response", " Question response"]})
 
 
+def test_planning_output_dispositions_are_mutually_exclusive():
+    clarification = AnalysisPlanningOutput.model_validate({
+        "disposition": "needs_clarification",
+        "clarification_question": "Which matter?",
+    })
+    assert clarification.disposition == "needs_clarification"
+    out_of_scope = AnalysisPlanningOutput.model_validate({
+        "disposition": "out_of_scope",
+        "response_message": "This interface analyzes the corpus.",
+    })
+    assert out_of_scope.disposition == "out_of_scope"
+    with pytest.raises(ValidationError):
+        AnalysisPlanningOutput.model_validate({
+            "disposition": "needs_clarification",
+            "clarification_question": "Which matter?",
+            "analysis_question": "Find it.",
+        })
+
+
 def test_public_plan_mode_is_explicit_and_embedding_nullable():
     plan = AnalysisPlanResponse(
         request_id=_uuid(), config_version=4, analysis_plan_id=_uuid(),

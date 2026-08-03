@@ -60,7 +60,7 @@ def _exact(value: Any, keys: set[str], label: str) -> dict[str, Any]:
 
 
 def _string(value: Any, label: str, *, maximum: int = 20_000, trimmed: bool = False) -> str:
-    if not isinstance(value, str) or not value or len(value) > maximum:
+    if not isinstance(value, str) or not value.strip() or len(value) > maximum:
         raise ValueError(f"{label} is invalid")
     if trimmed and value != value.strip():
         raise ValueError(f"{label} must be trimmed")
@@ -563,10 +563,31 @@ def validate_stream_value(value: Any, *, endpoint: str) -> dict[str, Any]:
         _validate_nonnegative(payload, {"window_index", "suggestion_range_count"}, event)
         _validate_nonnegative(payload, {"window_count", "message_count"}, event, positive={"window_count", "message_count"})
     elif event == "window_completed":
-        _exact(payload, {"window_id", "window_index", "window_count", "accepted_range_count", "rejected_range_count", "normalized_range_count", "validation_status", "input_tokens", "output_tokens", "usage_source", "estimated_cost"}, event)
+        _exact(payload, {"window_id", "window_index", "window_count", "accepted_range_count", "rejected_range_count", "normalized_range_count", "validation_status", "input_tokens", "output_tokens", "usage_source", "estimated_cost", "accepted_ranges", "window_uncertainties"}, event)
         _string(payload["window_id"], f"{event}.window_id")
         _validate_nonnegative(payload, {"window_index", "accepted_range_count", "rejected_range_count", "normalized_range_count", "input_tokens", "output_tokens"}, event)
         _validate_nonnegative(payload, {"window_count"}, event, positive={"window_count"})
+        accepted_ranges = payload["accepted_ranges"]
+        if not isinstance(accepted_ranges, list) or payload["accepted_range_count"] != len(accepted_ranges):
+            raise ValueError("accepted range count must match accepted ranges")
+        indexes: list[int] = []
+        for item in accepted_ranges:
+            _exact(item, {"source_range_index", "thread_id", "start_message_id", "end_message_id", "summary", "relevance", "normalizations"}, "window_completed.accepted_range")
+            if not _int(item["source_range_index"]) or item["source_range_index"] < 0:
+                raise ValueError("accepted range source index is invalid")
+            indexes.append(item["source_range_index"])
+            for key in ("thread_id", "start_message_id", "end_message_id"):
+                _string(item[key], f"window_completed.accepted_range.{key}", maximum=512)
+            for key in ("summary", "relevance"):
+                if item[key] is not None:
+                    _string(item[key], f"window_completed.accepted_range.{key}")
+            if not isinstance(item["normalizations"], list) or any(value != "endpoint_order_swapped" for value in item["normalizations"]):
+                raise ValueError("accepted range normalization is invalid")
+        if len(indexes) != len(set(indexes)) or indexes != sorted(indexes):
+            raise ValueError("accepted range source indexes are not unique and ordered")
+        uncertainties = payload["window_uncertainties"]
+        if not isinstance(uncertainties, list) or any(not isinstance(value, str) or not value.strip() for value in uncertainties):
+            raise ValueError("window uncertainties are invalid")
         if payload["validation_status"] not in {"complete", "partial"} or payload["validation_status"] != ("partial" if payload["rejected_range_count"] else "complete") or payload["normalized_range_count"] > payload["accepted_range_count"] or payload["usage_source"] not in {"provider_reported", "estimated"}:
             raise ValueError("window validation totals are inconsistent")
     elif event == "evidence_validation_completed":

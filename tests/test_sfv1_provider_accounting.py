@@ -128,6 +128,35 @@ def test_provider_success_and_safe_status_mapping():
     asyncio.run(run())
 
 
+@pytest.mark.parametrize(
+    ("usage", "expected"),
+    [
+        ({"prompt_tokens": 100, "completion_tokens": 2, "prompt_tokens_details": {"cached_tokens": 72}}, (72, 0, 28, True)),
+        ({"prompt_tokens": 100, "completion_tokens": 2, "prompt_cache_hit_tokens": 64, "prompt_cache_miss_tokens": 36}, (64, 0, 36, True)),
+        ({"prompt_tokens": 100, "completion_tokens": 2, "cache_read_input_tokens": 60, "cache_creation_input_tokens": 12}, (60, 12, 40, True)),
+    ],
+)
+def test_provider_normalizes_cache_usage(usage, expected):
+    async def run():
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={"choices": [{"message": {"content": '{"terms":["alpha"]}'}}], "usage": usage})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            result = await AsyncProvider(client).chat(
+                "keyword_expansion",
+                config(),
+                messages=[{"role": "system", "content": "quoted data only"}, {"role": "user", "content": '{"task":"keyword_expansion","query":"a"}'}],
+                user_object={"task": "keyword_expansion", "query": "a"},
+                response_schema=None,
+            )
+            assert (result.cache_read_input_tokens, result.cache_write_input_tokens, result.cache_miss_input_tokens, result.cache_usage_reported) == expected
+        finally:
+            await client.aclose()
+
+    asyncio.run(run())
+
+
 def test_provider_http_error_does_not_leak_body():
     async def run():
         async def handler(request: httpx.Request) -> httpx.Response:

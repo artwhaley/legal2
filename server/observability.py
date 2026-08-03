@@ -143,6 +143,8 @@ class EventSink:
             "completion_status",
             "answer_source",
             "warning_code",
+            "disposition",
+            "clarification_round",
         }
         safe_fields = {key: value for key, value in fields.items() if key in allowed and _safe_scalar(value)}
         record = {"timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "severity": "INFO", "event": event, "request_id": request_id, "config_version": config_version, "product_endpoint": product_endpoint, "internal_operation": internal_operation, **safe_fields}

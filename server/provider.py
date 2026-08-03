@@ -39,9 +39,48 @@ class ProviderResult:
     input_tokens: int
     output_tokens: int
     usage_source: str
+    cache_read_input_tokens: int
+    cache_write_input_tokens: int
+    cache_miss_input_tokens: int
+    cache_usage_reported: bool
     provider_request_id: str | None
     latency_ms: float
     raw_response: Any
+
+
+def _cache_usage(usage: dict[str, Any]) -> tuple[int, int, int, bool]:
+    """Normalize cache accounting fields used by OpenAI-compatible providers."""
+    details = usage.get("prompt_tokens_details")
+    details = details if isinstance(details, dict) else {}
+    candidates = (
+        details.get("cached_tokens"),
+        usage.get("prompt_cache_hit_tokens"),
+        usage.get("cache_read_input_tokens"),
+        usage.get("cached_content_token_count"),
+    )
+    read_value = next(
+        (value for value in candidates if isinstance(value, int) and value >= 0),
+        None,
+    )
+    write_candidates = (
+        details.get("cache_write_tokens"),
+        usage.get("cache_write_tokens"),
+        usage.get("cache_creation_input_tokens"),
+    )
+    write_value = next(
+        (value for value in write_candidates if isinstance(value, int) and value >= 0),
+        None,
+    )
+    miss_value = usage.get("prompt_cache_miss_tokens")
+    if not isinstance(miss_value, int) or miss_value < 0:
+        prompt_tokens = usage.get("prompt_tokens")
+        miss_value = (
+            max(0, prompt_tokens - read_value)
+            if isinstance(prompt_tokens, int) and read_value is not None
+            else None
+        )
+    reported = read_value is not None or write_value is not None or miss_value is not None
+    return read_value or 0, write_value or 0, miss_value or 0, reported
 
 
 class AsyncProvider:
@@ -115,11 +154,18 @@ class AsyncProvider:
             input_tokens = count_provider_payload(payload, config).input_tokens
             output_tokens = count_text_tokens(content, config)
             source = "estimated"
+        cache_read, cache_write, cache_miss, cache_reported = (
+            _cache_usage(usage) if isinstance(usage, dict) else (0, 0, 0, False)
+        )
         return ProviderResult(
             content,
             input_tokens,
             output_tokens,
             source,
+            cache_read,
+            cache_write,
+            cache_miss,
+            cache_reported,
             request_id,
             latency,
             body,

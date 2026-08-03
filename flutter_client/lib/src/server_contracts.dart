@@ -99,6 +99,12 @@ class AnalysisPlanContract {
 
   String get requestId => value['request_id'] as String;
   int get configVersion => value['config_version'] as int;
+  String get disposition =>
+      (value['disposition'] as String?) ?? 'analyze_corpus';
+  bool get analyzesCorpus => disposition == 'analyze_corpus';
+  String? get clarificationQuestion =>
+      value['clarification_question'] as String?;
+  String? get responseMessage => value['response_message'] as String?;
   String get planId => value['analysis_plan_id'] as String;
   Map<String, dynamic> get analysisPlan =>
       (value['analysis_plan'] as Map).cast<String, dynamic>();
@@ -113,11 +119,16 @@ class AnalysisPlanContract {
       : (value['embedding'] as Map).cast<String, dynamic>();
 }
 
+class PlanningDecisionContract extends AnalysisPlanContract {
+  const PlanningDecisionContract(super.value);
+}
+
 void validateAnalysisPlan(Object? raw) {
   final value = _map(raw, 'analysis plan');
   _exact(value, {
     'request_id',
     'config_version',
+    'disposition',
     'analysis_plan_id',
     'compatibility_fingerprint',
     'analysis_plan',
@@ -129,6 +140,9 @@ void validateAnalysisPlan(Object? raw) {
   _uuid(value['request_id'], 'request_id');
   _positiveInt(value['config_version'], 'config_version');
   _uuid(value['analysis_plan_id'], 'analysis_plan_id');
+  if (value['disposition'] != 'analyze_corpus') {
+    throw GatewayValidationError('analysis plan disposition is invalid');
+  }
   _fingerprint(value['compatibility_fingerprint'], 'compatibility_fingerprint');
   _validatePlanBody(value['analysis_plan']);
   final queries = _list(value['retrieval_queries'], 'retrieval_queries');
@@ -173,6 +187,52 @@ void validateAnalysisPlan(Object? raw) {
     throw GatewayValidationError('none analysis plan must have null embedding');
   }
   _validateUsage(value['usage'], 'analysis plan usage');
+}
+
+void validatePlanningDecision(Object? raw) {
+  final value = _map(raw, 'planning decision');
+  if (!value.containsKey('disposition')) {
+    validateAnalysisPlan({...value, 'disposition': 'analyze_corpus'});
+    return;
+  }
+  final disposition = value['disposition'];
+  if (disposition == 'analyze_corpus') {
+    validateAnalysisPlan(value);
+    return;
+  }
+  if (disposition == 'needs_clarification') {
+    _exact(value, {
+      'request_id',
+      'config_version',
+      'disposition',
+      'clarification_question',
+      'usage',
+    }, 'clarification decision');
+    _uuid(value['request_id'], 'request_id');
+    _positiveInt(value['config_version'], 'config_version');
+    _trimmedString(
+      value['clarification_question'],
+      'clarification question',
+      20000,
+    );
+    _validateUsage(value['usage'], 'clarification decision usage');
+    return;
+  }
+  if (disposition == 'out_of_scope') {
+    _exact(value, {
+      'request_id',
+      'config_version',
+      'disposition',
+      'response_message',
+      'usage',
+    }, 'out-of-scope decision');
+    _uuid(value['request_id'], 'request_id');
+    _positiveInt(value['config_version'], 'config_version');
+    _trimmedString(value['response_message'], 'out-of-scope response', 20000);
+    _validateUsage(value['usage'], 'out-of-scope decision usage');
+    return;
+  }
+  throw GatewayValidationError('planning disposition is invalid');
 }
 
 void validateAnalysisContext(Object? raw) {

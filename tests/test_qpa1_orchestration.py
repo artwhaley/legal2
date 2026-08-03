@@ -63,6 +63,22 @@ def test_none_mode_runs_one_frozen_plan_through_extraction_and_synthesis(tmp_pat
     assert result["coverage"]["message_count"] == 2
 
 
+def test_planning_request_can_override_prompt_suggestion_limit(tmp_path):
+    app = _app(
+        tmp_path,
+        config=server_config(
+            global_config=GlobalConfig(retrieval_assistance_mode="none")
+        ),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/conversational-plan",
+            json={**_body(), "maximum_prompt_suggestion_messages": 17},
+        )
+    assert response.status_code == 200
+    assert response.json()["search_policy"]["maximum_prompt_suggestion_messages"] == 17
+
+
 def test_analysis_requires_the_frozen_context_and_old_route_is_not_invoked(tmp_path):
     app = _app(tmp_path)
     with TestClient(app) as client:
@@ -169,7 +185,7 @@ def test_partial_range_validation_preserves_valid_siblings_and_final_status(tmp_
                 {"thread_id": messages[0]["thread_id"], "start_message_id": messages[0]["message_id"], "end_message_id": messages[0]["message_id"], "summary": "first", "relevance": "responsive"},
                 {"thread_id": messages[0]["thread_id"], "start_message_id": "fabricated", "end_message_id": messages[0]["message_id"], "summary": "bad", "relevance": "bad"},
                 {"thread_id": messages[0]["thread_id"], "start_message_id": messages[1]["message_id"], "end_message_id": messages[1]["message_id"], "summary": "second", "relevance": "responsive"},
-                {"thread_id": messages[0]["thread_id"], "start_message_id": messages[2]["message_id"], "end_message_id": messages[2]["message_id"], "summary": "third", "relevance": "responsive"},
+                {"thread_id": messages[0]["thread_id"], "start_message_id": messages[2]["message_id"], "end_message_id": messages[1]["message_id"], "summary": None, "relevance": "responsive"},
             ]
         return output
 
@@ -186,6 +202,14 @@ def test_partial_range_validation_preserves_valid_siblings_and_final_status(tmp_
     result = events[-1]["result"]
     assert window["data"]["accepted_range_count"] == 3
     assert window["data"]["rejected_range_count"] == 1
+    assert len(window["data"]["accepted_ranges"]) == 3
+    assert all(item["start_message_id"] != "fabricated" for item in window["data"]["accepted_ranges"])
+    normalized = window["data"]["accepted_ranges"][-1]
+    assert normalized["start_message_id"] == "m2"
+    assert normalized["end_message_id"] == "m3"
+    assert normalized["summary"] is None
+    assert normalized["normalizations"] == ["endpoint_order_swapped"]
+    assert window["data"]["window_uncertainties"] == []
     assert validation["data"]["status"] == "partial"
     assert result["completion_status"] == "partial"
     assert result["evidence_validation"]["accepted_range_count"] == 3

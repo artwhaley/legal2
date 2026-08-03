@@ -29,6 +29,9 @@ class ConversationExecutionResult {
     required this.presentedAnswer,
     required this.mode,
     required this.progress,
+    this.disposition = 'analyze_corpus',
+    this.clarificationQuestion,
+    this.responseMessage,
   });
 
   final String question;
@@ -36,6 +39,12 @@ class ConversationExecutionResult {
   final String presentedAnswer;
   final String mode;
   final List<ConversationProgress> progress;
+  final String disposition;
+  final String? clarificationQuestion;
+  final String? responseMessage;
+
+  bool get needsClarification => disposition == 'needs_clarification';
+  bool get outOfScope => disposition == 'out_of_scope';
 }
 
 typedef ConversationProgressCallback = void Function(ConversationProgress);
@@ -48,6 +57,7 @@ class ConversationWorkflow {
   Future<ConversationExecutionResult> run(
     String question, {
     int maximumPromptSuggestionMessages = 40,
+    List<Map<String, String>> clarificationHistory = const [],
     RequestCancellation? cancellation,
     ConversationProgressCallback? onProgress,
   }) async {
@@ -103,12 +113,56 @@ class ConversationWorkflow {
         'planning_started',
         'Requesting an analysis plan from the server.',
       );
-      final plan = await workspace.gateway.conversationalPlan(
-        normalizedQuestion,
-        maximumPromptSuggestionMessages: maximumPromptSuggestionMessages,
-        cancellation: cancellation,
-      );
+      final plan = workspace.gateway is ClarificationCapableGateway
+          ? await (workspace.gateway as ClarificationCapableGateway)
+                .conversationalPlanWithClarification(
+                  normalizedQuestion,
+                  maximumPromptSuggestionMessages:
+                      maximumPromptSuggestionMessages,
+                  clarificationHistory: clarificationHistory,
+                  cancellation: cancellation,
+                )
+          : await workspace.gateway.conversationalPlan(
+              normalizedQuestion,
+              maximumPromptSuggestionMessages: maximumPromptSuggestionMessages,
+              cancellation: cancellation,
+            );
       cancellation?.checkpoint();
+      if (!plan.analyzesCorpus) {
+        if (plan.disposition == 'needs_clarification') {
+          publish(
+            'planning_clarification_requested',
+            'Clarification is needed before corpus analysis can begin.',
+            metadata: {
+              'clarification_question': plan.clarificationQuestion,
+              'clarification_round': clarificationHistory.length + 1,
+            },
+          );
+          return ConversationExecutionResult(
+            question: normalizedQuestion,
+            result: const {},
+            presentedAnswer: plan.clarificationQuestion ?? '',
+            mode: 'clarification',
+            progress: List.unmodifiable(progress),
+            disposition: 'needs_clarification',
+            clarificationQuestion: plan.clarificationQuestion,
+          );
+        }
+        publish(
+          'planning_out_of_scope',
+          plan.responseMessage ?? 'This request is outside corpus analysis.',
+          metadata: {'response_message': plan.responseMessage},
+        );
+        return ConversationExecutionResult(
+          question: normalizedQuestion,
+          result: const {},
+          presentedAnswer: plan.responseMessage ?? '',
+          mode: 'out_of_scope',
+          progress: List.unmodifiable(progress),
+          disposition: 'out_of_scope',
+          responseMessage: plan.responseMessage,
+        );
+      }
       publish(
         'planning_completed',
         'Analysis Plan Ready.',

@@ -37,6 +37,10 @@ class UsageEntry:
     output_tokens: int
     source: str
     cost: float | None
+    cache_read_input_tokens: int = 0
+    cache_write_input_tokens: int = 0
+    cache_miss_input_tokens: int = 0
+    cache_usage_reported: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,6 +274,10 @@ async def run_model_operation(
                 "input_tokens": result.input_tokens,
                 "output_tokens": result.output_tokens,
                 "usage_source": result.usage_source,
+                "cache_read_input_tokens": result.cache_read_input_tokens,
+                "cache_write_input_tokens": result.cache_write_input_tokens,
+                "cache_miss_input_tokens": result.cache_miss_input_tokens,
+                "cache_usage_reported": result.cache_usage_reported,
                 "response": result.raw_response,
                 "observability": event_context,
             },
@@ -279,6 +287,10 @@ async def run_model_operation(
             result.output_tokens,
             result.usage_source,
             estimate_cost(operation, result.input_tokens, result.output_tokens),
+            cache_read_input_tokens=result.cache_read_input_tokens,
+            cache_write_input_tokens=result.cache_write_input_tokens,
+            cache_miss_input_tokens=result.cache_miss_input_tokens,
+            cache_usage_reported=result.cache_usage_reported,
         )
         if raw_output_received_event is not None and progress_queue is not None:
             event_name, base_data = raw_output_received_event
@@ -328,6 +340,10 @@ async def run_model_operation(
                 currency="USD",
                 latency_ms=result.latency_ms,
                 provider_request_id=provider_request_id,
+                cache_read_input_tokens=entry.cache_read_input_tokens,
+                cache_write_input_tokens=entry.cache_write_input_tokens,
+                cache_miss_input_tokens=entry.cache_miss_input_tokens,
+                cache_usage_reported=entry.cache_usage_reported,
             )
             collector.add(entry)
             events.emit(
@@ -368,6 +384,10 @@ async def run_model_operation(
             currency="USD",
             latency_ms=result.latency_ms,
             provider_request_id=result.provider_request_id,
+            cache_read_input_tokens=entry.cache_read_input_tokens,
+            cache_write_input_tokens=entry.cache_write_input_tokens,
+            cache_miss_input_tokens=entry.cache_miss_input_tokens,
+            cache_usage_reported=entry.cache_usage_reported,
         )
         collector.add(entry)
         events.emit(
@@ -384,6 +404,10 @@ async def run_model_operation(
             output_tokens=entry.output_tokens,
             usage_source=entry.source,
             estimated_cost=entry.cost,
+            cache_read_input_tokens=entry.cache_read_input_tokens,
+            cache_write_input_tokens=entry.cache_write_input_tokens,
+            cache_miss_input_tokens=entry.cache_miss_input_tokens,
+            cache_usage_reported=entry.cache_usage_reported,
             provider_request_id=result.provider_request_id,
             **event_context,
         )

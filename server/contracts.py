@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
 
 MAX_ID_LENGTH = 512
@@ -127,11 +127,28 @@ class WorkingCorpus(StrictModel):
 
 class AnalysisPlanningRequest(RequestModel):
     question: str
+    clarification_history: list["ClarificationExchange"] = Field(default_factory=list)
+    maximum_prompt_suggestion_messages: int | None = Field(default=None, ge=1, le=500)
 
     @field_validator("question")
     @classmethod
     def valid_question(cls, value: str) -> str:
         return _bounded(value, maximum=MAX_QUESTION_LENGTH, name="question")
+
+
+class ClarificationExchange(StrictModel):
+    question: str
+    answer: str
+
+    @field_validator("question", "answer")
+    @classmethod
+    def valid_exchange_text(cls, value: str) -> str:
+        return _bounded(
+            value,
+            maximum=MAX_QUESTION_LENGTH,
+            name="clarification exchange text",
+            trimmed=True,
+        )
 
 
 class AnalysisConcept(StrictModel):
@@ -151,23 +168,30 @@ class AnalysisConcept(StrictModel):
 
 
 class AnalysisPlanningOutput(StrictModel):
-    analysis_question: str
-    answer_objective: str
-    concepts: list[AnalysisConcept] = Field(min_length=1, max_length=12)
-    inclusion_criteria: list[str] = Field(min_length=1, max_length=20)
-    exclusion_criteria: list[str] = Field(max_length=20)
-    retrieval_queries: list[str] = Field(min_length=1, max_length=20)
-    answer_requirements: list[str] = Field(min_length=1, max_length=12)
-    interpretive_assumptions: list[str] = Field(max_length=12)
+    disposition: Literal["analyze_corpus", "needs_clarification", "out_of_scope"] = "analyze_corpus"
+    analysis_question: str | None = None
+    answer_objective: str | None = None
+    concepts: list[AnalysisConcept] | None = Field(default=None, min_length=1, max_length=12)
+    inclusion_criteria: list[str] | None = Field(default=None, min_length=1, max_length=20)
+    exclusion_criteria: list[str] | None = Field(default=None, max_length=20)
+    retrieval_queries: list[str] | None = Field(default=None, max_length=20)
+    answer_requirements: list[str] | None = Field(default=None, min_length=1, max_length=12)
+    interpretive_assumptions: list[str] | None = Field(default=None, max_length=12)
+    clarification_question: str | None = None
+    response_message: str | None = None
 
     @field_validator("analysis_question", "answer_objective")
     @classmethod
     def valid_plan_text(cls, value: str) -> str:
+        if value is None:
+            return value
         return _bounded(value, maximum=MAX_QUESTION_LENGTH, name="planning text", trimmed=True)
 
     @field_validator("inclusion_criteria", "exclusion_criteria", "answer_requirements", "interpretive_assumptions")
     @classmethod
     def valid_plan_lists(cls, value: list[str], info) -> list[str]:
+        if value is None:
+            return value
         maximum = {"inclusion_criteria": 20, "exclusion_criteria": 20, "answer_requirements": 12, "interpretive_assumptions": 12}[info.field_name]
         minimum = 1 if info.field_name in {"inclusion_criteria", "answer_requirements"} else 0
         return _unique_strings(value, maximum=maximum, name=info.field_name, minimum=minimum)
@@ -175,6 +199,8 @@ class AnalysisPlanningOutput(StrictModel):
     @field_validator("retrieval_queries")
     @classmethod
     def valid_retrieval_queries(cls, value: list[str]) -> list[str]:
+        if value is None:
+            return value
         if len(value) < 1 or len(value) > MAX_QUERY_COUNT:
             raise ValueError("retrieval_queries count is outside its limit")
         for query in value:
@@ -182,6 +208,42 @@ class AnalysisPlanningOutput(StrictModel):
         if len({query.casefold() for query in value}) != len(value):
             raise ValueError("retrieval_queries must be unique case-insensitively")
         return value
+
+    @field_validator("clarification_question", "response_message")
+    @classmethod
+    def valid_decision_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return _bounded(value, maximum=MAX_QUESTION_LENGTH, name="decision text", trimmed=True)
+
+    @model_validator(mode="after")
+    def validate_disposition(self) -> "AnalysisPlanningOutput":
+        plan_fields = (
+            self.analysis_question,
+            self.answer_objective,
+            self.concepts,
+            self.inclusion_criteria,
+            self.exclusion_criteria,
+            self.retrieval_queries,
+            self.answer_requirements,
+            self.interpretive_assumptions,
+        )
+        if self.disposition == "analyze_corpus":
+            if any(value is None for value in plan_fields):
+                raise ValueError("analyze_corpus disposition requires a complete analysis plan")
+            if self.clarification_question is not None or self.response_message is not None:
+                raise ValueError("analyze_corpus disposition cannot include a decision message")
+        elif self.disposition == "needs_clarification":
+            if self.clarification_question is None:
+                raise ValueError("needs_clarification disposition requires clarification_question")
+            if any(value is not None for value in plan_fields) or self.response_message is not None:
+                raise ValueError("needs_clarification disposition cannot include an analysis plan")
+        else:
+            if self.response_message is None:
+                raise ValueError("out_of_scope disposition requires response_message")
+            if any(value is not None for value in plan_fields) or self.clarification_question is not None:
+                raise ValueError("out_of_scope disposition cannot include an analysis plan")
+        return self
 
 
 class FrozenAnalysisPlan(StrictModel):
@@ -253,9 +315,42 @@ class SearchPolicy(StrictModel):
     maximum_prompt_suggestion_messages: int = Field(ge=1, le=500)
 
 
-class AnalysisPlanResponse(StrictModel):
+class AnalysisPlanningCommonResponse(StrictModel):
     request_id: str
     config_version: int = Field(ge=1)
+    disposition: Literal["analyze_corpus", "needs_clarification", "out_of_scope"]
+    usage: "UsageSummary"
+
+    @field_validator("request_id")
+    @classmethod
+    def valid_response_request_id(cls, value: str) -> str:
+        return _uuid(value, "request_id")
+
+
+class AnalysisClarificationResponse(AnalysisPlanningCommonResponse):
+    disposition: Literal["needs_clarification"]
+    clarification_question: str
+
+    @field_validator("clarification_question")
+    @classmethod
+    def valid_clarification_question(cls, value: str) -> str:
+        return _bounded(value, maximum=MAX_QUESTION_LENGTH, name="clarification question", trimmed=True)
+
+
+class AnalysisOutOfScopeResponse(AnalysisPlanningCommonResponse):
+    disposition: Literal["out_of_scope"]
+    response_message: str
+
+    @field_validator("response_message")
+    @classmethod
+    def valid_out_of_scope_message(cls, value: str) -> str:
+        return _bounded(value, maximum=MAX_QUESTION_LENGTH, name="out-of-scope response", trimmed=True)
+
+
+class AnalysisPlanResponse(AnalysisPlanningCommonResponse):
+    request_id: str
+    config_version: int = Field(ge=1)
+    disposition: Literal["analyze_corpus"] = "analyze_corpus"
     analysis_plan_id: str
     compatibility_fingerprint: str
     analysis_plan: FrozenAnalysisPlan
@@ -286,6 +381,13 @@ class AnalysisPlanResponse(StrictModel):
         if self.search_policy.mode == "semantic_ranges" and self.embedding is None:
             raise ValueError("semantic analysis plans require embedding metadata")
         return self
+
+
+AnalysisPlanningResponse = Union[
+    AnalysisPlanResponse,
+    AnalysisClarificationResponse,
+    AnalysisOutOfScopeResponse,
+]
 
 
 class RetrievalHit(StrictModel):
@@ -885,6 +987,28 @@ class RetrievalSuggestionsBuiltData(StrictModel):
     unselected_candidate_message_count: int = Field(ge=0)
 
 
+class ProvisionalWindowRange(StrictModel):
+    source_range_index: int = Field(ge=0)
+    thread_id: str
+    start_message_id: str
+    end_message_id: str
+    summary: str | None
+    relevance: str | None
+    normalizations: list[Literal["endpoint_order_swapped"]]
+
+    @field_validator("thread_id", "start_message_id", "end_message_id")
+    @classmethod
+    def valid_ids(cls, value: str) -> str:
+        return _bounded(value, maximum=MAX_ID_LENGTH, name="range message ID")
+
+    @field_validator("summary", "relevance")
+    @classmethod
+    def valid_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return _bounded(value, maximum=MAX_QUESTION_LENGTH, name="range description")
+
+
 class WindowCompletedData(StrictModel):
     window_id: str
     window_index: int = Field(ge=0)
@@ -897,6 +1021,15 @@ class WindowCompletedData(StrictModel):
     output_tokens: int = Field(ge=0)
     usage_source: Literal["provider_reported", "estimated"]
     estimated_cost: float | None = Field(ge=0)
+    accepted_ranges: list[ProvisionalWindowRange]
+    window_uncertainties: list[str]
+
+    @field_validator("window_uncertainties")
+    @classmethod
+    def valid_uncertainties(cls, values: list[str]) -> list[str]:
+        for value in values:
+            _bounded(value, maximum=MAX_QUESTION_LENGTH, name="window uncertainty")
+        return values
 
     @model_validator(mode="after")
     def validation_status_agrees(self) -> "WindowCompletedData":
@@ -905,6 +1038,13 @@ class WindowCompletedData(StrictModel):
             raise ValueError("window validation status must agree with rejected count")
         if self.normalized_range_count > self.accepted_range_count:
             raise ValueError("normalized ranges cannot exceed accepted ranges")
+        if self.accepted_range_count != len(self.accepted_ranges):
+            raise ValueError("accepted range count must match accepted ranges")
+        indexes = [item.source_range_index for item in self.accepted_ranges]
+        if len(indexes) != len(set(indexes)):
+            raise ValueError("accepted range source indexes must be unique")
+        if indexes != sorted(indexes):
+            raise ValueError("accepted ranges must follow source-range order")
         return self
 
 
@@ -1336,7 +1476,7 @@ SCHEMA_REGISTRY: dict[str, dict[str, Any]] = {
     "analysis_planning": {"model_output": AnalysisPlanningOutput.model_json_schema()},
     "conversational_plan": {
         "request": AnalysisPlanningRequest.model_json_schema(),
-        "response": AnalysisPlanResponse.model_json_schema(),
+        "response": TypeAdapter(AnalysisPlanningResponse).json_schema(),
         "model_output": AnalysisPlanningOutput.model_json_schema(),
     },
     "conversational_analysis": {

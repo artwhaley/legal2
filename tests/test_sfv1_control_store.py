@@ -253,10 +253,10 @@ def test_schema_mismatch_is_rejected_and_clean_close_truncates_wal(tmp_path: Pat
 
 def test_usage_accounting_reports_failures_and_incomplete_cost(tmp_path: Path):
     store = ConfigStore(tmp_path)
-    store.record_usage(request_id="r1", config_version=1, product_endpoint="/v1/keyword-expansion", internal_operation="keyword_expansion", attempt=1, provider_or_profile="m", outcome="success", input_tokens=10, output_tokens=2, usage_source="provider_reported", estimated_cost=0.25)
+    store.record_usage(request_id="r1", config_version=1, product_endpoint="/v1/keyword-expansion", internal_operation="keyword_expansion", attempt=1, provider_or_profile="m", outcome="success", input_tokens=10, output_tokens=2, usage_source="provider_reported", estimated_cost=0.25, cache_read_input_tokens=6, cache_write_input_tokens=1, cache_miss_input_tokens=4, cache_usage_reported=True)
     store.record_usage(request_id="r2", config_version=1, product_endpoint="/v1/conversational-analysis", internal_operation="window_evidence_extraction", attempt=1, provider_or_profile="m", outcome="failure", error_code="MODEL_OUTPUT_INVALID", input_tokens=20, output_tokens=3, usage_source="provider_reported")
     totals = store.usage_totals()
-    assert totals == {"input_tokens": 30, "output_tokens": 5, "embedding_items": 0, "rows": 2, "known_cost": 0.25, "incomplete_cost_rows": 1, "failed_attempts": 1, "embedding_workloads": 0}
+    assert totals == {"input_tokens": 30, "output_tokens": 5, "embedding_items": 0, "rows": 2, "known_cost": 0.25, "incomplete_cost_rows": 1, "failed_attempts": 1, "embedding_workloads": 0, "cache_read_input_tokens": 6, "cache_write_input_tokens": 1, "cache_miss_input_tokens": 4, "cache_reported_rows": 1}
     store.close()
 
 

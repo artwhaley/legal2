@@ -2,6 +2,34 @@ import 'package:evw_client/src/server_contracts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test(
+    'planning decisions validate clarification and out-of-scope variants',
+    () {
+      const usage = {
+        'input_tokens': 1,
+        'output_tokens': 1,
+        'source': 'estimated',
+        'estimated_cost': 0.0,
+        'cost_complete': true,
+        'currency': 'USD',
+      };
+      validatePlanningDecision({
+        'request_id': '11111111-1111-4111-8111-111111111111',
+        'config_version': 1,
+        'disposition': 'needs_clarification',
+        'clarification_question': 'Which matter?',
+        'usage': usage,
+      });
+      validatePlanningDecision({
+        'request_id': '11111111-1111-4111-8111-111111111111',
+        'config_version': 1,
+        'disposition': 'out_of_scope',
+        'response_message': 'This interface analyzes the selected corpus.',
+        'usage': usage,
+      });
+    },
+  );
+
   test('every nonterminal progress event enforces its exact payload', () {
     final cases = <String, Map<String, dynamic>>{
       'queued': {

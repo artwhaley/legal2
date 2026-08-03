@@ -181,6 +181,27 @@ def _user(task: str, **fields: Any) -> dict[str, Any]:
     return {"task": task, **fields}
 
 
+def _window_extraction_user(
+    *,
+    window_id: str,
+    messages: Sequence[Mapping[str, Any]],
+    question: str,
+    analysis_plan: Mapping[str, Any],
+    retrieval_queries: Sequence[Mapping[str, Any]],
+    suggestion_ranges: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Build the cache-friendly, corpus-first extraction user object."""
+    return {
+        "task": "window_evidence_extraction",
+        "window_id": window_id,
+        "messages": list(messages),
+        "question": question,
+        "analysis_plan": dict(analysis_plan),
+        "retrieval_queries": list(retrieval_queries),
+        "suggestion_ranges": list(suggestion_ranges),
+    }
+
+
 def _input_target(operation: OperationConfig, configured_target: int | None = None) -> int:
     hard = operation.context_window_tokens - operation.max_output_tokens - operation.safety_margin_tokens
     candidates = [hard]
@@ -251,14 +272,13 @@ def plan_windows(
     windows: list[WindowLedgerInput] = []
 
     def payload_tokens(candidate: Sequence[Mapping[str, Any]], window_id: str) -> int:
-        user_object = _user(
-            "window_evidence_extraction",
-            question=question,
-            analysis_plan=dict(analysis_plan),
-            retrieval_queries=list(retrieval_queries),
-            suggestion_ranges=reservation_ranges,
+        user_object = _window_extraction_user(
             window_id=window_id,
             messages=list(candidate),
+            question=question,
+            analysis_plan=analysis_plan,
+            retrieval_queries=retrieval_queries,
+            suggestion_ranges=reservation_ranges,
         )
         wire = [
             {"role": "system", "content": operation.system_prompt},
@@ -368,13 +388,21 @@ def plan_windows(
     return windows
 
 
-def _analysis_search_policy(snapshot, mode: str) -> dict[str, Any]:
+def _analysis_search_policy(
+    snapshot,
+    mode: str,
+    maximum_prompt_suggestion_messages: int | None = None,
+) -> dict[str, Any]:
     return {
         "mode": mode,
         "top_k_per_query": snapshot.global_config.retrieval_top_k_per_query,
         "fusion_method": "reciprocal_rank_fusion",
         "rrf_constant": snapshot.global_config.retrieval_rrf_constant,
-        "maximum_prompt_suggestion_messages": snapshot.global_config.retrieval_maximum_prompt_suggestion_messages,
+        "maximum_prompt_suggestion_messages": (
+            snapshot.global_config.retrieval_maximum_prompt_suggestion_messages
+            if maximum_prompt_suggestion_messages is None
+            else maximum_prompt_suggestion_messages
+        ),
     }
 
 
@@ -401,7 +429,13 @@ async def _validate_analysis_context(app, snapshot, request, messages) -> tuple[
         snapshot, question=request.question, context=context
     ):
         raise AnalysisPlanStale("analysis plan compatibility fingerprint is stale")
-    expected_policy = SearchPolicy(**_analysis_search_policy(snapshot, mode))
+    expected_policy = SearchPolicy(
+        **_analysis_search_policy(
+            snapshot,
+            mode,
+            context.search_policy.maximum_prompt_suggestion_messages,
+        )
+    )
     if context.search_policy != expected_policy:
         raise AnalysisPlanStale("analysis plan search policy is stale")
     if mode == "semantic_ranges":
@@ -451,7 +485,12 @@ def _fuse_candidates(messages, context: AnalysisContext, snapshot) -> tuple[list
             message_id,
         ),
     )
-    selected = ordered[: snapshot.global_config.retrieval_maximum_prompt_suggestion_messages]
+    suggestion_limit = getattr(
+        getattr(context, "search_policy", None),
+        "maximum_prompt_suggestion_messages",
+        snapshot.global_config.retrieval_maximum_prompt_suggestion_messages,
+    )
+    selected = ordered[:suggestion_limit]
     return selected, by_message, {
         "raw_hit_count": len(context.hits),
         "unique_candidate_message_count": len(ordered),
@@ -650,7 +689,7 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
     reservation_queries, reservation_ranges = _reservation_shape(
         query_objects,
         messages,
-        snapshot.global_config.retrieval_maximum_prompt_suggestion_messages,
+        context.search_policy.maximum_prompt_suggestion_messages,
     ) if context.hits else (query_objects, [])
     windows = plan_windows(
         messages,
@@ -670,14 +709,13 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
         {"ranges_by_window": suggestions_by_window},
     )
     for window in windows:
-        actual_user = _user(
-                    "window_evidence_extraction",
-                        question=request.question,
-                        analysis_plan=analysis_plan,
-            retrieval_queries=query_objects,
-            suggestion_ranges=suggestions_by_window[window.window_id],
+        actual_user = _window_extraction_user(
             window_id=window.window_id,
             messages=list(window.messages),
+            question=request.question,
+            analysis_plan=analysis_plan,
+            retrieval_queries=query_objects,
+            suggestion_ranges=suggestions_by_window[window.window_id],
         )
         if not _payload_fits(
             "window_evidence_extraction",
@@ -696,14 +734,13 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
     )
     retrieval_reserve_tokens = 0
     if context.hits:
-        base_user = _user(
-            "window_evidence_extraction",
+        base_user = _window_extraction_user(
+            window_id="w000001",
+            messages=[],
             question=request.question,
             analysis_plan=analysis_plan,
             retrieval_queries=reservation_queries,
             suggestion_ranges=[],
-            window_id="w000001",
-            messages=[],
         )
         reserved_user = dict(base_user)
         reserved_user["suggestion_ranges"] = reservation_ranges
@@ -873,14 +910,13 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                         request_id=request.request_id,
                         product_endpoint=endpoint,
                         operation_name="window_evidence_extraction",
-                        user_object=_user(
-                            "window_evidence_extraction",
+                        user_object=_window_extraction_user(
+                            window_id=window.window_id,
+                            messages=list(window.messages),
                             question=request.question,
                             analysis_plan=analysis_plan,
                             retrieval_queries=query_objects,
                             suggestion_ranges=suggestions_by_window[window.window_id],
-                            window_id=window.window_id,
-                            messages=list(window.messages),
                         ),
                         response_schema=SCHEMA_REGISTRY["window_evidence_extraction"]["model_output"],
                         output_model=WindowEvidenceEnvelope,
@@ -890,6 +926,8 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                             "window_id": window.window_id,
                             "window_index": index,
                             "window_count": len(windows),
+                            "window_plan_hash": window_hash,
+                            "packing_strategy": "corpus_first_v1",
                         },
                         preserve_raw_output=True,
                         retry_unusable_output=True,
@@ -1037,6 +1075,19 @@ async def run_conversational_stream(app, raw_body: dict[str, Any]) -> StreamingR
                                         "output_tokens": usage.output_tokens,
                                         "usage_source": usage.source,
                                         "estimated_cost": usage.cost,
+                                        "accepted_ranges": [
+                                            {
+                                                "source_range_index": item.source_range_index,
+                                                "thread_id": item.thread_id,
+                                                "start_message_id": item.start_message_id,
+                                                "end_message_id": item.end_message_id,
+                                                "summary": item.summary,
+                                                "relevance": item.relevance,
+                                                "normalizations": list(item.normalizations),
+                                            }
+                                            for item in output.accepted_ranges
+                                        ],
+                                        "window_uncertainties": list(output.uncertainties),
                                     },
                                 )
                             else:

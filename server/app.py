@@ -19,6 +19,8 @@ from server.admin import register_admin
 from server.config import ServerConfig
 from server.config_service import ConfigurationRequired, ConfigurationService
 from server.contracts import (
+    AnalysisClarificationResponse,
+    AnalysisOutOfScopeResponse,
     AnalysisPlanResponse,
     AnalysisPlanningOutput,
     AnalysisPlanningRequest,
@@ -530,13 +532,69 @@ def create_app(
                 request_id=request.request_id,
                 product_endpoint="/v1/conversational-plan",
                 operation_name="analysis_planning",
-                user_object={"task": "analysis_planning", "question": request.question},
+                user_object={
+                    "task": "analysis_planning",
+                    "question": request.question,
+                    "clarification_history": [
+                        exchange.model_dump() for exchange in request.clarification_history
+                    ],
+                },
                 response_schema=SCHEMA_REGISTRY["analysis_planning"]["model_output"],
                 output_model=AnalysisPlanningOutput,
                 collector=collector,
             )
+            if output.disposition == "needs_clarification":
+                response = AnalysisClarificationResponse(
+                    request_id=request.request_id,
+                    config_version=snapshot.config_version,
+                    disposition="needs_clarification",
+                    clarification_question=output.clarification_question,
+                    usage=collector.summary(),
+                )
+                app.state.events.emit(
+                    "analysis_clarification_requested",
+                    request_id=request.request_id,
+                    config_version=snapshot.config_version,
+                    product_endpoint="/v1/conversational-plan",
+                    clarification_round=len(request.clarification_history) + 1,
+                )
+                app.state.debug_capture.record_for_request(
+                    request.request_id,
+                    "analysis_plan_generated",
+                    response.model_dump(),
+                )
+                return response.model_dump()
+            if output.disposition == "out_of_scope":
+                response = AnalysisOutOfScopeResponse(
+                    request_id=request.request_id,
+                    config_version=snapshot.config_version,
+                    disposition="out_of_scope",
+                    response_message=output.response_message,
+                    usage=collector.summary(),
+                )
+                app.state.events.emit(
+                    "analysis_request_out_of_scope",
+                    request_id=request.request_id,
+                    config_version=snapshot.config_version,
+                    product_endpoint="/v1/conversational-plan",
+                    clarification_round=len(request.clarification_history),
+                )
+                app.state.debug_capture.record_for_request(
+                    request.request_id,
+                    "analysis_plan_generated",
+                    response.model_dump(),
+                )
+                return response.model_dump()
+
             analysis_plan = FrozenAnalysisPlan.model_validate(
-                output.model_dump(exclude={"retrieval_queries"})
+                output.model_dump(
+                    exclude={
+                        "disposition",
+                        "retrieval_queries",
+                        "clarification_question",
+                        "response_message",
+                    }
+                )
             )
             queries = [
                 RetrievalQuery(query_id=f"q{index:04d}", text=query)
@@ -553,12 +611,17 @@ def create_app(
                     dimensions=profile.dimensions,
                     normalization=profile.normalization,
                 )
+            maximum_prompt_suggestion_messages = (
+                request.maximum_prompt_suggestion_messages
+                if request.maximum_prompt_suggestion_messages is not None
+                else snapshot.global_config.retrieval_maximum_prompt_suggestion_messages
+            )
             policy = SearchPolicy(
                 mode=mode,
                 top_k_per_query=snapshot.global_config.retrieval_top_k_per_query,
                 fusion_method="reciprocal_rank_fusion",
                 rrf_constant=snapshot.global_config.retrieval_rrf_constant,
-                maximum_prompt_suggestion_messages=snapshot.global_config.retrieval_maximum_prompt_suggestion_messages,
+                maximum_prompt_suggestion_messages=maximum_prompt_suggestion_messages,
             )
             compatibility_fingerprint = _analysis_plan_compatibility_fingerprint(
                 snapshot,
@@ -571,6 +634,7 @@ def create_app(
             response = AnalysisPlanResponse(
                 request_id=request.request_id,
                 config_version=snapshot.config_version,
+                disposition="analyze_corpus",
                 analysis_plan_id=str(uuid.uuid4()),
                 compatibility_fingerprint=compatibility_fingerprint,
                 analysis_plan=analysis_plan,
@@ -586,6 +650,7 @@ def create_app(
                 product_endpoint="/v1/conversational-plan",
                 retrieval_mode=mode,
                 retrieval_query_count=len(queries),
+                disposition="analyze_corpus",
             )
             app.state.debug_capture.record_for_request(
                 request.request_id,

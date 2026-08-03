@@ -220,6 +220,10 @@
       <div class="summary-card"><span class="summary-label">Output tokens</span><span class="summary-value" id="usage-output-tokens">{{ "{:,}".format(usage.output_tokens) }}</span></div>
       <div class="summary-card"><span class="summary-label">Embedding items</span><span class="summary-value" id="usage-embedding-items">{{ "{:,}".format(usage.embedding_items) }}</span></div>
       <div class="summary-card"><span class="summary-label">Known estimated cost</span><span class="summary-value" id="usage-known-cost">${{ "%.4f"|format(usage.known_cost) }}</span><div class="status-note"><span id="usage-incomplete-cost">{{ usage.incomplete_cost_rows }}</span> rows lack pricing</div></div>
+      <div class="summary-card"><span class="summary-label">Cache-read input tokens</span><span class="summary-value" id="usage-cache-read">{{ "{:,}".format(usage.cache_read_input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache-write input tokens</span><span class="summary-value" id="usage-cache-write">{{ "{:,}".format(usage.cache_write_input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache-miss input tokens</span><span class="summary-value" id="usage-cache-miss">{{ "{:,}".format(usage.cache_miss_input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache telemetry</span><span class="summary-value" id="usage-cache-reported">{{ "{:,}".format(usage.cache_reported_rows) }} calls</span><div class="status-note">Provider-reported rows only</div></div>
     </div>
     <pre id="metrics" style="display:none">{{ metrics|tojson(indent=2) }}</pre>
     <pre id="events" style="display:none">{{ events|tojson(indent=2) }}</pre>
@@ -456,6 +460,10 @@
       <div class="summary-card"><span class="summary-label">Records</span><span class="summary-value" id="usage-rows">{{ "{:,}".format(usage.rows) }}</span></div>
       <div class="summary-card"><span class="summary-label">Failed attempts</span><span class="summary-value" id="usage-failures">{{ "{:,}".format(usage.failed_attempts) }}</span></div>
       <div class="summary-card"><span class="summary-label">Embedding workloads</span><span class="summary-value" id="usage-embedding-workloads">{{ "{:,}".format(usage.embedding_workloads) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache-read input tokens</span><span class="summary-value" id="usage-cache-read">{{ "{:,}".format(usage.cache_read_input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache-write input tokens</span><span class="summary-value" id="usage-cache-write">{{ "{:,}".format(usage.cache_write_input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache-miss input tokens</span><span class="summary-value" id="usage-cache-miss">{{ "{:,}".format(usage.cache_miss_input_tokens) }}</span></div>
+      <div class="summary-card"><span class="summary-label">Cache telemetry</span><span class="summary-value" id="usage-cache-reported">{{ "{:,}".format(usage.cache_reported_rows) }} calls</span><div class="status-note">Provider-reported rows only</div></div>
       <div class="summary-card"><span class="summary-label">Control DB WAL</span><span class="summary-value">{{ checkpoint.wal_frames }} frames</span><div class="status-note">{{ checkpoint.checkpointed_frames }} checkpointed · busy {{ checkpoint.busy }}</div></div>
     </div>
   </section>
@@ -562,6 +570,10 @@ setInterval(async()=>{
     setText('#usage-rows',number(value.usage.rows));
     setText('#usage-failures',number(value.usage.failed_attempts));
     setText('#usage-embedding-workloads',number(value.usage.embedding_workloads));
+    setText('#usage-cache-read',number(value.usage.cache_read_input_tokens));
+    setText('#usage-cache-write',number(value.usage.cache_write_input_tokens));
+    setText('#usage-cache-miss',number(value.usage.cache_miss_input_tokens));
+    setText('#usage-cache-reported',number(value.usage.cache_reported_rows)+' calls');
     if(value.embedding){
       setText('#embedding-work-value',value.embedding.in_flight+' active / '+value.embedding.queued+' queued');
       setText('#embedding-work-state',value.embedding.accepting?'Accepting requests':'Not accepting requests');

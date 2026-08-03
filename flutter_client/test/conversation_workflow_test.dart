@@ -100,6 +100,47 @@ void main() {
   );
 
   test(
+    'clarification planner result stops before analysis and preserves all three values on the next pass',
+    () async {
+      final gateway = _ClarifyingGateway();
+      final fixture = _ConversationFixture(gatewayOverride: gateway);
+      addTearDown(fixture.close);
+
+      final first = await ConversationWorkflow(
+        workspace: fixture.workspace,
+      ).run('When did we discuss school?');
+
+      expect(first.needsClarification, isTrue);
+      expect(first.clarificationQuestion, 'Which school matter?');
+      expect(gateway.histories, hasLength(1));
+      expect(gateway.histories.single, isEmpty);
+      expect(fixture.workspace.remoteOperationActive, isFalse);
+      expect(fixture.fakeGateway.analysisCalled, isFalse);
+
+      final second = await ConversationWorkflow(workspace: fixture.workspace)
+          .run(
+            'When did we discuss school?',
+            clarificationHistory: const [
+              {
+                'question': 'Which school matter?',
+                'answer': 'The 2024 dispute.',
+              },
+            ],
+          );
+
+      expect(second.disposition, 'analyze_corpus');
+      expect(gateway.histories, hasLength(2));
+      expect(gateway.histories.last, [
+        {'question': 'Which school matter?', 'answer': 'The 2024 dispute.'},
+      ]);
+      expect(
+        fixture.fakeGateway.analysisPayload['question'],
+        'When did we discuss school?',
+      );
+    },
+  );
+
+  test(
     'real HTTP gateway and coordinator complete and persist a conversation',
     () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -271,6 +312,7 @@ class _FakeGateway implements ServerGateway {
   final bool failAnalysis;
   final bool semantic;
   late Map<String, dynamic> analysisPayload;
+  bool analysisCalled = false;
   List<Map<String, String>> embeddingItems = const [];
 
   @override
@@ -388,6 +430,7 @@ class _FakeGateway implements ServerGateway {
     Map<String, dynamic> payload, {
     RequestCancellation? cancellation,
   }) async* {
+    analysisCalled = true;
     analysisPayload = payload;
     yield ServerEvent({
       'request_id': '33333333-3333-4333-8333-333333333333',
@@ -490,6 +533,48 @@ class _FakeGateway implements ServerGateway {
         'strategy': 'single_window_ledger',
       },
     });
+  }
+}
+
+class _ClarifyingGateway extends _FakeGateway
+    implements ClarificationCapableGateway {
+  _ClarifyingGateway() : super(failAnalysis: false, semantic: false);
+
+  final List<List<Map<String, String>>> histories = [];
+
+  @override
+  Future<AnalysisPlanContract> conversationalPlanWithClarification(
+    String question, {
+    int maximumPromptSuggestionMessages = 40,
+    List<Map<String, String>> clarificationHistory = const [],
+    RequestCancellation? cancellation,
+  }) async {
+    histories.add(
+      clarificationHistory
+          .map((entry) => Map<String, String>.from(entry))
+          .toList(),
+    );
+    if (clarificationHistory.isEmpty) {
+      return AnalysisPlanContract({
+        'request_id': '11111111-1111-4111-8111-111111111111',
+        'config_version': 1,
+        'disposition': 'needs_clarification',
+        'clarification_question': 'Which school matter?',
+        'usage': {
+          'input_tokens': 1,
+          'output_tokens': 1,
+          'source': 'estimated',
+          'estimated_cost': 0.0,
+          'cost_complete': true,
+          'currency': 'USD',
+        },
+      });
+    }
+    return conversationalPlan(
+      question,
+      maximumPromptSuggestionMessages: maximumPromptSuggestionMessages,
+      cancellation: cancellation,
+    );
   }
 }
 

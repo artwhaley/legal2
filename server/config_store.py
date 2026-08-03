@@ -267,7 +267,11 @@ class ConfigStore:
           currency TEXT,
           latency_ms REAL,
           provider_request_id TEXT,
-          embedding_item_count INTEGER NOT NULL DEFAULT 0
+          embedding_item_count INTEGER NOT NULL DEFAULT 0,
+          cache_read_input_tokens INTEGER NOT NULL DEFAULT 0,
+          cache_write_input_tokens INTEGER NOT NULL DEFAULT 0,
+          cache_miss_input_tokens INTEGER NOT NULL DEFAULT 0,
+          cache_usage_reported INTEGER NOT NULL DEFAULT 0
         );
         CREATE TRIGGER IF NOT EXISTS usage_event_no_update
           BEFORE UPDATE ON usage_event
@@ -302,8 +306,26 @@ class ConfigStore:
             raise ConfigurationCorruption(
                 f"unsupported control database schema version {version}"
             )
+        self._migrate_usage_cache_columns()
         self._migrate_obsolete_synthesis_prompts()
         self.conn.commit()
+
+    def _migrate_usage_cache_columns(self) -> None:
+        """Add content-free cache counters to existing schema-v4 stores."""
+        existing = {
+            str(row[1]) for row in self.conn.execute("PRAGMA table_info(usage_event)")
+        }
+        columns = {
+            "cache_read_input_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "cache_write_input_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "cache_miss_input_tokens": "INTEGER NOT NULL DEFAULT 0",
+            "cache_usage_reported": "INTEGER NOT NULL DEFAULT 0",
+        }
+        for name, declaration in columns.items():
+            if name not in existing:
+                self.conn.execute(
+                    f"ALTER TABLE usage_event ADD COLUMN {name} {declaration}"
+                )
 
     def _migrate_v3_payloads(self) -> None:
         """Atomically migrate all schema-v3 stored payloads to schema v4."""
@@ -368,6 +390,7 @@ class ConfigStore:
             },
             "analysis_planning": {
                 "0c96e296df3824eabea29bdd0853e62876fc9b90d14a0a0e0c58d2b8a40929ba",
+                "c926f2858a55ac526264be9f2c17e818427a08d915ec823ca068d1b97330807d",
             },
             "window_evidence_extraction": {
                 "06093b93b2ad58cc0133c7e8a9e35c533bd15aefad028ad15b6a3799e6577984",
@@ -818,18 +841,18 @@ class ConfigStore:
 
     def record_usage(self, **fields: Any) -> str:
         event_id = str(uuid.uuid4())
-        allowed = {"request_id", "config_version", "product_endpoint", "internal_operation", "operation_instance", "attempt", "provider_or_profile", "outcome", "error_code", "input_tokens", "output_tokens", "usage_source", "input_price_per_million", "output_price_per_million", "estimated_cost", "currency", "latency_ms", "provider_request_id", "embedding_item_count"}
+        allowed = {"request_id", "config_version", "product_endpoint", "internal_operation", "operation_instance", "attempt", "provider_or_profile", "outcome", "error_code", "input_tokens", "output_tokens", "usage_source", "input_price_per_million", "output_price_per_million", "estimated_cost", "currency", "latency_ms", "provider_request_id", "embedding_item_count", "cache_read_input_tokens", "cache_write_input_tokens", "cache_miss_input_tokens", "cache_usage_reported"}
         unknown = set(fields) - allowed
         if unknown:
             raise ValueError(f"unknown usage fields: {sorted(unknown)}")
         values = {name: fields.get(name) for name in allowed}
-        values.update({"config_version": int(values.get("config_version") or 0), "product_endpoint": str(values.get("product_endpoint") or ""), "provider_or_profile": str(values.get("provider_or_profile") or ""), "outcome": str(values.get("outcome") or ""), "usage_source": str(values.get("usage_source") or "estimated"), "input_tokens": int(values.get("input_tokens") or 0), "output_tokens": int(values.get("output_tokens") or 0), "embedding_item_count": int(values.get("embedding_item_count") or 0)})
+        values.update({"config_version": int(values.get("config_version") or 0), "product_endpoint": str(values.get("product_endpoint") or ""), "provider_or_profile": str(values.get("provider_or_profile") or ""), "outcome": str(values.get("outcome") or ""), "usage_source": str(values.get("usage_source") or "estimated"), "input_tokens": int(values.get("input_tokens") or 0), "output_tokens": int(values.get("output_tokens") or 0), "embedding_item_count": int(values.get("embedding_item_count") or 0), "cache_read_input_tokens": int(values.get("cache_read_input_tokens") or 0), "cache_write_input_tokens": int(values.get("cache_write_input_tokens") or 0), "cache_miss_input_tokens": int(values.get("cache_miss_input_tokens") or 0), "cache_usage_reported": int(bool(values.get("cache_usage_reported")))})
         with self.conn:
-            self.conn.execute("INSERT INTO usage_event(event_id,request_id,created_at,config_version,product_endpoint,internal_operation,operation_instance,attempt,provider_or_profile,outcome,error_code,input_tokens,output_tokens,usage_source,input_price_per_million,output_price_per_million,estimated_cost,currency,latency_ms,provider_request_id,embedding_item_count) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (event_id, values["request_id"], time.time(), values["config_version"], values["product_endpoint"], values["internal_operation"], values["operation_instance"], values["attempt"], values["provider_or_profile"], values["outcome"], values["error_code"], values["input_tokens"], values["output_tokens"], values["usage_source"], values["input_price_per_million"], values["output_price_per_million"], values["estimated_cost"], values["currency"], values["latency_ms"], values["provider_request_id"], values["embedding_item_count"]))
+            self.conn.execute("INSERT INTO usage_event(event_id,request_id,created_at,config_version,product_endpoint,internal_operation,operation_instance,attempt,provider_or_profile,outcome,error_code,input_tokens,output_tokens,usage_source,input_price_per_million,output_price_per_million,estimated_cost,currency,latency_ms,provider_request_id,embedding_item_count,cache_read_input_tokens,cache_write_input_tokens,cache_miss_input_tokens,cache_usage_reported) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (event_id, values["request_id"], time.time(), values["config_version"], values["product_endpoint"], values["internal_operation"], values["operation_instance"], values["attempt"], values["provider_or_profile"], values["outcome"], values["error_code"], values["input_tokens"], values["output_tokens"], values["usage_source"], values["input_price_per_million"], values["output_price_per_million"], values["estimated_cost"], values["currency"], values["latency_ms"], values["provider_request_id"], values["embedding_item_count"], values["cache_read_input_tokens"], values["cache_write_input_tokens"], values["cache_miss_input_tokens"], values["cache_usage_reported"]))
         return event_id
 
     def usage_totals(self) -> dict[str, Any]:
-        row = self.conn.execute("SELECT COALESCE(SUM(input_tokens),0),COALESCE(SUM(output_tokens),0),COALESCE(SUM(embedding_item_count),0),COUNT(*),COALESCE(SUM(CASE WHEN estimated_cost IS NOT NULL THEN estimated_cost ELSE 0 END),0),SUM(CASE WHEN estimated_cost IS NULL AND (input_tokens>0 OR output_tokens>0) THEN 1 ELSE 0 END),SUM(CASE WHEN outcome='failure' THEN 1 ELSE 0 END),SUM(CASE WHEN product_endpoint='/v1/embeddings' THEN 1 ELSE 0 END) FROM usage_event").fetchone()
+        row = self.conn.execute("SELECT COALESCE(SUM(input_tokens),0),COALESCE(SUM(output_tokens),0),COALESCE(SUM(embedding_item_count),0),COUNT(*),COALESCE(SUM(CASE WHEN estimated_cost IS NOT NULL THEN estimated_cost ELSE 0 END),0),SUM(CASE WHEN estimated_cost IS NULL AND (input_tokens>0 OR output_tokens>0) THEN 1 ELSE 0 END),SUM(CASE WHEN outcome='failure' THEN 1 ELSE 0 END),SUM(CASE WHEN product_endpoint='/v1/embeddings' THEN 1 ELSE 0 END),COALESCE(SUM(cache_read_input_tokens),0),COALESCE(SUM(cache_write_input_tokens),0),COALESCE(SUM(cache_miss_input_tokens),0),COALESCE(SUM(cache_usage_reported),0) FROM usage_event").fetchone()
         return {
             "input_tokens": int(row[0]),
             "output_tokens": int(row[1]),
@@ -839,6 +862,10 @@ class ConfigStore:
             "incomplete_cost_rows": int(row[5] or 0),
             "failed_attempts": int(row[6] or 0),
             "embedding_workloads": int(row[7] or 0),
+            "cache_read_input_tokens": int(row[8]),
+            "cache_write_input_tokens": int(row[9]),
+            "cache_miss_input_tokens": int(row[10]),
+            "cache_reported_rows": int(row[11]),
         }
 
     def checkpoint_status(self) -> dict[str, int]:

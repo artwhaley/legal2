@@ -54,6 +54,15 @@ abstract interface class ServerGateway {
   });
 }
 
+abstract interface class ClarificationCapableGateway {
+  Future<AnalysisPlanContract> conversationalPlanWithClarification(
+    String question, {
+    int maximumPromptSuggestionMessages = 40,
+    List<Map<String, String>> clarificationHistory = const [],
+    RequestCancellation? cancellation,
+  });
+}
+
 class UnconfiguredServerGateway implements ServerGateway {
   const UnconfiguredServerGateway({this.baseUrl = 'http://127.0.0.1:8710'});
 
@@ -86,7 +95,7 @@ class UnconfiguredServerGateway implements ServerGateway {
   }
 }
 
-class HttpServerGateway implements ServerGateway {
+class HttpServerGateway implements ServerGateway, ClarificationCapableGateway {
   HttpServerGateway(String url, {this.timeout = const Duration(seconds: 120)})
     : baseUrl = _validateBaseUrl(url),
       _client = HttpClient() {
@@ -106,6 +115,20 @@ class HttpServerGateway implements ServerGateway {
     int maximumPromptSuggestionMessages = 40,
     RequestCancellation? cancellation,
   }) async {
+    return conversationalPlanWithClarification(
+      question,
+      maximumPromptSuggestionMessages: maximumPromptSuggestionMessages,
+      cancellation: cancellation,
+    );
+  }
+
+  @override
+  Future<AnalysisPlanContract> conversationalPlanWithClarification(
+    String question, {
+    int maximumPromptSuggestionMessages = 40,
+    List<Map<String, String>> clarificationHistory = const [],
+    RequestCancellation? cancellation,
+  }) async {
     if (question.trim().isEmpty)
       throw ArgumentError('Question cannot be blank');
     if (maximumPromptSuggestionMessages < 1 ||
@@ -120,15 +143,16 @@ class HttpServerGateway implements ServerGateway {
     final result = await _postJson('/v1/conversational-plan', {
       'request_id': requestId,
       'question': question,
+      'clarification_history': clarificationHistory,
       'maximum_prompt_suggestion_messages': maximumPromptSuggestionMessages,
     }, cancellation: cancellation);
-    validateAnalysisPlan(result);
+    validatePlanningDecision(result);
     if (result['request_id'] != requestId) {
       throw GatewayValidationError(
         'Server changed the analysis-plan request identity',
       );
     }
-    return AnalysisPlanContract(result);
+    return PlanningDecisionContract(result);
   }
 
   @override

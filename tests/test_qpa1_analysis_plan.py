@@ -57,6 +57,61 @@ def test_semantic_plan_reports_actual_embedding_geometry(tmp_path):
     assert value["embedding"]["normalization"] == "unit_l2"
 
 
+def test_planner_can_request_clarification_without_preparing_analysis(tmp_path):
+    calls = []
+    app = _app(
+        tmp_path,
+        provider=fake_provider(
+            calls=calls,
+            mutate=lambda user, output: {
+                "disposition": "needs_clarification",
+                "clarification_question": "Which matter should I look for?",
+            },
+        ),
+    )
+    body = {
+        **_body("When did this happen?"),
+        "clarification_history": [
+            {"question": "Which matter?", "answer": "The school dispute."}
+        ],
+    }
+    with TestClient(app) as client:
+        response = client.post("/v1/conversational-plan", json=body)
+        events = client.get("/admin/events").json()["events"]
+    assert response.status_code == 200
+    assert response.json()["disposition"] == "needs_clarification"
+    assert response.json()["clarification_question"] == "Which matter should I look for?"
+    assert calls[0]["user"]["question"] == "When did this happen?"
+    assert calls[0]["user"]["clarification_history"] == body["clarification_history"]
+    assert any(event["event"] == "analysis_clarification_requested" for event in events)
+    assert not any(event["event"] == "analysis_plan_generated" for event in events)
+
+
+def test_planner_can_return_out_of_scope_without_corpus_work(tmp_path):
+    calls = []
+    app = _app(
+        tmp_path,
+        provider=fake_provider(
+            calls=calls,
+            mutate=lambda user, output: {
+                "disposition": "out_of_scope",
+                "response_message": "This interface analyzes the selected corpus.",
+            },
+        ),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/conversational-plan",
+            json=_body("Build me a Python script to count to ten."),
+        )
+        events = client.get("/admin/events").json()["events"]
+    assert response.status_code == 200
+    assert response.json()["disposition"] == "out_of_scope"
+    assert response.json()["response_message"].startswith("This interface")
+    assert len(calls) == 1
+    assert any(event["event"] == "analysis_request_out_of_scope" for event in events)
+
+
 def test_old_plan_route_is_removed_and_malformed_planning_is_loud(tmp_path):
     app = _app(tmp_path, provider=fake_provider(mutate=lambda user, output: {**output, "retrieval_queries": [" "]}))
     with TestClient(app) as client:
